@@ -34,11 +34,11 @@ body{
 }
 .ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),
                  0 2px var(--void),0 3px 12px rgba(0,0,0,.6)}
-
+ 
 #standby,#live{display:none}
 body.is-standby #standby{display:block}
 body.is-live    #live{display:block}
-
+ 
 header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wrap}
 .brand{font-size:26px;font-weight:700;font-stretch:75%;
        letter-spacing:.22em;text-transform:uppercase}
@@ -53,17 +53,17 @@ header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wr
 .clock{margin-left:auto;font-size:15px;font-weight:600;color:var(--ash)}
 .clock b{color:var(--white);font-size:19px}
 body.is-standby .clock{display:none}
-
+ 
 .spine{width:9px;flex:0 0 9px;align-self:stretch;
   background:linear-gradient(180deg,var(--ignite) 0%,var(--flare) 100%);
   box-shadow:0 0 0 2px rgba(5,7,10,.8),0 2px 16px rgba(224,27,36,.4)}
-
+ 
 /* Signalverlust: Werte einfrieren, sichtbar abdimmen */
 body.stale .hero-main,body.stale .vario,body.stale .rose,body.stale .bar{opacity:.34}
 body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.28}}
 @media(prefers-reduced-motion:reduce){body.stale #live .spine{animation:none}}
-
+ 
 /* ── Ruheansicht ────────────────────────────────────────────── */
 .standby-hero{border-top:3px solid var(--ignite);padding:36px 0 34px;
               display:flex;gap:22px;align-items:stretch}
@@ -74,7 +74,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .player{border:2px solid var(--edge);background:#000;
         position:relative;padding-top:56.25%}
 .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-
+ 
 /* ── Live-Ansicht ───────────────────────────────────────────── */
 .hero{display:flex;gap:22px;align-items:stretch;
       border-top:3px solid var(--ignite);padding-top:20px}
@@ -90,18 +90,19 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
   letter-spacing:.3em;text-transform:uppercase;color:var(--ignite);
   text-shadow:-1px 0 var(--void),1px 0 var(--void),0 -1px var(--void),0 1px var(--void)}
 .giant.sub .v{font-size:clamp(44px,7vw,74px)}
-
+ 
 .vario{flex:0 0 auto;width:46px;display:flex;flex-direction:column;
        align-items:center;gap:7px}
 .vario-track{position:relative;flex:1;width:22px;min-height:150px;
   background:var(--deck);outline:2px solid var(--edge)}
 .vario-track::before{content:"";position:absolute;left:-5px;right:-5px;top:50%;
   height:2px;background:var(--ash-dim);transform:translateY(-1px)}
-.vario-fill{position:absolute;left:0;right:0;background:var(--ignite)}
+.vario-fill{position:absolute;left:0;right:0;top:50%;bottom:50%;
+  background:var(--ignite)}
 .vario-num{font-size:15px;font-weight:700;font-stretch:87.5%}
 .vario-cap{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.2em;
   text-transform:uppercase;color:var(--ignite)}
-
+ 
 .rose{flex:0 0 auto;width:190px;height:190px;position:relative}
 @media(max-width:820px){.rose{width:150px;height:150px}}
 .rose svg{width:100%;height:100%;overflow:visible}
@@ -118,7 +119,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
   font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
 .rose-key i{display:inline-block;width:9px;height:9px;margin-right:5px;
             vertical-align:-1px}
-
+ 
 .bar{display:flex;flex-wrap:wrap;border-top:2px solid var(--ignite);margin-top:26px}
 .slot{flex:1 1 120px;padding:13px 17px;border-left:1px solid rgba(255,90,31,.35)}
 .slot:first-child{border-left:0;padding-left:0}
@@ -132,7 +133,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
       outline:2px solid rgba(5,7,10,.85)}
 #tape div{flex:1;background:rgba(255,255,255,.14)}
 #tape div.on{background:var(--tape,var(--ignite))}
-
+ 
 .panels{display:grid;grid-template-columns:1fr 350px;gap:22px;
         margin-top:34px;align-items:start}
 @media(max-width:900px){.panels{grid-template-columns:1fr}}
@@ -145,7 +146,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .chat{height:560px;border:2px solid var(--edge);background:#000;overflow:hidden}
 .chat iframe{width:100%;height:100%;border:0;display:block;pointer-events:none}
 @media(max-width:900px){.chat{height:440px}}
-
+ 
 .records{display:flex;flex-wrap:wrap;margin-top:18px;
          border-top:1px solid var(--edge)}
 .rec{flex:1 1 110px;padding:11px 15px;border-left:1px solid var(--edge)}
@@ -155,7 +156,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .rec .v{margin-top:2px;font-size:22px;font-weight:700;font-stretch:87.5%}
 .rec .v small{font-size:12px;color:var(--ash);margin-left:4px;
               text-transform:uppercase}
-
+ 
 section{margin-top:54px}
 h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
    text-transform:uppercase;color:var(--ignite);
@@ -177,16 +178,21 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
          letter-spacing:.08em;text-transform:uppercase}
 .links span{font-size:14px;font-weight:600;color:var(--ash)}
 .links a:hover span,.links a:focus-visible span{color:rgba(5,7,10,.75)}
+ 
+#dbg{position:fixed;right:12px;bottom:12px;z-index:99;
+  background:rgba(5,7,10,.94);border:1px solid var(--edge);padding:10px 13px;
+  font:12px/1.6 ui-monospace,monospace;color:var(--ash);white-space:pre;
+  pointer-events:none}
 </style>
 </head>
 <body class="is-standby">
-
+ 
 <header>
   <span class="brand" id="brand">TANGO KILO</span>
   <span class="lamp" id="lamp"><i></i><span id="lampText">offline</span></span>
   <span class="clock">FLUGZEIT <b id="ft">0:00</b></span>
 </header>
-
+ 
 <div id="standby">
   <div class="standby-hero">
     <div class="spine"></div>
@@ -194,7 +200,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
   </div>
   <div class="player" id="player"></div>
 </div>
-
+ 
 <div id="live">
   <div class="hero">
     <div class="spine"></div>
@@ -214,13 +220,13 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
         </div>
       </div>
     </div>
-
+ 
     <div class="vario">
       <div class="vario-num" id="varioNum">—</div>
       <div class="vario-track"><div class="vario-fill" id="varioFill"></div></div>
       <div class="vario-cap">Vario</div>
     </div>
-
+ 
     <div class="rose">
       <svg viewBox="0 0 200 200" aria-label="Kompass mit Kurs und Heimatrichtung">
         <circle class="ring" cx="100" cy="100" r="86"/>
@@ -239,7 +245,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
       </div>
     </div>
   </div>
-
+ 
   <div class="bar">
     <div class="slot"><div class="k">Kurs</div>
       <div class="v"><span id="hdg">—</span><small>°</small></div></div>
@@ -255,7 +261,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
     <div class="slot" id="sRest"><div class="k">Rest</div>
       <div class="v"><span id="rest">—</span><small>min</small></div></div>
   </div>
-
+ 
   <div class="panels">
     <div>
       <div class="panel-cap">Höhenverlauf</div>
@@ -277,7 +283,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
     </div>
   </div>
 </div>
-
+ 
 <section>
   <h2>Kanäle</h2>
   <div class="links">
@@ -287,345 +293,446 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
       <b>YouTube</b><span>@tiefseetaucherr — Flüge zum Nachschauen</span></a>
   </div>
 </section>
-
+ 
 <script>
-(() => {
+(function(){
 "use strict";
-
-const CFG = {
-  brand: "TANGO KILO",
-  ws: "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
-  twitch: "tommtee",
-  hold: 6,          // Sekunden ohne Telemetrie -> "kein Signal"
-  linkDead: 4000,   // ms ohne WS-Nachricht -> Laptop gilt als weg
+ 
+/* ══════════════════════════════════════════════════════════════
+   1 — EINSTELLUNGEN
+   ══════════════════════════════════════════════════════════════ */
+var CFG = {
+  brand:    "TANGO KILO",
+  ws:       "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
+  twitch:   "tommtee",
+ 
+  gpsHold:  6,      // s ohne GPS-Frame     -> "kein Signal", Werte einfrieren
+  linkHold: 12,     // s ohne CRSF-Frame    -> Funke ab, zurueck zur Ruheansicht
+  msgDead:  4000,   // ms ohne WS-Nachricht -> Laptop weg, zurueck zur Ruheansicht
+ 
   vFull: 4.20, vEmpty: 3.40,
   varioMax: 5,      // Vollausschlag des Variobalkens in m/s
-  packMah: 5000,    // Akkukapazitaet fuer die Restlaufzeit
+  packMah: 5000,    // Akkukapazitaet fuer die Restlaufzeit-Schaetzung
   graphMin: 3       // Minuten Verlauf im Hoehengraphen
 };
-
-const $ = id => document.getElementById(id);
-$("brand").textContent = CFG.brand;
-
-/* Player und Chat. Twitch verlangt den parent-Parameter mit der
-   Domain, auf der eingebettet wird. */
-{
-  const host = location.hostname || "localhost";
-  const mk = (src, title) => {
-    const f = document.createElement("iframe");
-    f.src = src; f.allowFullscreen = true;
-    f.setAttribute("allow","autoplay; fullscreen; picture-in-picture");
-    f.setAttribute("title", title);
-    return f;
-  };
-  $("player").appendChild(mk(
-    `https://player.twitch.tv/?channel=${CFG.twitch}&parent=${host}`
-    + `&autoplay=true&muted=true`, "Twitch-Kanal"));
-  $("chat").appendChild(mk(
-    `https://www.twitch.tv/embed/${CFG.twitch}/chat?parent=${host}&darkpopout`,
-    "Twitch-Chat, nur zum Mitlesen"));
+ 
+/* ══════════════════════════════════════════════════════════════
+   2 — ZUSTAND
+   Alles hier oben deklariert. In der letzten Fassung stand der
+   Debug-Block am Ende, wurde aber schon beim Start benutzt --
+   das hat das ganze Skript abgebrochen.
+   ══════════════════════════════════════════════════════════════ */
+function $(id){ return document.getElementById(id); }
+ 
+var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+var debug  = new URLSearchParams(location.search).has("debug");
+ 
+var tgt = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
+           volt:null,amp:null,mah:null,sats:null};
+var cur = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
+           volt:null,amp:null,mah:null,sats:null};
+var rec = {spd:0, alt:0, dist:0, vario:0};
+ 
+var sock = null, msgAt = null, snap = null, snapAt = 0;
+var seenGps = false, view = "", stale = null;
+var track = [], sampleAt = 0, t0 = null, flying = false;
+var cellCount = 0, tPrev = 0, graphAt = 0, retry = 1500;
+ 
+var cv = $("graph"), cx = cv.getContext("2d");
+var tape = $("tape");
+ 
+var dbgBox = null;
+if (debug){
+  dbgBox = document.createElement("div");
+  dbgBox.id = "dbg";
+  document.body.appendChild(dbgBox);
 }
-
-/* Kompass-Teilung. An N/O/S/W steht der Buchstabe, dort kein Strich. */
-{
-  const g = $("ticks");
-  for (let a = 0; a < 360; a += 15){
-    if (a % 90 === 0) continue;
-    const r = a * Math.PI / 180;
-    const l = document.createElementNS("http://www.w3.org/2000/svg","line");
-    l.setAttribute("class","tick");
-    l.setAttribute("x1", 100 + Math.sin(r)*86);
-    l.setAttribute("y1", 100 - Math.cos(r)*86);
-    l.setAttribute("x2", 100 + Math.sin(r)*78);
-    l.setAttribute("y2", 100 - Math.cos(r)*78);
-    g.appendChild(l);
-  }
+ 
+/* ══════════════════════════════════════════════════════════════
+   3 — ALTERSBERECHNUNG
+ 
+   Der Server liefert zwei verschiedene Alter, und die Unterscheidung
+   ist der Kern der ganzen Zustandslogik:
+ 
+     age_s       seit dem letzten GPS-Frame. Faellt die Telemetrie
+                 aus, steigt NUR dieser Wert.        -> "kein Signal"
+ 
+     link_age_s  seit IRGENDEINEM gueltigen Frame. Die Funke sendet
+                 ueber USB auch ohne Modell weiter, also bleibt er
+                 niedrig. Er steigt erst, wenn die Funke selbst weg
+                 ist.                                 -> Ruheansicht
+ 
+   Genau das war der Fehler: die Seite hat link_age_s benutzt, wo
+   age_s gemeint war. Deshalb kam nie "kein Signal".
+ 
+   Dazu msgAge: wann kam die letzte Nachricht ueber den WebSocket.
+   Auf onclose allein ist kein Verlass -- stirbt cloudflared abrupt,
+   bleibt die Verbindung offen haengen.
+   ══════════════════════════════════════════════════════════════ */
+function now(){ return performance.now(); }
+function msgAge(){ return msgAt === null ? Infinity : now() - msgAt; }
+ 
+function since(field){
+  if (!snap || snap[field] === null || snap[field] === undefined) return Infinity;
+  return snap[field] + (now() - snapAt) / 1000;
 }
-
-const tgt = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
-             volt:null,amp:null,mah:null,sats:null};
-const cur = {...tgt};
-const rec = {spd:0, alt:0, dist:0, vario:0};
-let track = [], lastSample = 0, t0 = null, flying = false;
-
-/* ── Zustandserkennung ──────────────────────────────────────────
-   Drei getrennte Fragen, die vorher vermischt waren:
-
-     msgAge   Wann kam die letzte WS-Nachricht?  -> laeuft der Laptop?
-     connected  Meldet die Bridge Kontakt zum Telemetrieserver?
-     linkAge  Wie alt ist die Telemetrie selbst? -> Funkloch?
-
-   Entscheidend ist msgAge. Auf onclose ist kein Verlass: stirbt
-   cloudflared abrupt, bleibt die Verbindung offen haengen und der
-   Browser erfaehrt nichts davon. Deshalb zaehlt hier nur, ob
-   tatsaechlich noch Daten eintreffen.
-   ─────────────────────────────────────────────────────────────── */
-let sock = null, lastMsgAt = 0, snap = null, snapAt = 0, everData = false;
-let view = "", staleNow = null;
-
-const now = () => performance.now();
-const msgAge = () => lastMsgAt ? now() - lastMsgAt : 1e9;
-const linkOk = () => sock && sock.readyState === WebSocket.OPEN
-                     && msgAge() < CFG.linkDead;
-
-function telemAge(){
-  if (!snap || snap.connected === false) return 1e9;
-  if (snap.link_age_s == null) return 1e9;
-  return snap.link_age_s + (now() - snapAt) / 1000;
+function gpsAge(){ return since("age_s"); }
+function linkAge(){ return since("link_age_s"); }
+ 
+/* Laeuft der Laptop und ist die Funke angeschlossen? */
+function rigOnline(){
+  if (!sock || sock.readyState !== 1) return false;   // 1 = OPEN
+  if (msgAge() > CFG.msgDead) return false;
+  if (!snap) return false;
+  if (snap.connected === false) return false;         // USB/Serial weg
+  return linkAge() < CFG.linkHold;                    // CRSF-Frames kommen an
 }
-
+ 
+/* ══════════════════════════════════════════════════════════════
+   4 — ZUSTAND ANWENDEN
+   ══════════════════════════════════════════════════════════════ */
 function applyState(){
-  const online = linkOk();
-  const v = (online && everData) ? "live" : "standby";
-  const stale = v === "live" && telemAge() >= CFG.hold;
-
-  if (v !== view || stale !== staleNow){
-    view = v; staleNow = stale;
-    document.body.className = "is-" + v + (stale ? " stale" : "");
-    document.title = (v === "live" && !stale) ? CFG.brand + " · LIVE" : CFG.brand;
+  var online  = rigOnline();
+  var v       = (online && seenGps) ? "live" : "standby";
+  var isStale = (v === "live") && (gpsAge() >= CFG.gpsHold);
+ 
+  if (v !== view || isStale !== stale){
+    view = v; stale = isStale;
+    document.body.className = "is-" + v + (isStale ? " stale" : "");
+    document.title = (v === "live" && !isStale) ? CFG.brand + " \u00b7 LIVE" : CFG.brand;
     if (v === "live") requestAnimationFrame(sizeGraph);
   }
-
-  const lamp = $("lamp");
-  if (!online){ lamp.className = "lamp"; $("lampText").textContent = "offline"; }
-  else if (stale){ lamp.className = "lamp lost"; $("lampText").textContent = "kein Signal"; }
-  else if (snap && !snap.fix){ lamp.className = "lamp wait"; $("lampText").textContent = "GPS sucht"; }
-  else { lamp.className = "lamp on"; $("lampText").textContent = "live"; }
-
-  /* Haengende Verbindung aktiv abraeumen, damit der Reconnect greift. */
-  if (sock && sock.readyState === WebSocket.OPEN && msgAge() > CFG.linkDead * 2){
-    try { sock.close(); } catch {}
+ 
+  var lamp = $("lamp");
+  if (!online){
+    lamp.className = "lamp";      $("lampText").textContent = "offline";
+  } else if (isStale || !seenGps){
+    lamp.className = "lamp lost"; $("lampText").textContent = "kein Signal";
+  } else if (snap && !snap.fix){
+    lamp.className = "lamp wait"; $("lampText").textContent = "GPS sucht";
+  } else {
+    lamp.className = "lamp on";   $("lampText").textContent = "live";
   }
-  paintDebug();
+ 
+  /* Haengende Verbindung aktiv abraeumen, damit der Reconnect greift. */
+  if (sock && sock.readyState === 1 && msgAge() > CFG.msgDead * 2){
+    try { sock.close(); } catch (e) {}
+  }
+ 
+  if (dbgBox) paintDebug();
 }
-/* Eigener Takt: laeuft auch weiter, wenn der Tab im Hintergrund ist
-   und requestAnimationFrame pausiert. */
-setInterval(applyState, 400);
-
-let retry = 1500;
+ 
+function paintDebug(){
+  var names = ["CONNECTING","OPEN","CLOSING","CLOSED"];
+  var rs = sock ? names[sock.readyState] : "\u2014";
+  function s(x){ return x === Infinity ? "\u221e" : x.toFixed(1) + " s"; }
+  dbgBox.textContent =
+      "socket     " + rs
+  + "\nmsgAge     " + (msgAge() === Infinity ? "nie" : Math.round(msgAge()) + " ms")
+  + "\nconnected  " + (snap ? String(snap.connected) : "\u2014")
+  + "\nage_s      " + s(gpsAge())  + "   GPS"
+  + "\nlink_age_s " + s(linkAge()) + "   Funke"
+  + "\nfix / sats " + (snap ? snap.fix + " / " + snap.sats : "\u2014")
+  + "\nseenGps    " + seenGps
+  + "\nview       " + view + (stale ? " + stale" : "");
+}
+ 
+/* ══════════════════════════════════════════════════════════════
+   5 — VERBINDUNG
+   ══════════════════════════════════════════════════════════════ */
+function onData(d){
+  snap = d; snapAt = now();
+ 
+  if (d.connected !== false && d.age_s != null && d.age_s < CFG.gpsHold)
+    seenGps = true;
+ 
+  if (d.speed_kmh   != null) tgt.spd   = d.speed_kmh;
+  if (d.alt_m       != null) tgt.alt   = d.alt_m;
+  if (d.vspeed_ms   != null) tgt.vario = d.vspeed_ms;
+  if (d.heading_deg != null) tgt.hdg   = d.heading_deg;
+  if (d.voltage_v   != null) tgt.volt  = d.voltage_v;
+  if (d.current_a   != null) tgt.amp   = d.current_a;
+  if (d.mah         != null) tgt.mah   = d.mah;
+  if (d.sats        != null) tgt.sats  = d.sats;
+  if (d.home_set && d.dist_m != null){
+    tgt.dist = d.dist_m;
+    tgt.home = d.home_bearing_deg;
+  }
+ 
+  if (!flying && d.fix && d.speed_kmh > 5){
+    flying = true; t0 = Date.now();
+    rec.spd = 0; rec.alt = 0; rec.dist = 0; rec.vario = 0;
+    track = [];
+  }
+ 
+  /* Rekorde aus den Rohwerten, nicht aus den geglaetteten */
+  if (d.speed_kmh != null) rec.spd   = Math.max(rec.spd,   d.speed_kmh);
+  if (d.alt_m     != null) rec.alt   = Math.max(rec.alt,   d.alt_m);
+  if (d.dist_m    != null) rec.dist  = Math.max(rec.dist,  d.dist_m);
+  if (d.vspeed_ms != null) rec.vario = Math.max(rec.vario, d.vspeed_ms);
+ 
+  /* Hoehenpuffer, ein Wert pro Sekunde */
+  if (d.alt_m != null && now() - sampleAt > 1000){
+    sampleAt = now();
+    track.push(d.alt_m);
+    if (track.length > CFG.graphMin * 60) track.shift();
+  }
+}
+ 
 function connect(){
   try { sock = new WebSocket(CFG.ws); }
-  catch { return setTimeout(connect, retry); }
-
-  sock.onopen = () => { retry = 1500; lastMsgAt = now(); applyState(); };
-
-  sock.onmessage = e => {
-    lastMsgAt = now();
-    let d; try { d = JSON.parse(e.data); } catch { return; }
-    snap = d; snapAt = now();
-
-    if (d.connected !== false && d.link_age_s != null
-        && d.link_age_s < CFG.hold) everData = true;
-
-    if (d.speed_kmh   != null) tgt.spd   = d.speed_kmh;
-    if (d.alt_m       != null) tgt.alt   = d.alt_m;
-    if (d.vspeed_ms   != null) tgt.vario = d.vspeed_ms;
-    if (d.heading_deg != null) tgt.hdg   = d.heading_deg;
-    if (d.voltage_v   != null) tgt.volt  = d.voltage_v;
-    if (d.current_a   != null) tgt.amp   = d.current_a;
-    if (d.mah         != null) tgt.mah   = d.mah;
-    if (d.sats        != null) tgt.sats  = d.sats;
-    if (d.home_set && d.dist_m != null){
-      tgt.dist = d.dist_m; tgt.home = d.home_bearing_deg;
-    }
-    if (!flying && d.fix && d.speed_kmh > 5){
-      flying = true; t0 = Date.now();
-      rec.spd = rec.alt = rec.dist = rec.vario = 0;
-      track = [];
-    }
-    /* Rekorde aus den Rohwerten, nicht aus den geglaetteten */
-    if (d.speed_kmh != null) rec.spd   = Math.max(rec.spd, d.speed_kmh);
-    if (d.alt_m     != null) rec.alt   = Math.max(rec.alt, d.alt_m);
-    if (d.dist_m    != null) rec.dist  = Math.max(rec.dist, d.dist_m);
-    if (d.vspeed_ms != null) rec.vario = Math.max(rec.vario, d.vspeed_ms);
-
-    if (d.alt_m != null && now() - lastSample > 1000){
-      lastSample = now();
-      track.push(d.alt_m);
-      if (track.length > CFG.graphMin * 60) track.shift();
-    }
+  catch (e) { setTimeout(connect, retry); return; }
+ 
+  sock.onopen = function(){ retry = 1500; msgAt = now(); applyState(); };
+ 
+  sock.onmessage = function(e){
+    msgAt = now();
+    var d;
+    try { d = JSON.parse(e.data); } catch (err) { return; }
+    onData(d);
     applyState();
   };
-
-  sock.onclose = () => {
-    everData = false; snap = null; flying = false; t0 = null;
+ 
+  sock.onclose = function(){
+    snap = null; seenGps = false; flying = false; t0 = null;
     applyState();
     setTimeout(connect, retry);
     retry = Math.min(retry * 1.5, 15000);
   };
-  sock.onerror = () => { try { sock.close(); } catch {} };
+ 
+  sock.onerror = function(){ try { sock.close(); } catch (e) {} };
 }
-connect();
-applyState();
-
-/* ── Diagnose: Seite mit ?debug aufrufen ────────────────────── */
-let dbg = null;
-if (new URLSearchParams(location.search).has("debug")){
-  dbg = document.createElement("div");
-  dbg.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99;"
-    + "background:rgba(5,7,10,.94);border:1px solid #1B242D;padding:10px 13px;"
-    + "font:12px/1.6 ui-monospace,monospace;color:#9BA3AB;white-space:pre;"
-    + "pointer-events:none";
-  document.body.appendChild(dbg);
+ 
+/* ══════════════════════════════════════════════════════════════
+   6 — DARSTELLUNG
+   ══════════════════════════════════════════════════════════════ */
+function ease(v, t, k){
+  if (t === null || t === undefined) return null;
+  if (v === null || v === undefined || reduce) return t;
+  return v + (t - v) * k;
 }
-function paintDebug(){
-  if (!dbg) return;
-  const rs = sock ? ["CONNECTING","OPEN","CLOSING","CLOSED"][sock.readyState] : "—";
-  dbg.textContent =
-      "socket    " + rs
-  + "\nmsgAge    " + (msgAge() > 1e8 ? "nie" : Math.round(msgAge()) + " ms")
-  + "\nconnected " + (snap ? String(snap.connected) : "—")
-  + "\nlink_age  " + (snap && snap.link_age_s != null ? snap.link_age_s + " s" : "null")
-  + "\ntelemAge  " + (telemAge() > 1e8 ? "∞" : telemAge().toFixed(1) + " s")
-  + "\nfix/sats  " + (snap ? snap.fix + " / " + snap.sats : "—")
-  + "\neverData  " + everData
-  + "\nview      " + view + (staleNow ? " (stale)" : "");
+ 
+function easeDeg(v, t, k){
+  if (t === null || t === undefined) return null;
+  if (v === null || v === undefined || reduce) return t;
+  var d = ((t - v + 540) % 360) - 180;
+  return (v + d * k + 360) % 360;
 }
-
-const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const ease = (v,t,k) => t == null ? null : (v == null || reduce) ? t : v + (t-v)*k;
-function easeDeg(v,t,k){
-  if (t == null) return null;
-  if (v == null || reduce) return t;
-  const d = ((t - v + 540) % 360) - 180;
-  return (v + d*k + 360) % 360;
-}
-
-const tape = $("tape");
-let cellCount = 0;
+ 
 function paintTape(v){
-  if (v == null){ tape.style.visibility = "hidden"; $("cells").textContent = ""; return; }
+  if (v === null || v === undefined){
+    tape.style.visibility = "hidden";
+    $("cells").textContent = "";
+    return;
+  }
   tape.style.visibility = "visible";
-  const n = Math.max(1, Math.min(14, Math.round(v/3.8)));
+  var n = Math.max(1, Math.min(14, Math.round(v / 3.8)));
   if (n !== cellCount){
     tape.innerHTML = "";
-    for (let i=0;i<n;i++) tape.appendChild(document.createElement("div"));
-    cellCount = n; $("cells").textContent = n + "S";
+    for (var i = 0; i < n; i++) tape.appendChild(document.createElement("div"));
+    cellCount = n;
+    $("cells").textContent = n + "S";
   }
-  const f = Math.max(0, Math.min(1, (v/n - CFG.vEmpty)/(CFG.vFull - CFG.vEmpty)));
-  const col = `hsl(${20*f} ${88-8*f}% ${52-6*(1-f)}%)`;
-  [...tape.children].forEach((c,i) => {
-    c.classList.toggle("on", i < Math.round(f*n));
-    c.style.setProperty("--tape", col);
-  });
+  var f = Math.max(0, Math.min(1, (v / n - CFG.vEmpty) / (CFG.vFull - CFG.vEmpty)));
+  var col = "hsl(" + (20 * f) + " " + (88 - 8 * f) + "% " + (52 - 6 * (1 - f)) + "%)";
+  var lit = Math.round(f * n);
+  var kids = tape.children;
+  for (var j = 0; j < kids.length; j++){
+    kids[j].classList.toggle("on", j < lit);
+    kids[j].style.setProperty("--tape", col);
+  }
 }
-
+ 
 function paintVario(v){
-  const fill = $("varioFill");
-  if (v == null){ fill.style.top = fill.style.bottom = "50%"; $("varioNum").textContent = "—"; return; }
-  const f = Math.max(-1, Math.min(1, v / CFG.varioMax));
-  const pct = Math.abs(f) * 50;
+  var fill = $("varioFill");
+  if (v === null || v === undefined){
+    fill.style.top = "50%"; fill.style.bottom = "50%";
+    $("varioNum").textContent = "\u2014";
+    return;
+  }
+  var f = Math.max(-1, Math.min(1, v / CFG.varioMax));
+  var pct = Math.abs(f) * 50;
   if (f >= 0){ fill.style.top = (50 - pct) + "%"; fill.style.bottom = "50%"; }
   else       { fill.style.top = "50%"; fill.style.bottom = (50 - pct) + "%"; }
   fill.style.background = f >= 0 ? "var(--live)" : "var(--flare)";
   $("varioNum").textContent = (v >= 0 ? "+" : "") + v.toFixed(1);
 }
-
-const cv = $("graph"), cx = cv.getContext("2d");
+ 
 function sizeGraph(){
-  const r = devicePixelRatio || 1;
-  cv.width = cv.clientWidth * r;
+  var r = window.devicePixelRatio || 1;
+  cv.width  = cv.clientWidth  * r;
   cv.height = cv.clientHeight * r;
   drawGraph();
 }
+ 
 function drawGraph(){
-  const w = cv.width, h = cv.height, r = devicePixelRatio || 1;
-  cx.clearRect(0,0,w,h);
+  var w = cv.width, h = cv.height, r = window.devicePixelRatio || 1;
+  if (!w || !h) return;
+  cx.clearRect(0, 0, w, h);
   if (track.length < 2) return;
-
-  let lo = Math.min(...track), hi = Math.max(...track);
-  if (hi - lo < 20){ const m = (hi+lo)/2; lo = m - 10; hi = m + 10; }
-  const pad = (hi - lo) * 0.12;
+ 
+  var lo = Math.min.apply(null, track), hi = Math.max.apply(null, track);
+  if (hi - lo < 20){ var m = (hi + lo) / 2; lo = m - 10; hi = m + 10; }
+  var pad = (hi - lo) * 0.12;
   lo -= pad; hi += pad;
-  const px = i => (i / (track.length - 1)) * w;
-  const py = v => h - ((v - lo) / (hi - lo)) * h;
-
+ 
+  function px(i){ return (i / (track.length - 1)) * w; }
+  function py(v){ return h - ((v - lo) / (hi - lo)) * h; }
+ 
   cx.strokeStyle = "#1B242D"; cx.lineWidth = r;
-  for (let i = 1; i < 4; i++){
-    const y = (h/4)*i;
-    cx.beginPath(); cx.moveTo(0,y); cx.lineTo(w,y); cx.stroke();
+  for (var i = 1; i < 4; i++){
+    var y = (h / 4) * i;
+    cx.beginPath(); cx.moveTo(0, y); cx.lineTo(w, y); cx.stroke();
   }
-
+ 
   cx.beginPath();
   cx.moveTo(px(0), h);
-  track.forEach((v,i) => cx.lineTo(px(i), py(v)));
-  cx.lineTo(px(track.length-1), h);
+  for (var a = 0; a < track.length; a++) cx.lineTo(px(a), py(track[a]));
+  cx.lineTo(px(track.length - 1), h);
   cx.closePath();
-  const g = cx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,"rgba(255,90,31,.35)");
-  g.addColorStop(1,"rgba(255,90,31,0)");
+  var g = cx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "rgba(255,90,31,.35)");
+  g.addColorStop(1, "rgba(255,90,31,0)");
   cx.fillStyle = g; cx.fill();
-
+ 
   cx.beginPath();
-  track.forEach((v,i) => i ? cx.lineTo(px(i),py(v)) : cx.moveTo(px(i),py(v)));
-  cx.strokeStyle = "#FF5A1F"; cx.lineWidth = 2*r;
-  cx.lineJoin = cx.lineCap = "round"; cx.stroke();
-
-  cx.fillStyle = "#5C666F";
-  cx.font = `${11*r}px ${getComputedStyle(document.body).fontFamily}`;
-  cx.fillText(Math.round(hi) + " m", 8*r, 15*r);
-  cx.fillText(Math.round(lo) + " m", 8*r, h - 7*r);
-}
-addEventListener("resize", sizeGraph);
-
-const fmtDist = (m, elV, elU) => {
-  if (m == null){ elV.textContent = "—"; if (elU) elU.textContent = "m"; return; }
-  if (m < 1000){ elV.textContent = Math.round(m); if (elU) elU.textContent = "m"; }
-  else { elV.textContent = (m/1000).toFixed(2); if (elU) elU.textContent = "km"; }
-};
-
-let tPrev = performance.now(), gTick = 0;
-function frame(t){
-  if (view === "live"){
-    const k = reduce ? 1 : 1 - Math.exp(-((t - tPrev)/1000)/0.22);
-    for (const key of ["spd","dist","alt","vario","volt","amp","mah","sats"])
-      cur[key] = ease(cur[key], tgt[key], k);
-    cur.hdg  = easeDeg(cur.hdg,  tgt.hdg,  k);
-    cur.home = easeDeg(cur.home, tgt.home, k);
-
-    const r0 = v => v == null ? "—" : String(Math.round(v));
-    $("spd").textContent  = r0(cur.spd);
-    $("alt").textContent  = r0(cur.alt);
-    $("hdg").textContent  = cur.hdg == null ? "—" : String(Math.round(cur.hdg) % 360);
-    $("sats").textContent = r0(cur.sats);
-    $("amp").textContent  = cur.amp  == null ? "—" : cur.amp.toFixed(1);
-    $("mah").textContent  = r0(cur.mah);
-    $("volt").textContent = cur.volt == null ? "—" : cur.volt.toFixed(1);
-    fmtDist(cur.dist, $("dist"), $("distU"));
-    paintVario(cur.vario);
-
-    /* Restlaufzeit aus Verbrauch und Strom. Nur eine Schaetzung —
-       bei stark schwankendem Strom entsprechend grob. */
-    if (cur.amp != null && cur.amp > 0.5 && cur.mah != null){
-      const left = Math.max(0, CFG.packMah * 0.8 - cur.mah);
-      const min = left / (cur.amp * 1000) * 60;
-      $("rest").textContent = min > 99 ? "99+" : Math.round(min);
-      $("sRest").className = "slot" + (min < 3 ? " alert" : "");
-    } else { $("rest").textContent = "—"; $("sRest").className = "slot"; }
-
-    $("nCraft").style.transform = `rotate(${cur.hdg  ?? 0}deg)`;
-    $("nHome").style.transform  = `rotate(${cur.home ?? 0}deg)`;
-    $("nHome").style.visibility = cur.home == null ? "hidden" : "visible";
-
-    paintTape(cur.volt);
-    $("sSats").className = "slot" + (cur.sats != null && cur.sats < 6 ? " alert" : "");
-
-    $("rSpd").textContent = rec.spd ? Math.round(rec.spd) : "—";
-    $("rAlt").textContent = rec.alt ? Math.round(rec.alt) : "—";
-    $("rVar").textContent = rec.vario ? "+" + rec.vario.toFixed(1) : "—";
-    fmtDist(rec.dist || null, $("rDist"), $("rDistU"));
-
-    if (t0){
-      const s = Math.floor((Date.now()-t0)/1000);
-      $("ft").textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
-    }
-
-    if (t - gTick > 500){ gTick = t; drawGraph(); }
+  for (var b = 0; b < track.length; b++){
+    if (b) cx.lineTo(px(b), py(track[b])); else cx.moveTo(px(b), py(track[b]));
   }
-
-  tPrev = t;
-  requestAnimationFrame(frame);
+  cx.strokeStyle = "#FF5A1F"; cx.lineWidth = 2 * r;
+  cx.lineJoin = "round"; cx.lineCap = "round";
+  cx.stroke();
+ 
+  cx.fillStyle = "#5C666F";
+  cx.font = (11 * r) + "px " + getComputedStyle(document.body).fontFamily;
+  cx.fillText(Math.round(hi) + " m", 8 * r, 15 * r);
+  cx.fillText(Math.round(lo) + " m", 8 * r, h - 7 * r);
 }
+ 
+function fmtDist(m, elV, elU){
+  if (m === null || m === undefined){
+    elV.textContent = "\u2014";
+    if (elU) elU.textContent = "m";
+  } else if (m < 1000){
+    elV.textContent = Math.round(m);
+    if (elU) elU.textContent = "m";
+  } else {
+    elV.textContent = (m / 1000).toFixed(2);
+    if (elU) elU.textContent = "km";
+  }
+}
+ 
+function r0(v){
+  return (v === null || v === undefined) ? "\u2014" : String(Math.round(v));
+}
+ 
+function frame(t){
+  requestAnimationFrame(frame);
+  if (view !== "live"){ tPrev = t; return; }
+ 
+  var k = reduce ? 1 : 1 - Math.exp(-((t - tPrev) / 1000) / 0.22);
+  tPrev = t;
+ 
+  var keys = ["spd","dist","alt","vario","volt","amp","mah","sats"];
+  for (var i = 0; i < keys.length; i++){
+    cur[keys[i]] = ease(cur[keys[i]], tgt[keys[i]], k);
+  }
+  cur.hdg  = easeDeg(cur.hdg,  tgt.hdg,  k);
+  cur.home = easeDeg(cur.home, tgt.home, k);
+ 
+  $("spd").textContent  = r0(cur.spd);
+  $("alt").textContent  = r0(cur.alt);
+  $("hdg").textContent  = (cur.hdg === null) ? "\u2014" : String(Math.round(cur.hdg) % 360);
+  $("sats").textContent = r0(cur.sats);
+  $("amp").textContent  = (cur.amp  === null) ? "\u2014" : cur.amp.toFixed(1);
+  $("mah").textContent  = r0(cur.mah);
+  $("volt").textContent = (cur.volt === null) ? "\u2014" : cur.volt.toFixed(1);
+  fmtDist(cur.dist, $("dist"), $("distU"));
+  paintVario(cur.vario);
+ 
+  /* Restlaufzeit aus Verbrauch und Strom. Nur eine Schaetzung --
+     bei stark schwankendem Strom entsprechend grob. */
+  if (cur.amp !== null && cur.amp > 0.5 && cur.mah !== null){
+    var left = Math.max(0, CFG.packMah * 0.8 - cur.mah);
+    var min = left / (cur.amp * 1000) * 60;
+    $("rest").textContent = min > 99 ? "99+" : Math.round(min);
+    $("sRest").className = "slot" + (min < 3 ? " alert" : "");
+  } else {
+    $("rest").textContent = "\u2014";
+    $("sRest").className = "slot";
+  }
+ 
+  $("nCraft").style.transform = "rotate(" + (cur.hdg  || 0) + "deg)";
+  $("nHome").style.transform  = "rotate(" + (cur.home || 0) + "deg)";
+  $("nHome").style.visibility = (cur.home === null) ? "hidden" : "visible";
+ 
+  paintTape(cur.volt);
+  $("sSats").className = "slot" +
+    ((cur.sats !== null && cur.sats < 6) ? " alert" : "");
+ 
+  $("rSpd").textContent = rec.spd ? Math.round(rec.spd) : "\u2014";
+  $("rAlt").textContent = rec.alt ? Math.round(rec.alt) : "\u2014";
+  $("rVar").textContent = rec.vario ? "+" + rec.vario.toFixed(1) : "\u2014";
+  fmtDist(rec.dist || null, $("rDist"), $("rDistU"));
+ 
+  if (t0){
+    var s = Math.floor((Date.now() - t0) / 1000);
+    $("ft").textContent = Math.floor(s / 60) + ":" +
+                          String(s % 60).padStart(2, "0");
+  }
+ 
+  if (t - graphAt > 500){ graphAt = t; drawGraph(); }
+}
+ 
+/* ══════════════════════════════════════════════════════════════
+   7 — START
+   ══════════════════════════════════════════════════════════════ */
+$("brand").textContent = CFG.brand;
+ 
+/* Player und Chat. Twitch verlangt den parent-Parameter mit der
+   Domain, auf der eingebettet wird. */
+(function embeds(){
+  var host = location.hostname || "localhost";
+  function mk(src, title){
+    var f = document.createElement("iframe");
+    f.src = src;
+    f.allowFullscreen = true;
+    f.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+    f.setAttribute("title", title);
+    return f;
+  }
+  $("player").appendChild(mk(
+    "https://player.twitch.tv/?channel=" + CFG.twitch + "&parent=" + host +
+    "&autoplay=true&muted=true", "Twitch-Kanal"));
+  $("chat").appendChild(mk(
+    "https://www.twitch.tv/embed/" + CFG.twitch + "/chat?parent=" + host +
+    "&darkpopout", "Twitch-Chat, nur zum Mitlesen"));
+})();
+ 
+/* Kompass-Teilung. An N/O/S/W steht der Buchstabe, dort kein Strich. */
+(function compass(){
+  var g = $("ticks");
+  for (var a = 0; a < 360; a += 15){
+    if (a % 90 === 0) continue;
+    var r = a * Math.PI / 180;
+    var l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    l.setAttribute("class", "tick");
+    l.setAttribute("x1", 100 + Math.sin(r) * 86);
+    l.setAttribute("y1", 100 - Math.cos(r) * 86);
+    l.setAttribute("x2", 100 + Math.sin(r) * 78);
+    l.setAttribute("y2", 100 - Math.cos(r) * 78);
+    g.appendChild(l);
+  }
+})();
+ 
+window.addEventListener("resize", sizeGraph);
+ 
+/* Eigener Takt: laeuft auch weiter, wenn der Tab im Hintergrund ist
+   und requestAnimationFrame pausiert. */
+setInterval(applyState, 400);
+ 
+applyState();
+connect();
 requestAnimationFrame(frame);
 })();
 </script>
