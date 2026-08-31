@@ -225,10 +225,10 @@ body:not(.is-standby) .snooze{display:none}
 .snooze b:nth-of-type(3){animation-delay:1s;font-size:15px}
 @keyframes zfloat{0%{opacity:0;transform:translate(0,3px)}25%{opacity:1}70%{opacity:.85}100%{opacity:0;transform:translate(7px,-13px) rotate(10deg)}}
 @supports ((-webkit-background-clip:text) or (background-clip:text)){
-  .brand{background:linear-gradient(92deg,#4de1ff,#a06bff 28%,#ff5ea8 52%,#ffd24d 74%,#4de1ff);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
-    animation:brandhue 9s linear infinite;will-change:filter}
-  @keyframes brandhue{from{filter:saturate(1.2) hue-rotate(0deg)}to{filter:saturate(1.2) hue-rotate(360deg)}}
+  .brand{background:linear-gradient(92deg,#ff7a1f,#2fd07a 34%,#9146ff 66%,#2fd07a 82%,#ff7a1f);
+    background-size:280% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:brandflow 7s linear infinite;will-change:background-position}
+  @keyframes brandflow{to{background-position:-280% 0}}
 }
 .lamp.on{animation:lampglow 1.9s ease-in-out infinite}
 @keyframes lampglow{0%,100%{box-shadow:0 0 0 0 rgba(47,208,122,0)}50%{box-shadow:0 0 0 4px rgba(47,208,122,.18)}}
@@ -261,7 +261,7 @@ body.is-standby #standby .player{animation:flyin .6s .12s ease both}
 
 /* Ambientes, langsam rotierendes Farbspiel im Hintergrund */
 .aurora{position:fixed;inset:-30%;z-index:-1;pointer-events:none;opacity:.55;
-  background:conic-gradient(from 0deg,#0a3a5c,#3a1f6e,#5c1f4e,#6e3a1f,#1f5c3a,#0a3a5c);
+  background:conic-gradient(from 0deg,#5c2e0a,#1f5c3a,#3a1f6e,#5c2e0a);
   filter:blur(90px) saturate(1.35);animation:auroraspin 44s linear infinite;will-change:transform}
 @keyframes auroraspin{to{transform:rotate(360deg)}}
 .panel-cap,h2{transition:color .35s ease}
@@ -431,7 +431,7 @@ var rec = {spd:0, alt:0, dist:0, vario:0};
 var sock = null, msgAt = null, snap = null, snapAt = 0;
 var seenGps = false, view = "", stale = null;
 var track = [], sampleAt = 0, t0 = null, flying = false;
-var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, accentHue = 20, retry = 1500;
+var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, accentRGB = [255,122,31], retry = 1500;
 
 var cv = $("graph"), cx = cv.getContext("2d");
 var tape = $("tape");
@@ -850,13 +850,13 @@ function drawRadar(){
 
   var tr = drawRadar._track;
   for (var j = 0; j < tr.length; j++){ var p = place(tr[j][0], tr[j][1]), a = (j / tr.length) * 0.45;
-    x.fillStyle = "hsla(" + accentHue + ",90%,58%," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = "rgba(" + accentRGB[0] + "," + accentRGB[1] + "," + accentRGB[2] + "," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
 
   var pos = place(dist, brg);
   if (cur.hdg != null){ var hh = cur.hdg * Math.PI / 180;
     x.strokeStyle = "#fff"; x.lineWidth = 2 * r; x.beginPath(); x.moveTo(pos[0], pos[1]);
     x.lineTo(pos[0] + Math.sin(hh) * 11 * r, pos[1] - Math.cos(hh) * 11 * r); x.stroke(); }
-  x.fillStyle = "hsl(" + accentHue + ",90%,58%)"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
+  x.fillStyle = "rgb(" + accentRGB[0] + "," + accentRGB[1] + "," + accentRGB[2] + ")"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1002,16 +1002,23 @@ window.addEventListener("resize", sizeGraph);
    und requestAnimationFrame pausiert. */
 setInterval(applyState, 400);
 
-/* Dynamische Akzentfarbe: driftet immer durchs Spektrum, schneller je
-   schneller du fliegst. Faerbt Ueberschriften, Kanten, Aura und Radar. */
+/* Dynamische Akzentfarbe: driftet zwischen Orange, Gruen und Lila, schneller
+   je schneller du fliegst. Faerbt Ueberschriften, Kanten, Aura und Radar. */
+var ACCENT_COLS = [[255,122,31],[47,208,122],[145,70,255]];   // orange, gruen, lila
 var accentPhase = 0, accentAt = performance.now();
 function accentTick(){
   var now = performance.now(), dt = Math.min(0.5, (now - accentAt) / 1000); accentAt = now;
   var sp = (view === "live" && cur.spd) ? cur.spd : 0;
-  accentPhase = (accentPhase + dt * (9 + sp * 0.18)) % 360;
-  var hue = Math.round(accentPhase / 4) * 4;
-  if (hue !== accentHue){ accentHue = hue;
-    document.documentElement.style.setProperty("--accent", "hsl(" + hue + ",92%,60%)"); }
+  accentPhase = (accentPhase + dt * (0.14 + sp * 0.004)) % 3;
+  var seg = Math.floor(accentPhase), tt = accentPhase - seg;
+  var a = ACCENT_COLS[seg], b = ACCENT_COLS[(seg + 1) % 3];
+  var r = Math.round(a[0] + (b[0] - a[0]) * tt),
+      g = Math.round(a[1] + (b[1] - a[1]) * tt),
+      bl = Math.round(a[2] + (b[2] - a[2]) * tt);
+  if (r !== accentRGB[0] || g !== accentRGB[1] || bl !== accentRGB[2]){
+    accentRGB = [r, g, bl];
+    document.documentElement.style.setProperty("--accent", "rgb(" + r + "," + g + "," + bl + ")");
+  }
 }
 accentTick();
 setInterval(accentTick, 90);
