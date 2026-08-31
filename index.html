@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer">
 <meta name="description" content="Live-Telemetrie aus dem Modellflugzeug, während des Streams.">
 <title>Tango Kilo</title>
 <style>
@@ -243,7 +242,7 @@ $("brand").textContent = CFG.brand;
 
 /* Standby-Player */
 {
-  const base = "https://www.youtube-nocookie.com/embed/";
+  const base = "https://www.youtube.com/embed/";
   const src = CFG.video
     ? `${base}${CFG.video}?rel=0`
     : `${base}videoseries?list=${CFG.youtubeUploads}&rel=0`;
