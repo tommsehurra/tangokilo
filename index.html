@@ -134,29 +134,51 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 #tape div{flex:1;background:rgba(255,255,255,.14)}
 #tape div.on{background:var(--tape,var(--ignite))}
 
-.panels{display:grid;grid-template-columns:1fr 350px;gap:22px;
+.panels{display:grid;grid-template-columns:1fr;gap:22px;
         margin-top:34px;align-items:start}
 @media(max-width:900px){.panels{grid-template-columns:1fr}}
 .panel-cap{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.24em;
   text-transform:uppercase;color:var(--ignite);margin-bottom:9px}
 #graph{width:100%;height:190px;display:block;background:var(--deck);
        outline:2px solid var(--edge)}
-/* Chat: nur zum Mitlesen. Wir empfangen Twitch-Chat anonym per IRC-WebSocket
-   (justinfan) und rendern selbst -- kein Twitch-iframe, keine Cookies, kein
-   Consent-Banner, kein Eingabefeld, kein Fremdanbieter. */
-.chat{height:560px;border:2px solid var(--edge);background:#000;overflow:hidden;
-  display:flex;flex-direction:column}
-.chat-list{flex:1;overflow-y:auto;padding:10px 12px;
-  font:14px/1.5 var(--face);color:var(--white);
-  scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
-.chat-list::-webkit-scrollbar{width:8px}
-.chat-list::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px}
-.chat-msg{padding:3px 1px;overflow-wrap:anywhere}
-.chat-msg .nick{font-weight:700}
-.chat-msg.action .txt{font-style:italic}
-.chat-msg img.emote{height:22px;vertical-align:middle;margin:-3px 1px}
-.chat-note{color:var(--ash-dim);font-size:12px;font-style:italic;padding:6px 1px}
-@media(max-width:900px){.chat{height:440px}}
+/* Bildergalerie: Kacheln + Lightbox. Bilder liegen im images/-Ordner des Repos
+   und werden automatisch gelistet (GitHub-API, Fallback images/manifest.json). */
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.gal-tile{position:relative;aspect-ratio:1;overflow:hidden;background:var(--deck);
+  border:1px solid var(--edge);cursor:zoom-in}
+.gal-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s ease}
+.gal-tile:hover img{transform:scale(1.06)}
+.gal-dl{position:absolute;right:8px;bottom:8px;width:38px;height:38px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;background:rgba(5,7,10,.82);
+  border:1px solid var(--edge);color:var(--white);text-decoration:none;
+  opacity:0;transform:translateY(4px);transition:.2s}
+.gal-tile:hover .gal-dl{opacity:1;transform:none}
+.gal-dl:hover{background:var(--ignite);border-color:var(--flare);color:var(--void)}
+.gal-dl svg{width:18px;height:18px}
+.gal-empty{color:var(--ash);font-size:14px;padding:10px 0}
+@media(hover:none){.gal-dl{opacity:1;transform:none}}
+.lb{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
+  padding:24px;background:rgba(5,7,10,.95)}
+.lb.open{display:flex}
+.lb-img{max-width:92vw;max-height:80vh;object-fit:contain;border:1px solid var(--edge);
+  background:var(--deck)}
+.lb-btn{position:absolute;background:rgba(12,17,22,.92);border:1px solid var(--edge);
+  color:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  width:48px;height:48px;border-radius:11px;transition:.15s}
+.lb-btn:hover{background:var(--ignite);border-color:var(--flare);color:var(--void)}
+.lb-btn svg{width:22px;height:22px}
+.lb-close{top:20px;right:20px}
+.lb-prev{left:20px;top:50%;transform:translateY(-50%)}
+.lb-next{right:20px;top:50%;transform:translateY(-50%)}
+.lb-bar{position:absolute;left:0;right:0;bottom:22px;display:flex;gap:14px;
+  align-items:center;justify-content:center;flex-wrap:wrap;padding:0 16px}
+.lb-name{color:var(--ash);font-size:13px}
+.lb-dl{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;
+  background:var(--ignite);color:var(--void);text-decoration:none;font-weight:700;
+  font-stretch:87.5%;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
+.lb-dl:hover{background:var(--flare)}
+.lb-dl svg{width:16px;height:16px}
+@media(max-width:560px){.lb-prev,.lb-next{width:40px;height:40px}}
 
 .records{display:flex;flex-wrap:wrap;margin-top:18px;
          border-top:1px solid var(--edge)}
@@ -288,10 +310,6 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
           <div class="v"><span id="rVar">—</span><small>m/s</small></div></div>
       </div>
     </div>
-    <div>
-      <div class="panel-cap">Chat</div>
-      <div class="chat" id="chat"></div>
-    </div>
   </div>
 </div>
 
@@ -305,6 +323,11 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
   </div>
 </section>
 
+<section class="gallery">
+  <h2>Galerie</h2>
+  <div class="gal-grid" id="galGrid"></div>
+</section>
+
 <script>
 (function(){
 "use strict";
@@ -316,6 +339,9 @@ var CFG = {
   brand:    "TANGO KILO",
   ws:       "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
   twitch:   "tommtee",
+
+  ghRepo:   "tommsehurra/tangokilo",   // Repo mit dem images/-Ordner fuer die Galerie
+  imagesDir:"images",                  // Ordnername im Repo
 
   gpsHold:  6,      // s ohne GPS-Frame     -> "kein Signal", Werte einfrieren
   linkHold: 12,     // s ohne CRSF-Frame    -> Funke ab, zurueck zur Ruheansicht
@@ -717,129 +743,96 @@ $("brand").textContent = CFG.brand;
     "&autoplay=true&muted=true", "Twitch-Kanal"));
 })();
 
-/* Read-only Twitch-Chat, anonym per IRC-WebSocket (justinfan). Kein Login,
-   keine Cookies, kein Consent, kein Fremdanbieter — Rohstrom, selbst gerendert. */
-(function chat(){
-  var box = $("chat");
-  if (!box) return;
-  var list = document.createElement("div");
-  list.className = "chat-list";
-  box.appendChild(list);
+/* Bildergalerie: listet den images/-Ordner automatisch (GitHub-Contents-API,
+   Fallback images/manifest.json). Kacheln + Lightbox + Download. Bilder kommen
+   von der eigenen Pages-Domain (/images/...) -> Download funktioniert (same-origin). */
+(function gallery(){
+  var grid = $("galGrid");
+  if (!grid) return;
+  var dir = (CFG.imagesDir || "images").replace(/^\/+|\/+$/g, "");
+  var rx = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
+  var items = [], cur = 0;
 
-  var MAX = 200, stick = true;
-  function trim(){ while (list.children.length > MAX) list.removeChild(list.firstChild); }
-  list.addEventListener("scroll", function(){
-    stick = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
-  });
-  function scroll(){ if (stick) list.scrollTop = list.scrollHeight; }
+  function srcFor(name){ return "/" + dir + "/" + encodeURIComponent(name); }
+  var DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
 
-  function parseTags(s){
-    var t = {};
-    s.split(";").forEach(function(kv){
-      var i = kv.indexOf("=");
-      t[kv.slice(0, i)] = kv.slice(i + 1);
-    });
-    return t;
-  }
-  function parseLine(line){
-    var tags = {}, i = 0, prefix = "";
-    if (line.charAt(0) === "@"){ var s1 = line.indexOf(" "); tags = parseTags(line.slice(1, s1)); i = s1 + 1; }
-    if (line.charAt(i) === ":"){ var s2 = line.indexOf(" ", i); prefix = line.slice(i + 1, s2); i = s2 + 1; }
-    var rest = line.slice(i), trailing = null, args = rest, tr = rest.indexOf(" :");
-    if (tr >= 0){ trailing = rest.slice(tr + 2); args = rest.slice(0, tr); }
-    var p = args.split(" ");
-    return { tags: tags, prefix: prefix, cmd: p[0], params: p.slice(1), trailing: trailing };
-  }
-
-  function textNode(s){ return document.createTextNode(s); }
-  function renderText(text, emotesTag){
-    var frag = document.createDocumentFragment();
-    if (!emotesTag){ frag.appendChild(textNode(text)); return frag; }
-    var chars = Array.from(text), repl = [];
-    emotesTag.split("/").forEach(function(e){
-      var c = e.split(":"), id = c[0];
-      if (!c[1]) return;
-      c[1].split(",").forEach(function(r){
-        var ab = r.split("-"); repl.push({ a: +ab[0], b: +ab[1], id: id });
-      });
-    });
-    repl.sort(function(x, y){ return x.a - y.a; });
-    var pos = 0;
-    repl.forEach(function(r){
-      if (r.a > pos) frag.appendChild(textNode(chars.slice(pos, r.a).join("")));
+  function build(names){
+    items = names;
+    if (!names.length){ grid.innerHTML = '<div class="gal-empty">Noch keine Bilder im images-Ordner.</div>'; return; }
+    grid.innerHTML = "";
+    names.forEach(function(name, i){
+      var tile = document.createElement("div");
+      tile.className = "gal-tile";
       var img = document.createElement("img");
-      img.className = "emote";
-      img.src = "https://static-cdn.jtvnw.net/emoticons/v2/" + r.id + "/default/dark/1.0";
-      img.alt = chars.slice(r.a, r.b + 1).join("");
-      frag.appendChild(img);
-      pos = r.b + 1;
+      img.loading = "lazy"; img.src = srcFor(name); img.alt = name;
+      tile.appendChild(img);
+      var dl = document.createElement("a");
+      dl.className = "gal-dl"; dl.href = srcFor(name); dl.download = name;
+      dl.title = "Herunterladen"; dl.setAttribute("aria-label", "Herunterladen"); dl.innerHTML = DL;
+      dl.addEventListener("click", function(e){ e.stopPropagation(); });
+      tile.appendChild(dl);
+      tile.addEventListener("click", function(){ open(i); });
+      grid.appendChild(tile);
     });
-    if (pos < chars.length) frag.appendChild(textNode(chars.slice(pos).join("")));
-    return frag;
   }
 
-  function addMsg(tags, text){
-    var action = false;
-    if (text.charCodeAt(0) === 1){                 // ACTION ...   (/me)
-      action = true;
-      text = text.replace(/^ACTION /, "").replace(/$/, "");
-    }
-    var d = document.createElement("div");
-    d.className = "chat-msg" + (action ? " action" : "");
-    if (tags.id) d.setAttribute("data-id", tags.id);
-    if (tags["user-id"]) d.setAttribute("data-uid", tags["user-id"]);
-    var col = (tags.color && /^#[0-9a-fA-F]{6}$/.test(tags.color)) ? tags.color : "#8AB4FF";
-    var nick = document.createElement("span");
-    nick.className = "nick"; nick.style.color = col;
-    nick.textContent = tags["display-name"] || tags.login || "?";
-    d.appendChild(nick);
-    d.appendChild(textNode(action ? " " : ": "));
-    var txt = document.createElement("span");
-    txt.className = "txt";
-    if (action) txt.style.color = col;
-    txt.appendChild(action ? textNode(text) : renderText(text, tags.emotes));
-    d.appendChild(txt);
-    list.appendChild(d); trim(); scroll();
+  /* Lightbox */
+  var lb, lbImg, lbName, lbDl;
+  function ensureLb(){
+    if (lb) return;
+    lb = document.createElement("div"); lb.className = "lb";
+    lb.innerHTML =
+      '<button class="lb-btn lb-close" title="Schliessen" aria-label="Schliessen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+      '<button class="lb-btn lb-prev" aria-label="Vorheriges"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>' +
+      '<button class="lb-btn lb-next" aria-label="Naechstes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>' +
+      '<img class="lb-img" alt="">' +
+      '<div class="lb-bar"><span class="lb-name"></span><a class="lb-dl" download>' + DL + ' Herunterladen</a></div>';
+    document.body.appendChild(lb);
+    lbImg  = lb.querySelector(".lb-img");
+    lbName = lb.querySelector(".lb-name");
+    lbDl   = lb.querySelector(".lb-dl");
+    lb.querySelector(".lb-close").addEventListener("click", close);
+    lb.querySelector(".lb-prev").addEventListener("click", function(e){ e.stopPropagation(); step(-1); });
+    lb.querySelector(".lb-next").addEventListener("click", function(e){ e.stopPropagation(); step(1); });
+    lb.addEventListener("click", function(e){ if (e.target === lb) close(); });
+    document.addEventListener("keydown", function(e){
+      if (!lb || !lb.classList.contains("open")) return;
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowLeft") step(-1);
+      else if (e.key === "ArrowRight") step(1);
+    });
   }
+  function show(){
+    var name = items[cur];
+    lbImg.src = srcFor(name); lbImg.alt = name;
+    lbName.textContent = name;
+    lbDl.href = srcFor(name); lbDl.setAttribute("download", name);
+  }
+  function open(i){ ensureLb(); cur = i; show(); lb.classList.add("open"); }
+  function close(){ if (lb) lb.classList.remove("open"); }
+  function step(d){ if (!items.length) return; cur = (cur + d + items.length) % items.length; show(); }
 
-  function esc(v){ return (window.CSS && CSS.escape) ? CSS.escape(v) : v; }
-  function removeById(id){
-    var el = list.querySelector('[data-id="' + esc(id) + '"]');
-    if (el) el.remove();
-  }
-  function removeByUser(uid){
-    Array.prototype.forEach.call(
-      list.querySelectorAll('[data-uid="' + esc(uid) + '"]'),
-      function(e){ e.remove(); });
-  }
-
-  var ws, retry = 1500, chan = "#" + (CFG.twitch || "").toLowerCase();
-  function connect(){
-    try { ws = new WebSocket("wss://irc-ws.chat.twitch.tv:443"); }
-    catch (e){ setTimeout(connect, retry); return; }
-    ws.onopen = function(){
-      retry = 1500;
-      ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
-      ws.send("NICK justinfan" + Math.floor(Math.random() * 899999 + 100000));
-      ws.send("JOIN " + chan);
-    };
-    ws.onmessage = function(ev){
-      ev.data.split("\r\n").forEach(function(line){
-        if (!line) return;
-        if (line.slice(0, 4) === "PING"){ ws.send("PONG :tmi.twitch.tv"); return; }
-        var m = parseLine(line);
-        if (m.cmd === "PRIVMSG") addMsg(m.tags, m.trailing || "");
-        else if (m.cmd === "CLEARMSG"){ if (m.tags["target-msg-id"]) removeById(m.tags["target-msg-id"]); }
-        else if (m.cmd === "CLEARCHAT"){
-          if (m.tags["target-user-id"]) removeByUser(m.tags["target-user-id"]);
-          else list.innerHTML = "";
-        }
+  /* Liste laden: erst GitHub-API (oeffentliches Repo), sonst eigenes Manifest */
+  function fromApi(){
+    var repo = CFG.ghRepo;
+    if (!repo) return Promise.reject();
+    return fetch("https://api.github.com/repos/" + repo + "/contents/" + dir)
+      .then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(arr){
+        if (!Array.isArray(arr)) throw 0;
+        return arr.filter(function(f){ return f.type === "file" && rx.test(f.name); })
+                  .map(function(f){ return f.name; });
       });
-    };
-    ws.onclose = function(){ setTimeout(connect, retry); retry = Math.min(retry * 1.5, 15000); };
-    ws.onerror = function(){ try { ws.close(); } catch (e) {} };
   }
-  connect();
+  function fromManifest(){
+    return fetch("/" + dir + "/manifest.json", { cache: "no-cache" })
+      .then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(a){ return (a || []).filter(function(n){ return rx.test(n); }); });
+  }
+  fromManifest().catch(fromApi).then(function(names){
+    names.sort(function(a, b){ return a.localeCompare(b, "de", { numeric: true }); });
+    build(names);
+  }).catch(function(){ build([]); });
 })();
 
 /* Kompass-Teilung. An N/O/S/W steht der Buchstabe, dort kein Strich. */
