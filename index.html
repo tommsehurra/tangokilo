@@ -309,6 +309,8 @@ var CFG = {
   gpsHold:  6,      // s ohne GPS-Frame     -> "kein Signal", Werte einfrieren
   linkHold: 12,     // s ohne CRSF-Frame    -> Funke ab, zurueck zur Ruheansicht
   msgDead:  4000,   // ms ohne WS-Nachricht -> Laptop weg, zurueck zur Ruheansicht
+  retryMin: 1200,   // ms bis zum naechsten Verbindungsversuch
+  retryMax: 4000,   // Obergrenze dafuer -- Neustart der .bat wird so schnell bemerkt
  
   vFull: 4.20, vEmpty: 3.40,
   varioMax: 5,      // Vollausschlag des Variobalkens in m/s
@@ -333,10 +335,10 @@ var cur = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
            volt:null,amp:null,mah:null,sats:null};
 var rec = {spd:0, alt:0, dist:0, vario:0};
  
-var sock = null, msgAt = null, snap = null, snapAt = 0;
+var sock = null, msgAt = null, snap = null, snapAt = 0, tryAt = 0;
 var seenGps = false, view = "", stale = null;
 var track = [], sampleAt = 0, t0 = null, flying = false;
-var cellCount = 0, tPrev = 0, graphAt = 0, retry = 1500;
+var cellCount = 0, tPrev = 0, graphAt = 0, retry = CFG.retryMin;
  
 var cv = $("graph"), cx = cv.getContext("2d");
 var tape = $("tape");
@@ -414,10 +416,17 @@ function applyState(){
     lamp.className = "lamp on";   $("lampText").textContent = "live";
   }
  
-  /* Haengende Verbindung aktiv abraeumen, damit der Reconnect greift. */
+    /* Verbindungs-Wachhund. Laeuft im eigenen 400-ms-Takt statt ueber
+     setTimeout, weil Browser Timer in Hintergrund-Tabs drosseln --
+     sonst merkt die Seite den Neustart der .bat minutenlang nicht. */
   if (sock && sock.readyState === 1 && msgAge() > CFG.msgDead * 2){
-    try { sock.close(); } catch (e) {}
+    try { sock.close(); } catch (e) {}          // haengende Verbindung kappen
   }
+  if (sock && sock.readyState === 0 && now() - tryAt > 8000){
+    try { sock.close(); } catch (e) {}          // Aufbau haengt fest
+  }
+  var dead = !sock || sock.readyState === 2 || sock.readyState === 3;
+  if (dead && now() - tryAt > retry) connect();
  
   if (dbgBox) paintDebug();
 }
@@ -480,10 +489,11 @@ function onData(d){
 }
  
 function connect(){
+  tryAt = now();
   try { sock = new WebSocket(CFG.ws); }
-  catch (e) { setTimeout(connect, retry); return; }
- 
-  sock.onopen = function(){ retry = 1500; msgAt = now(); applyState(); };
+  catch (e) { sock = null; return; }
+
+  sock.onopen = function(){ retry = CFG.retryMin; msgAt = now(); applyState(); };
  
   sock.onmessage = function(e){
     msgAt = now();
@@ -493,11 +503,10 @@ function connect(){
     applyState();
   };
  
-  sock.onclose = function(){
+   sock.onclose = function(){
     snap = null; seenGps = false; flying = false; t0 = null;
+    retry = Math.min(retry * 1.4, CFG.retryMax);
     applyState();
-    setTimeout(connect, retry);
-    retry = Math.min(retry * 1.5, 15000);
   };
  
   sock.onerror = function(){ try { sock.close(); } catch (e) {} };
@@ -730,7 +739,13 @@ window.addEventListener("resize", sizeGraph);
 /* Eigener Takt: laeuft auch weiter, wenn der Tab im Hintergrund ist
    und requestAnimationFrame pausiert. */
 setInterval(applyState, 400);
- 
+
+/* Zurueck im Vordergrund: sofort einen Versuch, nicht erst nach Ablauf
+   des gedrosselten Wartetimers. */
+document.addEventListener("visibilitychange", function(){
+  if (!document.hidden){ retry = CFG.retryMin; applyState(); }
+});
+  
 applyState();
 connect();
 requestAnimationFrame(frame);
