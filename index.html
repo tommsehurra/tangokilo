@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Live-Telemetrie aus dem Modellflugzeug, während des Streams.">
+<title>Tango Kilo</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   Gleiche DNA wie das OBS-Overlay: Ignite -> Flare, harte
+   schwarze Konturen, schmale fette Schrift, keine Rundungen.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --ignite:#FF5A1F; --flare:#E01B24;
+  --white:#FFFFFF; --ash:#9BA3AB; --ash-dim:#5C666F;
+  --void:#05070A; --deck:#0C1116; --edge:#1B242D;
+  --live:#2FD07A;
+  --face:"Bahnschrift","DIN Alternate","Oswald","Segoe UI Variable",
+         "Segoe UI",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--void)}
+body{
+  background:var(--void);color:var(--white);font-family:var(--face);
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
+  -webkit-font-smoothing:antialiased;
+  max-width:1080px;margin:0 auto;padding:0 20px 60px;
+}
+.ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),
+                 0 2px var(--void),0 3px 12px rgba(0,0,0,.6)}
+
+/* Sichtbarkeit je nach Zustand */
+#standby,#live{display:none}
+body.is-standby #standby{display:block}
+body.is-live    #live{display:block}
+body.is-live    .standby-only{display:none}
+
+/* ── Kopf ───────────────────────────────────────────────────── */
+header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wrap}
+.brand{font-size:26px;font-weight:700;font-stretch:75%;
+       letter-spacing:.22em;text-transform:uppercase}
+.lamp{display:inline-flex;align-items:center;gap:8px;font-size:13px;
+      font-weight:700;font-stretch:75%;letter-spacing:.2em;
+      text-transform:uppercase;padding:4px 10px;
+      background:var(--edge);color:var(--ash)}
+.lamp i{width:8px;height:8px;background:currentColor}
+.lamp.on{background:var(--live);color:var(--void)}
+.lamp.wait{background:var(--ignite);color:var(--void)}
+.clock{margin-left:auto;font-size:15px;font-weight:600;color:var(--ash)}
+.clock b{color:var(--white);font-size:19px}
+body.is-standby .clock{display:none}
+
+/* ── Ruheansicht ────────────────────────────────────────────── */
+.standby-hero{border-top:3px solid var(--ignite);padding:34px 0 30px;
+              display:flex;gap:22px;align-items:flex-start}
+.spine{width:9px;flex:0 0 9px;align-self:stretch;
+  background:linear-gradient(180deg,var(--ignite) 0%,var(--flare) 100%);
+  box-shadow:0 0 0 2px rgba(5,7,10,.8),0 2px 16px rgba(224,27,36,.4)}
+.standby-hero h1{
+  font-size:clamp(38px,7.5vw,76px);font-weight:700;font-stretch:87.5%;
+  line-height:.94;letter-spacing:-.015em;text-transform:uppercase;max-width:17ch;
+}
+.standby-hero p{margin-top:16px;font-size:17px;font-weight:600;
+                color:var(--ash);max-width:52ch;line-height:1.55}
+
+.player{margin-top:12px;border:2px solid var(--edge);background:#000;
+        position:relative;padding-top:56.25%}
+.player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.player-note{margin-top:9px;font-size:13px;font-weight:600;color:var(--ash-dim);
+             letter-spacing:.06em;text-transform:uppercase}
+
+/* ── Live-Ansicht ───────────────────────────────────────────── */
+.hero{display:flex;gap:22px;align-items:stretch;
+      border-top:3px solid var(--ignite);padding-top:20px}
+.hero-main{flex:1;min-width:0}
+.hero-top{display:flex;gap:46px;flex-wrap:wrap}
+.giant .v{display:flex;align-items:baseline;gap:9px;
+  font-size:clamp(66px,13vw,124px);font-weight:700;font-stretch:87.5%;
+  line-height:.84;letter-spacing:-.02em}
+.giant .v span:first-child{min-width:2ch;text-align:right}
+.giant .u{font-size:clamp(17px,2.4vw,25px);font-weight:600;font-stretch:75%;
+          color:var(--ash);text-transform:uppercase;letter-spacing:.06em}
+.giant .k{margin-top:7px;font-size:14px;font-weight:700;font-stretch:75%;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--ignite);
+  text-shadow:-1px 0 var(--void),1px 0 var(--void),0 -1px var(--void),0 1px var(--void)}
+.giant.sub .v{font-size:clamp(46px,8vw,78px)}
+
+.rose{flex:0 0 auto;width:190px;height:190px;position:relative}
+@media(max-width:720px){.rose{width:150px;height:150px}}
+.rose svg{width:100%;height:100%;overflow:visible}
+.rose .ring{fill:none;stroke:var(--edge);stroke-width:2}
+.rose .tick{stroke:var(--ash-dim);stroke-width:2}
+.rose .tick.card{stroke:var(--ash);stroke-width:3}
+.rose text{fill:var(--ash);font-size:13px;font-weight:700;font-stretch:75%;
+           letter-spacing:.1em;text-anchor:middle}
+.rose .needle{transform-origin:100px 100px}
+.rose .craft{fill:var(--white);stroke:var(--void);stroke-width:2.5}
+.rose .home{fill:var(--ignite);stroke:var(--void);stroke-width:2.5}
+.rose .hub{fill:var(--void);stroke:var(--edge);stroke-width:2}
+.rose-key{position:absolute;bottom:-4px;left:0;right:0;display:flex;
+  justify-content:center;gap:16px;font-size:11px;font-weight:700;
+  font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
+.rose-key i{display:inline-block;width:9px;height:9px;margin-right:5px;
+            vertical-align:-1px}
+
+.bar{display:flex;flex-wrap:wrap;border-top:2px solid var(--ignite);margin-top:26px}
+.slot{flex:1 1 128px;padding:13px 17px;border-left:1px solid rgba(255,90,31,.35)}
+.slot:first-child{border-left:0;padding-left:0}
+.slot .k{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.2em;
+         text-transform:uppercase;color:var(--ignite)}
+.slot .v{margin-top:3px;font-size:31px;font-weight:700;font-stretch:87.5%;line-height:1}
+.slot .v small{font-size:14px;font-weight:600;color:var(--ash);
+               margin-left:5px;text-transform:uppercase}
+.slot.alert .v{color:var(--flare)}
+#tape{display:flex;gap:3px;height:9px;margin-top:8px;
+      outline:2px solid rgba(5,7,10,.85)}
+#tape div{flex:1;background:rgba(255,255,255,.14)}
+#tape div.on{background:var(--tape,var(--ignite))}
+
+/* ── Abschnitte ─────────────────────────────────────────────── */
+section{margin-top:54px}
+h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
+   text-transform:uppercase;color:var(--ignite);
+   border-bottom:2px solid var(--edge);padding-bottom:9px;margin-bottom:20px}
+
+.tabs{display:flex;flex-wrap:wrap;margin-bottom:24px}
+.tab{font-family:inherit;font-size:17px;font-weight:700;font-stretch:87.5%;
+  letter-spacing:.06em;color:var(--ash);background:var(--deck);border:0;
+  border-bottom:3px solid var(--edge);padding:11px 22px;cursor:pointer}
+.tab:hover{color:var(--white)}
+.tab[aria-selected="true"]{color:var(--void);background:var(--ignite);
+                           border-bottom-color:var(--flare)}
+.tab:focus-visible{outline:2px solid var(--white);outline-offset:-2px}
+
+dl{display:grid;grid-template-columns:auto 1fr auto 1fr;align-items:center}
+@media(max-width:720px){dl{grid-template-columns:auto 1fr}
+  .hero{gap:16px}.hero-top{gap:26px}.standby-hero{gap:16px;padding-top:26px}}
+dt,dd{padding:11px 0;border-bottom:1px solid var(--edge);font-size:15px}
+dt{color:var(--ash-dim);font-weight:600;font-stretch:75%;letter-spacing:.1em;
+   text-transform:uppercase;font-size:12px;padding-right:24px}
+dd{font-weight:700;font-stretch:87.5%;text-align:right}
+dl > dt:nth-child(4n+3){padding-left:40px}
+@media(max-width:720px){dl > dt:nth-child(4n+3){padding-left:0}}
+
+.links{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:560px){.links{grid-template-columns:1fr}}
+.links a{display:flex;flex-direction:column;gap:5px;padding:22px 24px;
+  text-decoration:none;color:var(--white);background:var(--deck);
+  border-left:4px solid var(--edge)}
+.links a:hover,.links a:focus-visible{background:var(--ignite);color:var(--void);
+  border-left-color:var(--flare);outline:0}
+.links b{font-size:22px;font-weight:700;font-stretch:87.5%;
+         letter-spacing:.08em;text-transform:uppercase}
+.links span{font-size:14px;font-weight:600;color:var(--ash)}
+.links a:hover span,.links a:focus-visible span{color:rgba(5,7,10,.75)}
+
+footer{margin-top:54px;padding-top:18px;border-top:1px solid var(--edge);
+       color:var(--ash-dim);font-size:14px;line-height:1.6;max-width:62ch}
+</style>
+</head>
+<body class="is-standby">
+
+<header>
+  <span class="brand" id="brand">TANGO KILO</span>
+  <span class="lamp" id="lamp"><i></i><span id="lampText">offline</span></span>
+  <span class="clock">FLUGZEIT <b id="ft">0:00</b></span>
+</header>
+
+<!-- ══ Ruheansicht ═══════════════════════════════════════════ -->
+<div id="standby">
+  <div class="standby-hero">
+    <div class="spine"></div>
+    <div>
+      <h1 id="sbTitle">Gerade nicht in der Luft</h1>
+      <p id="sbText">Sobald der Flieger startet, wird diese Seite zum Instrumentenbrett:
+        Geschwindigkeit, Höhe, Entfernung und Akkustand kommen dann live aus dem
+        Flugzeug hierher. Bis dahin läuft unten der letzte Stream.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2>Zuletzt im Stream</h2>
+    <div class="player" id="player"></div>
+    <div class="player-note" id="playerNote">Twitch · tommtee</div>
+  </section>
+</div>
+
+<!-- ══ Live-Ansicht ══════════════════════════════════════════ -->
+<div id="live">
+  <div class="hero">
+    <div class="spine"></div>
+    <div class="hero-main">
+      <div class="hero-top">
+        <div class="giant">
+          <div class="v ink"><span id="spd">—</span><span class="u">km/h</span></div>
+          <div class="k">Speed</div>
+        </div>
+        <div class="giant sub">
+          <div class="v ink"><span id="dist">—</span><span class="u" id="distU">m</span></div>
+          <div class="k">Entfernung</div>
+        </div>
+        <div class="giant sub">
+          <div class="v ink"><span id="alt">—</span><span class="u">m</span></div>
+          <div class="k">Höhe</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rose">
+      <svg viewBox="0 0 200 200" aria-label="Kompass mit Kurs und Heimatrichtung">
+        <circle class="ring" cx="100" cy="100" r="86"/>
+        <g id="ticks"></g>
+        <text x="100" y="26">N</text><text x="180" y="106">O</text>
+        <text x="100" y="188">S</text><text x="20" y="106">W</text>
+        <g class="needle" id="nHome">
+          <polygon class="home" points="100,26 110,100 100,86 90,100"/></g>
+        <g class="needle" id="nCraft">
+          <polygon class="craft" points="100,34 108,100 100,88 92,100"/></g>
+        <circle class="hub" cx="100" cy="100" r="7"/>
+      </svg>
+      <div class="rose-key">
+        <span><i style="background:var(--white)"></i>Kurs</span>
+        <span><i style="background:var(--ignite)"></i>Heim</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="slot"><div class="k">Steigen</div>
+      <div class="v"><span id="vario">—</span><small>m/s</small></div></div>
+    <div class="slot"><div class="k">Kurs</div>
+      <div class="v"><span id="hdg">—</span><small>°</small></div></div>
+    <div class="slot" id="sSats"><div class="k">Satelliten</div>
+      <div class="v"><span id="sats">—</span></div></div>
+    <div class="slot"><div class="k">Akku</div>
+      <div class="v"><span id="volt">—</span><small>V</small><small id="cells"></small></div>
+      <div id="tape"></div></div>
+    <div class="slot"><div class="k">Strom</div>
+      <div class="v"><span id="amp">—</span><small>A</small></div></div>
+    <div class="slot"><div class="k">Verbrauch</div>
+      <div class="v"><span id="mah">—</span><small>mAh</small></div></div>
+  </div>
+</div>
+
+<!-- ══ Immer sichtbar ════════════════════════════════════════ -->
+<section>
+  <h2>Die Flugzeuge</h2>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <dl id="mSpec"></dl>
+</section>
+
+<section>
+  <h2>Kanäle</h2>
+  <div class="links">
+    <a href="https://www.twitch.tv/tommtee" target="_blank" rel="noopener noreferrer">
+      <b>Twitch</b><span>tommtee — hier laufen die Flüge live</span></a>
+    <a href="https://www.youtube.com/@tiefseetaucherr" target="_blank" rel="noopener noreferrer">
+      <b>YouTube</b><span>@tiefseetaucherr — Flüge zum Nachschauen</span></a>
+  </div>
+</section>
+
+<footer>
+  Die Werte kommen live aus dem Flugzeug, über ExpressLRS zur Fernsteuerung und
+  von dort direkt hierher. Der Startort wird nicht übertragen — die Entfernung
+  wird am Boden berechnet, die Koordinaten bleiben dort.
+</footer>
+
+<script>
+(() => {
+"use strict";
+
+/* ══════════════════════════════════════════════════════════════
+   EINSTELLUNGEN
+   ══════════════════════════════════════════════════════════════ */
+const CFG = {
+  brand: "TANGO KILO",
+  ws: "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
+  twitch: "tommtee",
+  youtubeVideo: "",   // optional: YouTube-Video-ID statt Twitch im Standby
+                      // z. B. "dQw4w9WgXcQ" — leer lassen für Twitch
+  hold: 8,            // Sekunden ohne Daten -> zurück in die Ruheansicht
+  vFull: 4.20, vEmpty: 3.40
+};
+
+const FLEET = [
+  {
+    id: "phoenix", name: "Phoenix 2400",
+    spec: {
+      "Typ": "Motorsegler", "Spannweite": "2400 mm", "Abfluggewicht": "—",
+      "Antrieb": "—", "Akku": "—", "Video": "—",
+      "Empfänger": "ExpressLRS", "Flightcontroller": "—"
+    }
+  },
+  {
+    id: "swordfish", name: "Swordfish",
+    spec: {
+      "Typ": "—", "Spannweite": "—", "Abfluggewicht": "—",
+      "Antrieb": "—", "Akku": "—", "Video": "—",
+      "Empfänger": "ExpressLRS", "Flightcontroller": "—"
+    }
+  }
+];
+
+/* ═══ ab hier nichts mehr anpassen ═══════════════════════════ */
+const $ = id => document.getElementById(id);
+$("brand").textContent = CFG.brand;
+
+/* Player. Twitch verlangt den parent-Parameter mit der Domain,
+   auf der eingebettet wird — deshalb dynamisch aus der URL. */
+{
+  const host = location.hostname || "localhost";
+  const src = CFG.youtubeVideo
+    ? `https://www.youtube-nocookie.com/embed/${CFG.youtubeVideo}`
+    : `https://player.twitch.tv/?channel=${CFG.twitch}&parent=${host}&autoplay=false`;
+  const f = document.createElement("iframe");
+  f.src = src;
+  f.allowFullscreen = true;
+  f.setAttribute("allow","fullscreen; picture-in-picture");
+  f.setAttribute("title", CFG.youtubeVideo ? "Letztes Video" : "Twitch-Kanal");
+  $("player").appendChild(f);
+  $("playerNote").textContent = CFG.youtubeVideo
+    ? "YouTube · @tiefseetaucherr" : "Twitch · " + CFG.twitch;
+}
+
+/* Kompass-Teilung */
+{
+  const g = $("ticks");
+  for (let a = 0; a < 360; a += 15){
+    const card = a % 90 === 0, len = card ? 15 : 8, r = a * Math.PI / 180;
+    const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("class", card ? "tick card" : "tick");
+    l.setAttribute("x1", 100 + Math.sin(r)*86);
+    l.setAttribute("y1", 100 - Math.cos(r)*86);
+    l.setAttribute("x2", 100 + Math.sin(r)*(86-len));
+    l.setAttribute("y2", 100 - Math.cos(r)*(86-len));
+    g.appendChild(l);
+  }
+}
+
+/* Flotte */
+let active = FLEET[0].id;
+function paintFleet(){
+  $("tabs").innerHTML = "";
+  FLEET.forEach(m => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.type = "button"; b.setAttribute("role","tab");
+    b.textContent = m.name;
+    b.setAttribute("aria-selected", String(m.id === active));
+    b.onclick = () => { active = m.id; paintFleet(); };
+    $("tabs").appendChild(b);
+  });
+  const m = FLEET.find(x => x.id === active);
+  $("mSpec").innerHTML = "";
+  for (const [k,v] of Object.entries(m.spec)){
+    const dt = document.createElement("dt"), dd = document.createElement("dd");
+    dt.textContent = k; dd.textContent = v;
+    $("mSpec").append(dt, dd);
+  }
+}
+paintFleet();
+
+/* Zustand */
+const tgt = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
+             volt:null,amp:null,mah:null,sats:null};
+const cur = {...tgt};
+let last = null, rxAt = 0, t0 = null, flying = false, mode = "";
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const linkAge = d => d && d.link_age_s != null ? d.link_age_s : 1e9;
+const effAge = () => last ? linkAge(last) + (performance.now()-rxAt)/1000 : 1e9;
+
+function setMode(m){
+  if (m === mode) return;
+  mode = m;
+  document.body.className = "is-" + m;
+  document.title = m === "live" ? CFG.brand + " · LIVE" : CFG.brand;
+}
+
+/* Verbindung. Reconnect mit wachsendem Abstand, damit ein
+   ausgeschalteter Laptop nicht dauerhaft angefunkt wird. */
+let retry = 2000;
+function connect(){
+  let ws;
+  try { ws = new WebSocket(CFG.ws); }
+  catch { return setTimeout(connect, retry); }
+
+  ws.onopen = () => { retry = 2000; };
+  ws.onmessage = e => {
+    let d; try { d = JSON.parse(e.data); } catch { return; }
+    last = d; rxAt = performance.now();
+    if (d.speed_kmh   != null) tgt.spd   = d.speed_kmh;
+    if (d.alt_m       != null) tgt.alt   = d.alt_m;
+    if (d.vspeed_ms   != null) tgt.vario = d.vspeed_ms;
+    if (d.heading_deg != null) tgt.hdg   = d.heading_deg;
+    if (d.voltage_v   != null) tgt.volt  = d.voltage_v;
+    if (d.current_a   != null) tgt.amp   = d.current_a;
+    if (d.mah         != null) tgt.mah   = d.mah;
+    if (d.sats        != null) tgt.sats  = d.sats;
+    if (d.home_set && d.dist_m != null){
+      tgt.dist = d.dist_m; tgt.home = d.home_bearing_deg;
+    }
+    if (!flying && d.fix && d.speed_kmh > 5){ flying = true; t0 = Date.now(); }
+  };
+  ws.onclose = () => {
+    setTimeout(connect, retry);
+    retry = Math.min(retry * 1.6, 20000);
+  };
+  ws.onerror = () => ws.close();
+}
+connect();
+
+/* Glättung */
+const ease = (v,t,k) => t == null ? null : (v == null || reduce) ? t : v + (t-v)*k;
+function easeDeg(v,t,k){
+  if (t == null) return null;
+  if (v == null || reduce) return t;
+  const d = ((t - v + 540) % 360) - 180;
+  return (v + d*k + 360) % 360;
+}
+
+const tape = $("tape");
+let cellCount = 0;
+function paintTape(v){
+  if (v == null){ tape.style.visibility = "hidden"; $("cells").textContent = ""; return; }
+  tape.style.visibility = "visible";
+  const n = Math.max(1, Math.min(14, Math.round(v/3.8)));
+  if (n !== cellCount){
+    tape.innerHTML = "";
+    for (let i=0;i<n;i++) tape.appendChild(document.createElement("div"));
+    cellCount = n; $("cells").textContent = n + "S";
+  }
+  const f = Math.max(0, Math.min(1, (v/n - CFG.vEmpty)/(CFG.vFull - CFG.vEmpty)));
+  const col = `hsl(${20*f} ${88-8*f}% ${52-6*(1-f)}%)`;
+  [...tape.children].forEach((c,i) => {
+    c.classList.toggle("on", i < Math.round(f*n));
+    c.style.setProperty("--tape", col);
+  });
+}
+
+let tPrev = performance.now();
+function frame(t){
+  const age = effAge();
+  setMode(age < CFG.hold ? "live" : "standby");
+
+  const lamp = $("lamp");
+  if (age >= CFG.hold){ lamp.className = "lamp"; $("lampText").textContent = "offline"; }
+  else if (last && !last.fix){ lamp.className = "lamp wait"; $("lampText").textContent = "GPS sucht"; }
+  else { lamp.className = "lamp on"; $("lampText").textContent = "live"; }
+
+  if (mode === "live"){
+    const k = reduce ? 1 : 1 - Math.exp(-((t - tPrev)/1000)/0.22);
+    for (const key of ["spd","dist","alt","vario","volt","amp","mah","sats"])
+      cur[key] = ease(cur[key], tgt[key], k);
+    cur.hdg  = easeDeg(cur.hdg,  tgt.hdg,  k);
+    cur.home = easeDeg(cur.home, tgt.home, k);
+
+    const r0 = v => v == null ? "—" : String(Math.round(v));
+    $("spd").textContent   = r0(cur.spd);
+    $("alt").textContent   = r0(cur.alt);
+    $("hdg").textContent   = cur.hdg == null ? "—" : String(Math.round(cur.hdg) % 360);
+    $("sats").textContent  = r0(cur.sats);
+    $("amp").textContent   = cur.amp  == null ? "—" : cur.amp.toFixed(1);
+    $("mah").textContent   = r0(cur.mah);
+    $("volt").textContent  = cur.volt == null ? "—" : cur.volt.toFixed(1);
+    $("vario").textContent = cur.vario == null ? "—"
+      : (cur.vario >= 0 ? "+" : "") + cur.vario.toFixed(1);
+
+    if (cur.dist == null){ $("dist").textContent = "—"; $("distU").textContent = "m"; }
+    else if (cur.dist < 1000){ $("dist").textContent = Math.round(cur.dist); $("distU").textContent = "m"; }
+    else { $("dist").textContent = (cur.dist/1000).toFixed(2); $("distU").textContent = "km"; }
+
+    $("nCraft").style.transform = `rotate(${cur.hdg  ?? 0}deg)`;
+    $("nHome").style.transform  = `rotate(${cur.home ?? 0}deg)`;
+    $("nHome").style.visibility = cur.home == null ? "hidden" : "visible";
+
+    paintTape(cur.volt);
+    $("sSats").className = "slot" + (cur.sats != null && cur.sats < 6 ? " alert" : "");
+
+    if (t0){
+      const s = Math.floor((Date.now()-t0)/1000);
+      $("ft").textContent = Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+    }
+  }
+
+  tPrev = t;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
