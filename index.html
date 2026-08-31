@@ -20,7 +20,7 @@
   --ignite:#FF5A1F; --flare:#E01B24;
   --white:#FFFFFF; --ash:#9BA3AB; --ash-dim:#5C666F;
   --void:#05070A; --deck:#0C1116; --edge:#1B242D;
-  --live:#2FD07A;
+  --live:#2FD07A; --accent:#FF5A1F;
   --face:"Bahnschrift","DIN Alternate","Oswald","Segoe UI Variable",
          "Segoe UI",system-ui,sans-serif;
 }
@@ -32,8 +32,7 @@ body{
   -webkit-font-smoothing:antialiased;
   max-width:1180px;margin:0 auto;padding:0 20px 60px;
 }
-.ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),
-                 0 2px var(--void),0 3px 12px rgba(0,0,0,.6)}
+.ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),0 2px var(--void)}
 
 #standby,#live{display:none}
 body.is-standby #standby{display:block}
@@ -226,19 +225,39 @@ body:not(.is-standby) .snooze{display:none}
 .snooze b:nth-of-type(3){animation-delay:1s;font-size:15px}
 @keyframes zfloat{0%{opacity:0;transform:translate(0,3px)}25%{opacity:1}70%{opacity:.85}100%{opacity:0;transform:translate(7px,-13px) rotate(10deg)}}
 @supports ((-webkit-background-clip:text) or (background-clip:text)){
-  .brand{background:linear-gradient(100deg,var(--white) 0 40%,var(--ignite) 50%,var(--white) 60% 100%);
+  .brand{background:linear-gradient(100deg,var(--white) 0 40%,var(--accent) 50%,var(--white) 60% 100%);
     background-size:260% 100%;-webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;color:transparent;animation:shimmer 8s linear infinite}
+    -webkit-text-fill-color:transparent;color:transparent;animation:shimmer 8s linear infinite;will-change:background-position}
   @keyframes shimmer{to{background-position:-260% 0}}
 }
 .lamp.on{animation:lampglow 1.9s ease-in-out infinite}
 @keyframes lampglow{0%,100%{box-shadow:0 0 0 0 rgba(47,208,122,0)}50%{box-shadow:0 0 0 4px rgba(47,208,122,.18)}}
 .rec .v{transition:color .45s}
 .rec.pop{animation:recpop .6s ease}
-@keyframes recpop{0%{transform:scale(1)}30%{transform:scale(1.14);color:var(--ignite)}100%{transform:scale(1)}}
+@keyframes recpop{0%{transform:scale(1)}30%{transform:scale(1.14);color:var(--accent)}100%{transform:scale(1)}}
 #radar{width:100%;aspect-ratio:1/1;display:block;background:var(--deck);outline:2px solid var(--edge)}
-.radar-key{margin-top:8px;font-size:11px;color:var(--ash-dim);letter-spacing:.03em}
 @media(prefers-reduced-motion:reduce){.snooze b,.lamp.on,.rec.pop{animation:none}.snooze b{opacity:.7}}
+
+/* Speed-Aura hinter den Zahlen + einfliegende Ansicht */
+.hero{position:relative}
+.hero>:not(.aura){position:relative;z-index:1}
+.aura{position:absolute;inset:-12px -22px;z-index:0;pointer-events:none;opacity:0;
+  background:radial-gradient(46% 74% at 30% 46%,var(--accent),transparent 72%);
+  filter:blur(30px);transition:opacity .5s ease,background .6s ease}
+@keyframes flyin{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+body.is-live #live .hero-top>.giant{animation:flyin .55s cubic-bezier(.2,.7,.2,1) both}
+body.is-live #live .hero-top>.giant:nth-of-type(2){animation-delay:.07s}
+body.is-live #live .hero-top>.giant:nth-of-type(3){animation-delay:.14s}
+body.is-live #live .vario{animation:flyin .55s .12s cubic-bezier(.2,.7,.2,1) both}
+body.is-live #live .rose{animation:flyin .55s .18s cubic-bezier(.2,.7,.2,1) both}
+body.is-live #live .bar{animation:flyin .5s .24s cubic-bezier(.2,.7,.2,1) both}
+body.is-live #live .panels{animation:flyin .5s .32s cubic-bezier(.2,.7,.2,1) both}
+body.is-standby #standby .standby-hero{animation:flyin .5s cubic-bezier(.2,.7,.2,1) both}
+body.is-standby #standby .player{animation:flyin .6s .12s ease both}
+@media(prefers-reduced-motion:reduce){
+  .hero-top>.giant,.vario,.rose,.bar,.panels,.standby-hero,#standby .player{animation:none!important}
+  .aura{transition:none}
+}
 </style>
 </head>
 <body class="is-standby">
@@ -260,6 +279,7 @@ body:not(.is-standby) .snooze{display:none}
 
 <div id="live">
   <div class="hero">
+    <div class="aura" id="aura"></div>
     <div class="spine"></div>
     <div class="hero-main">
       <div class="hero-top">
@@ -337,7 +357,6 @@ body:not(.is-standby) .snooze{display:none}
     <div>
       <div class="panel-cap">Radar · relativ zum Start</div>
       <canvas id="radar"></canvas>
-      <div class="radar-key">orange = du · weiß = Kurs · Ring = Entfernung</div>
     </div>
   </div>
 </div>
@@ -402,7 +421,7 @@ var rec = {spd:0, alt:0, dist:0, vario:0};
 var sock = null, msgAt = null, snap = null, snapAt = 0;
 var seenGps = false, view = "", stale = null;
 var track = [], sampleAt = 0, t0 = null, flying = false;
-var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, retry = 1500;
+var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, accentHue = 20, retry = 1500;
 
 var cv = $("graph"), cx = cv.getContext("2d");
 var tape = $("tape");
@@ -612,18 +631,21 @@ function paintTape(v){
 }
 
 function paintVario(v){
-  var fill = $("varioFill");
+  var fill = $("varioFill"), num = $("varioNum");
   if (v === null || v === undefined){
-    fill.style.top = "50%"; fill.style.bottom = "50%";
-    $("varioNum").textContent = "\u2014";
+    if (fill.__k !== "x"){ fill.__k = "x"; fill.style.top = "50%"; fill.style.bottom = "50%"; }
+    setText(num, "\u2014");
     return;
   }
   var f = Math.max(-1, Math.min(1, v / CFG.varioMax));
-  var pct = Math.abs(f) * 50;
-  if (f >= 0){ fill.style.top = (50 - pct) + "%"; fill.style.bottom = "50%"; }
-  else       { fill.style.top = "50%"; fill.style.bottom = (50 - pct) + "%"; }
-  fill.style.background = f >= 0 ? "var(--live)" : "var(--flare)";
-  $("varioNum").textContent = (v >= 0 ? "+" : "") + v.toFixed(1);
+  var pct = Math.round(Math.abs(f) * 50), up = f >= 0, key = (up ? "u" : "d") + pct;
+  if (fill.__k !== key){
+    fill.__k = key;
+    if (up){ fill.style.top = (50 - pct) + "%"; fill.style.bottom = "50%"; }
+    else   { fill.style.top = "50%"; fill.style.bottom = (50 - pct) + "%"; }
+    fill.style.background = up ? "var(--live)" : "var(--flare)";
+  }
+  setText(num, (v >= 0 ? "+" : "") + v.toFixed(1));
 }
 
 function sizeGraph(){
@@ -759,6 +781,13 @@ function frame(t){
     setText($("ft"), Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
   }
 
+  var sp = cur.spd || 0;
+  var hue = Math.round((195 - Math.min(sp, 190) * 1.15) / 3) * 3; if (hue < 0) hue += 360;
+  if (hue !== accentHue){ accentHue = hue;
+    document.documentElement.style.setProperty("--accent", "hsl(" + hue + ",90%,58%)"); }
+  var au = $("aura"); if (au){ var ao = Math.min(0.6, sp / 170 * 0.6);
+    if (Math.abs((au.__o || 0) - ao) > 0.02){ au.__o = ao; au.style.opacity = ao; } }
+
   if (t - graphAt > 500){ graphAt = t; drawGraph(); }
   if (t - radarAt > 200){ radarAt = t; drawRadar(); }
 }
@@ -776,10 +805,18 @@ function drawRadar(){
   x.clearRect(0, 0, W, H);
 
   var dist = cur.dist, brg = cur.home;
-  var maxr = Math.max(rec.dist || 0, dist || 0, 200);
-  var nice = [200,300,500,750,1000,1500,2000,3000,5000,7500,10000,15000,20000,30000];
-  var range = nice[nice.length - 1];
-  for (var n = 0; n < nice.length; n++){ if (maxr <= nice[n] * 0.95){ range = nice[n]; break; } }
+  var nice = [200,300,500,750,1000,1500,2000,3000,5000,7500,10000,15000,20000,30000,50000];
+  var pathMax = dist || 0, tr0 = drawRadar._track || [];
+  for (var m = 0; m < tr0.length; m++) if (tr0[m][0] > pathMax) pathMax = tr0[m][0];
+  var want = Math.max(200, pathMax * 1.15);
+  function niceUp(z){ for (var q = 0; q < nice.length; q++) if (nice[q] >= z) return nice[q]; return nice[nice.length - 1]; }
+  var tgtRange = drawRadar._tr || 300;
+  if (want > tgtRange) tgtRange = niceUp(want);              // sofort groesser, damit der ganze Pfad passt
+  else if (want < tgtRange * 0.55) tgtRange = niceUp(want);  // erst reinzoomen, wenn man deutlich naeher ist
+  drawRadar._tr = tgtRange;
+  var range = drawRadar._disp || tgtRange;
+  range += (tgtRange - range) * 0.08;                        // weich nachfahren
+  drawRadar._disp = range;
 
   x.strokeStyle = "#1B242D"; x.lineWidth = r;
   for (var i = 1; i <= 3; i++){ x.beginPath(); x.arc(mx, my, R * i / 3, 0, Math.PI * 2); x.stroke(); }
@@ -790,7 +827,7 @@ function drawRadar(){
   x.fillStyle = "#5C666F"; x.font = (10 * r) + "px " + drawRadar._ff;
   x.textAlign = "center"; x.fillText("N", mx, my - R - 3 * r);
   x.textAlign = "left";
-  x.fillText(range >= 1000 ? (range / 1000) + " km" : range + " m", mx + 5 * r, my - R + 13 * r);
+  x.fillText(tgtRange >= 1000 ? (tgtRange / 1000) + " km" : tgtRange + " m", mx + 5 * r, my - R + 13 * r);
 
   x.fillStyle = "#9BA3AB"; x.beginPath(); x.arc(mx, my, 4 * r, 0, Math.PI * 2); x.fill();
 
@@ -806,13 +843,13 @@ function drawRadar(){
 
   var tr = drawRadar._track;
   for (var j = 0; j < tr.length; j++){ var p = place(tr[j][0], tr[j][1]), a = (j / tr.length) * 0.45;
-    x.fillStyle = "rgba(255,90,31," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = "hsla(" + accentHue + ",90%,58%," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
 
   var pos = place(dist, brg);
   if (cur.hdg != null){ var hh = cur.hdg * Math.PI / 180;
     x.strokeStyle = "#fff"; x.lineWidth = 2 * r; x.beginPath(); x.moveTo(pos[0], pos[1]);
     x.lineTo(pos[0] + Math.sin(hh) * 11 * r, pos[1] - Math.cos(hh) * 11 * r); x.stroke(); }
-  x.fillStyle = "#FF5A1F"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
+  x.fillStyle = "hsl(" + accentHue + ",90%,58%)"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
 }
 
 /* ══════════════════════════════════════════════════════════════
