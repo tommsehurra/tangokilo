@@ -134,7 +134,7 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 #tape div{flex:1;background:rgba(255,255,255,.14)}
 #tape div.on{background:var(--tape,var(--ignite))}
 
-.panels{display:grid;grid-template-columns:1fr;gap:22px;
+.panels{display:grid;grid-template-columns:1fr 340px;gap:22px;
         margin-top:34px;align-items:start}
 @media(max-width:900px){.panels{grid-template-columns:1fr}}
 .panel-cap{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.24em;
@@ -216,6 +216,29 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
   background:rgba(5,7,10,.94);border:1px solid var(--edge);padding:10px 13px;
   font:12px/1.6 ui-monospace,monospace;color:var(--ash);white-space:pre;
   pointer-events:none}
+
+/* --- Persoenlichkeit: Schlaf-Emoji, Brand-Schimmer, Rekord-Pop, Radar --- */
+.snooze{display:inline-flex;align-items:flex-start;gap:1px;font-size:20px;line-height:1;position:relative;top:1px}
+body:not(.is-standby) .snooze{display:none}
+.snooze b{font:700 11px/1 var(--face);color:var(--ash);opacity:0;animation:zfloat 2.6s ease-in-out infinite}
+.snooze b:nth-of-type(1){animation-delay:0s}
+.snooze b:nth-of-type(2){animation-delay:.5s;font-size:13px}
+.snooze b:nth-of-type(3){animation-delay:1s;font-size:15px}
+@keyframes zfloat{0%{opacity:0;transform:translate(0,3px)}25%{opacity:1}70%{opacity:.85}100%{opacity:0;transform:translate(7px,-13px) rotate(10deg)}}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .brand{background:linear-gradient(100deg,var(--white) 0 40%,var(--ignite) 50%,var(--white) 60% 100%);
+    background-size:260% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;animation:shimmer 8s linear infinite}
+  @keyframes shimmer{to{background-position:-260% 0}}
+}
+.lamp.on{animation:lampglow 1.9s ease-in-out infinite}
+@keyframes lampglow{0%,100%{box-shadow:0 0 0 0 rgba(47,208,122,0)}50%{box-shadow:0 0 0 4px rgba(47,208,122,.18)}}
+.rec .v{transition:color .45s}
+.rec.pop{animation:recpop .6s ease}
+@keyframes recpop{0%{transform:scale(1)}30%{transform:scale(1.14);color:var(--ignite)}100%{transform:scale(1)}}
+#radar{width:100%;aspect-ratio:1/1;display:block;background:var(--deck);outline:2px solid var(--edge)}
+.radar-key{margin-top:8px;font-size:11px;color:var(--ash-dim);letter-spacing:.03em}
+@media(prefers-reduced-motion:reduce){.snooze b,.lamp.on,.rec.pop{animation:none}.snooze b{opacity:.7}}
 </style>
 </head>
 <body class="is-standby">
@@ -223,6 +246,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
 <header>
   <span class="brand" id="brand">TANGO KILO</span>
   <span class="lamp" id="lamp"><i></i><span id="lampText">offline</span></span>
+  <span class="snooze" id="snooze" aria-hidden="true">😴<b>z</b><b>z</b><b>z</b></span>
   <span class="clock">FLUGZEIT <b id="ft">0:00</b></span>
 </header>
 
@@ -310,6 +334,11 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
           <div class="v"><span id="rVar">—</span><small>m/s</small></div></div>
       </div>
     </div>
+    <div>
+      <div class="panel-cap">Radar · relativ zum Start</div>
+      <canvas id="radar"></canvas>
+      <div class="radar-key">orange = du · weiß = Kurs · Ring = Entfernung</div>
+    </div>
   </div>
 </div>
 
@@ -373,7 +402,7 @@ var rec = {spd:0, alt:0, dist:0, vario:0};
 var sock = null, msgAt = null, snap = null, snapAt = 0;
 var seenGps = false, view = "", stale = null;
 var track = [], sampleAt = 0, t0 = null, flying = false;
-var cellCount = 0, tPrev = 0, graphAt = 0, retry = 1500;
+var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, retry = 1500;
 
 var cv = $("graph"), cx = cv.getContext("2d");
 var tape = $("tape");
@@ -438,6 +467,7 @@ function applyState(){
     document.body.className = "is-" + v + (isStale ? " stale" : "");
     document.title = (v === "live" && !isStale) ? CFG.brand + " \u00b7 LIVE" : CFG.brand;
     if (v === "live") requestAnimationFrame(sizeGraph);
+    managePlayer(v);
   }
 
   var lamp = $("lamp");
@@ -500,6 +530,7 @@ function onData(d){
     flying = true; t0 = Date.now();
     rec.spd = 0; rec.alt = 0; rec.dist = 0; rec.vario = 0;
     track = [];
+    drawRadar._track = [];
   }
 
   /* Rekorde aus den Rohwerten, nicht aus den geglaetteten */
@@ -596,14 +627,14 @@ function paintVario(v){
 }
 
 function sizeGraph(){
-  var r = window.devicePixelRatio || 1;
+  var r = Math.min(window.devicePixelRatio || 1, 2);
   cv.width  = cv.clientWidth  * r;
   cv.height = cv.clientHeight * r;
   drawGraph();
 }
 
 function drawGraph(){
-  var w = cv.width, h = cv.height, r = window.devicePixelRatio || 1;
+  var w = cv.width, h = cv.height, r = Math.min(window.devicePixelRatio || 1, 2);
   if (!w || !h) return;
   cx.clearRect(0, 0, w, h);
   if (track.length < 2) return;
@@ -641,7 +672,8 @@ function drawGraph(){
   cx.stroke();
 
   cx.fillStyle = "#5C666F";
-  cx.font = (11 * r) + "px " + getComputedStyle(document.body).fontFamily;
+  drawGraph._ff = drawGraph._ff || getComputedStyle(document.body).fontFamily;
+  cx.font = (11 * r) + "px " + drawGraph._ff;
   cx.fillText(Math.round(hi) + " m", 8 * r, 15 * r);
   cx.fillText(Math.round(lo) + " m", 8 * r, h - 7 * r);
 }
@@ -663,9 +695,21 @@ function r0(v){
   return (v === null || v === undefined) ? "\u2014" : String(Math.round(v));
 }
 
+function setText(el, s){ if (el && el.__t !== s){ el.__t = s; el.textContent = s; } }
+
+/* Laesst die Rekord-Kachel kurz aufpoppen, wenn ein neuer Bestwert faellt. */
+function popRec(id, val){
+  var el = $(id); if (!el) return;
+  if (val && (el.__pv === undefined || val > el.__pv + 1e-6)){
+    var cell = el.closest ? el.closest(".rec") : null;
+    if (cell){ cell.classList.remove("pop"); void cell.offsetWidth; cell.classList.add("pop"); }
+  }
+  el.__pv = val;
+}
+
 function frame(t){
   requestAnimationFrame(frame);
-  if (view !== "live"){ tPrev = t; return; }
+  if (view !== "live" || document.hidden){ tPrev = t; return; }
 
   var k = reduce ? 1 : 1 - Math.exp(-((t - tPrev) / 1000) / 0.22);
   tPrev = t;
@@ -677,25 +721,23 @@ function frame(t){
   cur.hdg  = easeDeg(cur.hdg,  tgt.hdg,  k);
   cur.home = easeDeg(cur.home, tgt.home, k);
 
-  $("spd").textContent  = r0(cur.spd);
-  $("alt").textContent  = r0(cur.alt);
-  $("hdg").textContent  = (cur.hdg === null) ? "\u2014" : String(Math.round(cur.hdg) % 360);
-  $("sats").textContent = r0(cur.sats);
-  $("amp").textContent  = (cur.amp  === null) ? "\u2014" : cur.amp.toFixed(1);
-  $("mah").textContent  = r0(cur.mah);
-  $("volt").textContent = (cur.volt === null) ? "\u2014" : cur.volt.toFixed(1);
+  setText($("spd"),  r0(cur.spd));
+  setText($("alt"),  r0(cur.alt));
+  setText($("hdg"),  (cur.hdg === null) ? "—" : String(Math.round(cur.hdg) % 360));
+  setText($("sats"), r0(cur.sats));
+  setText($("amp"),  (cur.amp  === null) ? "—" : cur.amp.toFixed(1));
+  setText($("mah"),  r0(cur.mah));
+  setText($("volt"), (cur.volt === null) ? "—" : cur.volt.toFixed(1));
   fmtDist(cur.dist, $("dist"), $("distU"));
   paintVario(cur.vario);
 
-  /* Restlaufzeit aus Verbrauch und Strom. Nur eine Schaetzung --
-     bei stark schwankendem Strom entsprechend grob. */
   if (cur.amp !== null && cur.amp > 0.5 && cur.mah !== null){
     var left = Math.max(0, CFG.packMah * 0.8 - cur.mah);
     var min = left / (cur.amp * 1000) * 60;
-    $("rest").textContent = min > 99 ? "99+" : Math.round(min);
+    setText($("rest"), min > 99 ? "99+" : String(Math.round(min)));
     $("sRest").className = "slot" + (min < 3 ? " alert" : "");
   } else {
-    $("rest").textContent = "\u2014";
+    setText($("rest"), "—");
     $("sRest").className = "slot";
   }
 
@@ -704,21 +746,73 @@ function frame(t){
   $("nHome").style.visibility = (cur.home === null) ? "hidden" : "visible";
 
   paintTape(cur.volt);
-  $("sSats").className = "slot" +
-    ((cur.sats !== null && cur.sats < 6) ? " alert" : "");
+  $("sSats").className = "slot" + ((cur.sats !== null && cur.sats < 6) ? " alert" : "");
 
-  $("rSpd").textContent = rec.spd ? Math.round(rec.spd) : "\u2014";
-  $("rAlt").textContent = rec.alt ? Math.round(rec.alt) : "\u2014";
-  $("rVar").textContent = rec.vario ? "+" + rec.vario.toFixed(1) : "\u2014";
+  setText($("rSpd"), rec.spd ? String(Math.round(rec.spd)) : "—");
+  setText($("rAlt"), rec.alt ? String(Math.round(rec.alt)) : "—");
+  setText($("rVar"), rec.vario ? "+" + rec.vario.toFixed(1) : "—");
   fmtDist(rec.dist || null, $("rDist"), $("rDistU"));
+  popRec("rSpd", rec.spd); popRec("rAlt", rec.alt); popRec("rVar", rec.vario); popRec("rDist", rec.dist);
 
   if (t0){
     var s = Math.floor((Date.now() - t0) / 1000);
-    $("ft").textContent = Math.floor(s / 60) + ":" +
-                          String(s % 60).padStart(2, "0");
+    setText($("ft"), Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
   }
 
   if (t - graphAt > 500){ graphAt = t; drawGraph(); }
+  if (t - radarAt > 200){ radarAt = t; drawRadar(); }
+}
+
+/* Relativ-Radar: Flieger als Punkt relativ zum Startpunkt (Entfernung +
+   Heimpeilung). Zeigt nie echte Koordinaten -> GPS-Regel gewahrt. */
+function drawRadar(){
+  var c = $("radar"); if (!c) return;
+  var r = Math.min(window.devicePixelRatio || 1, 2);
+  var W = Math.round(c.clientWidth * r), H = Math.round(c.clientHeight * r);
+  if (!W || !H) return;
+  if (c.width !== W || c.height !== H){ c.width = W; c.height = H; }
+  var x = c.getContext("2d");
+  var mx = W / 2, my = H / 2, R = Math.min(W, H) / 2 - 12 * r;
+  x.clearRect(0, 0, W, H);
+
+  var dist = cur.dist, brg = cur.home;
+  var maxr = Math.max(rec.dist || 0, dist || 0, 200);
+  var nice = [200,300,500,750,1000,1500,2000,3000,5000,7500,10000,15000,20000,30000];
+  var range = nice[nice.length - 1];
+  for (var n = 0; n < nice.length; n++){ if (maxr <= nice[n] * 0.95){ range = nice[n]; break; } }
+
+  x.strokeStyle = "#1B242D"; x.lineWidth = r;
+  for (var i = 1; i <= 3; i++){ x.beginPath(); x.arc(mx, my, R * i / 3, 0, Math.PI * 2); x.stroke(); }
+  x.beginPath(); x.moveTo(mx - R, my); x.lineTo(mx + R, my);
+  x.moveTo(mx, my - R); x.lineTo(mx, my + R); x.stroke();
+
+  drawRadar._ff = drawRadar._ff || getComputedStyle(document.body).fontFamily;
+  x.fillStyle = "#5C666F"; x.font = (10 * r) + "px " + drawRadar._ff;
+  x.textAlign = "center"; x.fillText("N", mx, my - R - 3 * r);
+  x.textAlign = "left";
+  x.fillText(range >= 1000 ? (range / 1000) + " km" : range + " m", mx + 5 * r, my - R + 13 * r);
+
+  x.fillStyle = "#9BA3AB"; x.beginPath(); x.arc(mx, my, 4 * r, 0, Math.PI * 2); x.fill();
+
+  if (dist == null || brg == null) return;
+
+  drawRadar._track = drawRadar._track || [];
+  var nowp = performance.now();
+  if (nowp - (drawRadar._sa || 0) > 1000){ drawRadar._sa = nowp; drawRadar._track.push([dist, brg]);
+    if (drawRadar._track.length > 180) drawRadar._track.shift(); }
+
+  function place(d, b){ var th = (b + 180) * Math.PI / 180, rr = Math.min(1, d / range) * R;
+    return [mx + Math.sin(th) * rr, my - Math.cos(th) * rr]; }
+
+  var tr = drawRadar._track;
+  for (var j = 0; j < tr.length; j++){ var p = place(tr[j][0], tr[j][1]), a = (j / tr.length) * 0.45;
+    x.fillStyle = "rgba(255,90,31," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
+
+  var pos = place(dist, brg);
+  if (cur.hdg != null){ var hh = cur.hdg * Math.PI / 180;
+    x.strokeStyle = "#fff"; x.lineWidth = 2 * r; x.beginPath(); x.moveTo(pos[0], pos[1]);
+    x.lineTo(pos[0] + Math.sin(hh) * 11 * r, pos[1] - Math.cos(hh) * 11 * r); x.stroke(); }
+  x.fillStyle = "#FF5A1F"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -728,20 +822,27 @@ $("brand").textContent = CFG.brand;
 
 /* Player und Chat. Twitch verlangt den parent-Parameter mit der
    Domain, auf der eingebettet wird. */
-(function embeds(){
-  var host = location.hostname || "localhost";
-  function mk(src, title){
-    var f = document.createElement("iframe");
-    f.src = src;
-    f.allowFullscreen = true;
-    f.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
-    f.setAttribute("title", title);
-    return f;
+/* Twitch-Player nur laden, wenn die Ruheansicht sichtbar ist. Beim Wechsel
+   auf "live" wird das iframe entfernt -> im Hintergrund dekodiert kein Video
+   mehr, das war der groesste Ruckel-Verursacher. */
+var playerHost = location.hostname || "localhost";
+function managePlayer(v){
+  var box = $("player"); if (!box) return;
+  if (v === "standby"){
+    if (!box.firstChild){
+      var f = document.createElement("iframe");
+      f.src = "https://player.twitch.tv/?channel=" + CFG.twitch +
+              "&parent=" + playerHost + "&autoplay=true&muted=true";
+      f.allowFullscreen = true;
+      f.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+      f.setAttribute("title", "Twitch-Kanal");
+      box.appendChild(f);
+    }
+  } else if (box.firstChild){
+    box.innerHTML = "";
   }
-  $("player").appendChild(mk(
-    "https://player.twitch.tv/?channel=" + CFG.twitch + "&parent=" + host +
-    "&autoplay=true&muted=true", "Twitch-Kanal"));
-})();
+}
+managePlayer("standby");
 
 /* Bildergalerie: listet den images/-Ordner automatisch (GitHub-Contents-API,
    Fallback images/manifest.json). Kacheln + Lightbox + Download. Bilder kommen
