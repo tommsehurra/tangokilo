@@ -87,7 +87,6 @@ body.is-standby .clock{display:none}
 .rose svg{width:100%;height:100%;overflow:visible}
 .rose .ring{fill:none;stroke:var(--edge);stroke-width:2}
 .rose .tick{stroke:var(--ash-dim);stroke-width:2}
-.rose .tick.card{stroke:var(--ash);stroke-width:3}
 .rose text{fill:var(--ash);font-size:13px;font-weight:700;font-stretch:75%;
            letter-spacing:.1em;text-anchor:middle}
 .rose .needle{transform-origin:100px 100px}
@@ -247,13 +246,14 @@ $("brand").textContent = CFG.brand;
 {
   const g = $("ticks");
   for (let a = 0; a < 360; a += 15){
-    const card = a % 90 === 0, len = card ? 15 : 8, r = a * Math.PI / 180;
+    if (a % 90 === 0) continue;          // an N/O/S/W steht der Buchstabe
+    const r = a * Math.PI / 180;
     const l = document.createElementNS("http://www.w3.org/2000/svg","line");
-    l.setAttribute("class", card ? "tick card" : "tick");
+    l.setAttribute("class","tick");
     l.setAttribute("x1", 100 + Math.sin(r)*86);
     l.setAttribute("y1", 100 - Math.cos(r)*86);
-    l.setAttribute("x2", 100 + Math.sin(r)*(86-len));
-    l.setAttribute("y2", 100 - Math.cos(r)*(86-len));
+    l.setAttribute("x2", 100 + Math.sin(r)*78);
+    l.setAttribute("y2", 100 - Math.cos(r)*78);
     g.appendChild(l);
   }
 }
