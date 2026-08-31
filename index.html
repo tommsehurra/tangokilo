@@ -6,10 +6,6 @@
 <meta name="description" content="Live-Telemetrie aus dem Modellflugzeug, während des Streams.">
 <title>Tango Kilo</title>
 <style>
-/* ══════════════════════════════════════════════════════════════
-   Gleiche DNA wie das OBS-Overlay: Ignite -> Flare, harte
-   schwarze Konturen, schmale fette Schrift, keine Rundungen.
-   ══════════════════════════════════════════════════════════════ */
 :root{
   --ignite:#FF5A1F; --flare:#E01B24;
   --white:#FFFFFF; --ash:#9BA3AB; --ash-dim:#5C666F;
@@ -33,7 +29,6 @@ body{
 body.is-standby #standby{display:block}
 body.is-live    #live{display:block}
 
-/* ── Kopf ───────────────────────────────────────────────────── */
 header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wrap}
 .brand{font-size:26px;font-weight:700;font-stretch:75%;
        letter-spacing:.22em;text-transform:uppercase}
@@ -52,7 +47,6 @@ body.is-standby .clock{display:none}
   background:linear-gradient(180deg,var(--ignite) 0%,var(--flare) 100%);
   box-shadow:0 0 0 2px rgba(5,7,10,.8),0 2px 16px rgba(224,27,36,.4)}
 
-/* ── Ruheansicht ────────────────────────────────────────────── */
 .standby-hero{border-top:3px solid var(--ignite);padding:36px 0 34px;
               display:flex;gap:22px;align-items:stretch}
 .standby-hero h1{
@@ -63,7 +57,6 @@ body.is-standby .clock{display:none}
         position:relative;padding-top:56.25%}
 .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
-/* ── Live-Ansicht ───────────────────────────────────────────── */
 .hero{display:flex;gap:22px;align-items:stretch;
       border-top:3px solid var(--ignite);padding-top:20px}
 .hero-main{flex:1;min-width:0}
@@ -111,7 +104,6 @@ body.is-standby .clock{display:none}
 #tape div{flex:1;background:rgba(255,255,255,.14)}
 #tape div.on{background:var(--tape,var(--ignite))}
 
-/* ── Kanäle ─────────────────────────────────────────────────── */
 section{margin-top:54px}
 h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
    text-transform:uppercase;color:var(--ignite);
@@ -139,7 +131,6 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
   <span class="clock">FLUGZEIT <b id="ft">0:00</b></span>
 </header>
 
-<!-- ══ Ruheansicht ═══════════════════════════════════════════ -->
 <div id="standby">
   <div class="standby-hero">
     <div class="spine"></div>
@@ -148,7 +139,6 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
   <div class="player" id="player"></div>
 </div>
 
-<!-- ══ Live-Ansicht ══════════════════════════════════════════ -->
 <div id="live">
   <div class="hero">
     <div class="spine"></div>
@@ -219,42 +209,29 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
 (() => {
 "use strict";
 
-/* ══════════════════════════════════════════════════════════════
-   EINSTELLUNGEN
-   ══════════════════════════════════════════════════════════════ */
 const CFG = {
   brand: "TANGO KILO",
   ws: "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
+  twitch: "tommtee",
   hold: 8,            // Sekunden ohne Daten -> zurueck in die Ruheansicht
   vFull: 4.20, vEmpty: 3.40
 };
 
-/* ═══ ab hier nichts mehr anpassen ═══════════════════════════ */
 const $ = id => document.getElementById(id);
 $("brand").textContent = CFG.brand;
 
-/* Standby-Player */
+/* Standby-Player. Twitch verlangt den parent-Parameter mit der Domain,
+   auf der eingebettet wird -- deshalb dynamisch aus der URL. */
 {
-  // Eines von beiden ausfuellen, das andere leer lassen.
-  // video:    ID aus der YouTube-URL nach "v=" oder nach "youtu.be/"
-  // playlist: ID einer selbst angelegten Playlist, nach "list=" in der URL
-  //           (die automatische Uploads-Playlist geht NICHT)
-  const video    = "";
-  const playlist = "PLWsN2dHnSlX0";
-
-  const src = video
-    ? `https://www.youtube.com/embed/${video}?rel=0`
-    : playlist
-      ? `https://www.youtube.com/embed/videoseries?list=${playlist}&rel=0`
-      : `https://player.twitch.tv/?channel=tommtee&parent=${location.hostname}&autoplay=false`;
-
   const f = document.createElement("iframe");
-  f.src = src;
+  f.src = `https://player.twitch.tv/?channel=${CFG.twitch}`
+        + `&parent=${location.hostname}&autoplay=true&muted=true`;
   f.allowFullscreen = true;
-  f.setAttribute("allow","accelerometer; encrypted-media; picture-in-picture; fullscreen");
-  f.setAttribute("title","Letzte Flüge");
-  document.getElementById("player").appendChild(f);
+  f.setAttribute("allow","autoplay; fullscreen; picture-in-picture");
+  f.setAttribute("title","Twitch-Kanal");
+  $("player").appendChild(f);
 }
+
 /* Kompass-Teilung */
 {
   const g = $("ticks");
@@ -270,7 +247,6 @@ $("brand").textContent = CFG.brand;
   }
 }
 
-/* Zustand */
 const tgt = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
              volt:null,amp:null,mah:null,sats:null};
 const cur = {...tgt};
@@ -287,8 +263,6 @@ function setMode(m){
   document.title = m === "live" ? CFG.brand + " · LIVE" : CFG.brand;
 }
 
-/* Verbindung. Reconnect mit wachsendem Abstand, damit ein
-   ausgeschalteter Laptop nicht dauerhaft angefunkt wird. */
 let retry = 2000;
 function connect(){
   let ws;
@@ -320,7 +294,6 @@ function connect(){
 }
 connect();
 
-/* Glättung */
 const ease = (v,t,k) => t == null ? null : (v == null || reduce) ? t : v + (t-v)*k;
 function easeDeg(v,t,k){
   if (t == null) return null;
