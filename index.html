@@ -225,13 +225,6 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
 const CFG = {
   brand: "TANGO KILO",
   ws: "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
-
-  // Standby-Player. "uploads" spielt automatisch dein neuestes
-  // YouTube-Video ab. Fuer ein festes Video stattdessen die ID
-  // eintragen, z. B. video: "dQw4w9WgXcQ".
-  youtubeUploads: "UUEVZ7h4CzZ8IwQF2UIjyIeQ",
-  video: "",
-
   hold: 8,            // Sekunden ohne Daten -> zurueck in die Ruheansicht
   vFull: 4.20, vEmpty: 3.40
 };
@@ -242,18 +235,26 @@ $("brand").textContent = CFG.brand;
 
 /* Standby-Player */
 {
-  const base = "https://www.youtube.com/embed/";
-  const src = CFG.video
-    ? `${base}${CFG.video}?rel=0`
-    : `${base}videoseries?list=${CFG.youtubeUploads}&rel=0`;
+  // Eines von beiden ausfuellen, das andere leer lassen.
+  // video:    ID aus der YouTube-URL nach "v=" oder nach "youtu.be/"
+  // playlist: ID einer selbst angelegten Playlist, nach "list=" in der URL
+  //           (die automatische Uploads-Playlist geht NICHT)
+  const video    = "";
+  const playlist = "PLWsN2dHnSlX0";
+
+  const src = video
+    ? `https://www.youtube.com/embed/${video}?rel=0`
+    : playlist
+      ? `https://www.youtube.com/embed/videoseries?list=${playlist}&rel=0`
+      : `https://player.twitch.tv/?channel=tommtee&parent=${location.hostname}&autoplay=false`;
+
   const f = document.createElement("iframe");
   f.src = src;
   f.allowFullscreen = true;
   f.setAttribute("allow","accelerometer; encrypted-media; picture-in-picture; fullscreen");
   f.setAttribute("title","Letzte Flüge");
-  $("player").appendChild(f);
+  document.getElementById("player").appendChild(f);
 }
-
 /* Kompass-Teilung */
 {
   const g = $("ticks");
