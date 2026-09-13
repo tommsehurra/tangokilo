@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="EdgeTX-Flugpfad als 3D-Karte im Browser — Tango Kilo">
+<meta name="theme-color" content="#3FA9FF">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A1A2F'/%3E%3Cpath d='M16 4.5 L25.5 27.5 L16 21.5 L6.5 27.5 Z' fill='%233FA9FF'/%3E%3Cpath d='M16 4.5 L16 21.5 L6.5 27.5 Z' fill='%2378C8FF'/%3E%3C/svg%3E">
+<title>Flugpfad-Viewer · Tango Kilo</title>
+<style>
+:root{
+  --accent:#3FA9FF; --white:#EAF2FA; --ash:#8A97A6; --ash-dim:#55606C;
+  --void:#070B11; --void-2:#0A121C; --deck:#0D1622; --deck-2:#101C2B;
+  --edge:#1B2A3A; --good:#33D68A; --crit:#FF4D57;
+  --face:"Bahnschrift","DIN Alternate","Oswald","Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--void)}
+body{background:radial-gradient(120% 80% at 50% -10%,#0E2136 0%,rgba(14,33,54,0) 55%),var(--void);
+  background-attachment:fixed;color:var(--white);font-family:var(--face);-webkit-font-smoothing:antialiased;
+  max-width:1180px;margin:0 auto;padding:0 20px 40px;min-height:100vh}
+body.viewing{max-width:none;padding:0}
+header{display:flex;align-items:center;gap:14px;padding:22px 20px 18px;flex-wrap:wrap;max-width:1180px;margin:0 auto}
+.brand{font-size:24px;font-weight:700;font-stretch:75%;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--white);position:relative;padding-bottom:2px;text-decoration:none}
+.brand::after{content:"";position:absolute;left:0;bottom:-4px;width:44px;height:3px;background:var(--accent);box-shadow:0 0 12px rgba(63,169,255,.5)}
+.back{margin-left:auto;font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ash);text-decoration:none;padding:7px 13px;border:1px solid var(--edge);border-radius:4px;transition:.15s}
+.back:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
+h1{font-size:clamp(30px,5vw,50px);font-weight:700;font-stretch:87.5%;line-height:1;letter-spacing:-.01em;
+  text-transform:uppercase;border-top:3px solid var(--accent);padding-top:18px;margin-top:4px}
+.lead{margin-top:12px;font-size:15px;font-weight:600;color:var(--ash);max-width:72ch;line-height:1.55}
+.lead b{color:var(--good)}
+.drop{margin-top:26px;border:2px dashed var(--edge);border-radius:10px;
+  background:linear-gradient(180deg,var(--deck) 0%,var(--void-2) 100%);padding:44px 24px;text-align:center;transition:.18s;cursor:pointer}
+.drop.hot{border-color:var(--accent);background:var(--deck-2)}
+.drop svg{width:44px;height:44px;color:var(--accent);margin-bottom:12px}
+.drop .big{font-size:20px;font-weight:700;font-stretch:87.5%}
+.drop .small{margin-top:7px;font-size:13px;color:var(--ash)}
+.drop .btns{margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:7px;border:1px solid var(--edge);
+  background:var(--deck);color:var(--white);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
+  font-stretch:87.5%;letter-spacing:.06em;text-transform:uppercase;transition:.15s}
+.btn:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--void);border-color:var(--accent)}
+.btn.primary:hover{background:var(--white);border-color:var(--white)}
+.err{margin-top:16px;color:var(--crit);font-size:14px;font-weight:600;display:none;white-space:pre-line;text-align:left;
+  background:rgba(255,77,87,.08);border:1px solid rgba(255,77,87,.4);border-radius:8px;padding:14px 16px}
+.err.show{display:block}
+.note{margin-top:14px;font-size:12px;color:var(--ash-dim);line-height:1.5}
+.feat{margin-top:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.feat div{background:var(--deck);border:1px solid var(--edge);border-radius:8px;padding:14px 16px}
+.feat h3{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.feat p{font-size:13px;color:var(--ash);line-height:1.5}
+
+/* Betrachtungs-Modus */
+#viewer{display:none;position:fixed;inset:0;background:var(--void);flex-direction:column;z-index:10}
+body.viewing #viewer{display:flex}
+body.viewing #intro{display:none}
+.vbar{display:flex;align-items:center;gap:14px;padding:8px 14px;background:var(--void-2);border-bottom:1px solid var(--edge);flex:0 0 auto}
+.vbar .vb-brand{font-weight:700;font-stretch:75%;letter-spacing:.2em;text-transform:uppercase;font-size:14px;color:var(--white)}
+.vbar .vb-file{color:var(--ash);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vbar .sp{flex:1}
+#frame{flex:1;width:100%;border:0;background:#05070A}
+#busy{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  background:rgba(7,11,17,.82);z-index:20;color:var(--ash);font-size:14px}
+#busy.show{display:flex}
+.spin{width:34px;height:34px;border:3px solid var(--edge);border-top-color:var(--accent);border-radius:50%;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="intro">
+  <header>
+    <a class="brand" href="/">TANGO KILO</a>
+    <a class="back" href="/">← zur Live-Seite</a>
+  </header>
+  <h1>Flugpfad-Viewer</h1>
+  <p class="lead">Lade ein EdgeTX-/OpenTX-Telemetrie-Log (<b>.csv</b>) und sieh deinen Flug als interaktive 3D-Karte — mit Gelände, Lageanzeige, Kennzahlen und Zeitleiste. <b>Alles läuft direkt in deinem Browser; die Datei wird weder hochgeladen noch gespeichert.</b></p>
+
+  <div class="drop" id="drop">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
+    <div class="big">CSV hierher ziehen oder auswählen</div>
+    <div class="small">EdgeTX-Logdatei mit GPS-Telemetrie (Spalte „GPS" mit „Breite Länge", oder getrennte Lat/Lon)</div>
+    <div class="btns">
+      <button class="btn primary" id="pick">Datei auswählen</button>
+      <button class="btn" id="demo">Demo ansehen</button>
+    </div>
+    <input type="file" id="file" accept=".csv,text/csv" hidden>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="feat">
+    <div><h3>3D-Karte</h3><p>Der Flugpfad über echtem Gelände und Satellitenbild, frei dreh- und zoombar.</p></div>
+    <div><h3>Lageanzeige</h3><p>Ein 3D-Modell zeigt Roll, Nick und Gier zu jedem Zeitpunkt des Flugs.</p></div>
+    <div><h3>Kennzahlen</h3><p>Höhe, Speed, Steigen, Entfernung, Akku, Linkqualität — automatisch aus dem Log.</p></div>
+    <div><h3>Zeitleiste</h3><p>Über das Flugband durch den Flug scrubben, Kurven ein- und ausblenden.</p></div>
+  </div>
+
+  <p class="note">Das ist dieselbe Auswertung wie im Flugspur-Desktopprogramm — nur direkt im Browser. Für die Karte lädt der Viewer beim ersten Öffnen Kartenmaterial aus dem Internet (OpenStreetMap/OpenTopoMap, Satellitenbild). Kennzahlen, Lageanzeige und Flugband funktionieren auch ohne Kartenverbindung.</p>
+</div>
+
+<div id="viewer">
+  <div class="vbar">
+    <span class="vb-brand">Flugspur</span>
+    <span class="vb-file" id="vfile"></span>
+    <span class="sp"></span>
+    <button class="btn" id="again">Neue Datei</button>
+  </div>
+  <iframe id="frame" title="Flugpfad" allow="fullscreen"></iframe>
+</div>
+
+<div id="busy"><div class="spin"></div><div id="busyText">Log wird ausgewertet …</div></div>
+
+<script src="/flugspur_parse.js"></script>
+<script>
+(function(){
+"use strict";
+function $(id){ return document.getElementById(id); }
+var TPL_URL = "/flugspur_report_tpl.html";
+var tplCache = null;
+
+function showErr(msg){ var e=$("err"); e.textContent=msg||""; e.classList.toggle("show", !!msg); }
+function busy(on, text){ if(text) $("busyText").textContent=text; $("busy").classList.toggle("show", !!on); }
+
+function getTemplate(){
+  if (tplCache) return Promise.resolve(tplCache);
+  return fetch(TPL_URL, {cache:"force-cache"}).then(function(r){
+    if(!r.ok) throw new Error("Vorlage nicht erreichbar ("+r.status+")");
+    return r.text();
+  }).then(function(t){ tplCache=t; return t; });
+}
+
+function render(payload, fname){
+  busy(true, "Karte wird aufgebaut …");
+  getTemplate().then(function(tpl){
+    var json = JSON.stringify(payload).replace(/</g, "\\u003c");   // schuetzt gegen frueh schliessenden Script-Tag
+    var html = tpl.split('"__DATA__"').join(json);
+    var frame = $("frame");
+    frame.srcdoc = html;
+    $("vfile").textContent = fname ? fname : "Demo-Flug";
+    document.body.classList.add("viewing");
+    // kurze Verzögerung, bis das iframe zu rendern beginnt
+    setTimeout(function(){ busy(false); }, 400);
+  }).catch(function(e){
+    busy(false);
+    showErr("Die Kartenvorlage konnte nicht geladen werden:\n"+e.message+
+      "\n\nLiegt flugspur_report_tpl.html im selben Ordner auf dem Server?");
+  });
+}
+
+function process(text, fname){
+  showErr("");
+  busy(true, "Log wird ausgewertet …");
+  // Parsen in einem Timeout, damit der Spinner sicher erscheint
+  setTimeout(function(){
+    var payload;
+    try { payload = FlugspurParse.load(text, fname || "log.csv"); }
+    catch(e){
+      busy(false);
+      showErr(e && e.message ? e.message : "Die Datei konnte nicht gelesen werden.");
+      return;
+    }
+    render(payload, fname);
+  }, 30);
+}
+
+function readFile(file){
+  if(!file) return;
+  if(file.size > 80*1024*1024){ showErr("Die Datei ist sehr groß (>80 MB). Bitte ein einzelnes Flug-Log wählen."); return; }
+  var fr=new FileReader();
+  fr.onload=function(){ process(String(fr.result), file.name); };
+  fr.onerror=function(){ showErr("Datei konnte nicht gelesen werden."); };
+  fr.readAsText(file);
+}
+
+/* Demo: synthetischer EdgeTX-CSV (Bodenstart, Flug, Landung), kein echter Ort */
+function demoCSV(){
+  var rows=["Date,Time,GPS,GSpd(kmh),Alt(m),Sats,VSpd(m/s),Hdg(@),RxBt(V),Curr(A),Capa(mAh),RQly(%),1RSS(dB),Ptch(rad),Roll(rad),FM"];
+  var lat0=50.80, lon0=7.20, base=18*3600+15*60, n=240;
+  function clk(t){var h=Math.floor(t/3600)%24,m=Math.floor((t%3600)/60),s=t%60;
+    return (h<10?"0":"")+h+":"+(m<10?"0":"")+m+":"+(s<10?"0":"")+s.toFixed(1);}
+  for(var i=0;i<n;i++){
+    var t=base+i*0.4, d,spd,alt,vs;
+    if(i<10){ d=0; spd=Math.random()*3; alt=Math.random()*1.5; vs=0; }
+    else if(i>n-10){ d=25; spd=Math.random()*4; alt=Math.random()*2; vs=-0.5; }
+    else { var k=i-10; d=420+360*Math.sin(k/22); spd=Math.max(0,58+34*Math.sin(k/7)+10*Math.sin(k/2.1));
+      alt=Math.max(0,80+55*Math.sin(k/11)+16*Math.sin(k/3)); vs=3*Math.cos(k/11); }
+    var brg=(i*8)%360;
+    var la=lat0+(d*Math.cos(brg*Math.PI/180))/111320;
+    var lo=lon0+(d*Math.sin(brg*Math.PI/180))/(111320*Math.cos(lat0*Math.PI/180));
+    var rx=16.8-0.004*i, cur=18+22*(spd/100), capa=Math.round(9*i), rq=(i%23?100:78);
+    var rss=-40-Math.round(20*Math.abs(Math.sin(i/9)));
+    var ptch=(8*Math.sin(i/5))*Math.PI/180, roll=(25*Math.sin(i/4))*Math.PI/180;
+    var fm=(i<10?"HOLD":(spd<40?"ANGLE":"ACRO"));
+    rows.push("2026-09-13,"+clk(t)+","+la.toFixed(6)+" "+lo.toFixed(6)+","+spd.toFixed(1)+","+alt.toFixed(1)+
+      ",12,"+vs.toFixed(1)+","+Math.round(brg)+","+rx.toFixed(2)+","+cur.toFixed(1)+","+capa+","+rq+","+rss+
+      ","+ptch.toFixed(4)+","+roll.toFixed(4)+","+fm);
+  }
+  return rows.join("\n");
+}
+
+function reset(){
+  document.body.classList.remove("viewing");
+  $("frame").srcdoc = "";
+  showErr("");
+}
+
+var drop=$("drop"), fileInput=$("file");
+$("pick").addEventListener("click", function(e){ e.stopPropagation(); fileInput.click(); });
+drop.addEventListener("click", function(){ fileInput.click(); });
+fileInput.addEventListener("change", function(){ readFile(fileInput.files[0]); fileInput.value=""; });
+$("demo").addEventListener("click", function(e){ e.stopPropagation(); process(demoCSV(), null); });
+$("again").addEventListener("click", reset);
+["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add("hot"); }); });
+["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); if(ev==="dragleave"&&e.target!==drop)return; drop.classList.remove("hot"); }); });
+drop.addEventListener("drop", function(e){ var f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) readFile(f); });
+
+if(!window.FlugspurParse) showErr("Parser (flugspur_parse.js) konnte nicht geladen werden. Liegt die Datei auf dem Server?");
+})();
+</script>
+</body>
+</html>
