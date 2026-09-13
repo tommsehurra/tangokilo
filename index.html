@@ -17,20 +17,30 @@
 <title>Tango Kilo</title>
 <style>
 :root{
-  --ignite:#FF5A1F; --flare:#E01B24;
-  --white:#FFFFFF; --ash:#9BA3AB; --ash-dim:#5C666F;
-  --void:#05070A; --deck:#0C1116; --edge:#1B242D;
-  --live:#2FD07A; --accent:#FF5A1F;
+  /* Glascockpit: tiefer, ruhiger Grund. Struktur in kühlem Instrumenten-Blau.
+     Die Farbe kommt aus den WERTEN, nicht aus dem Hintergrund. */
+  --accent:#3FA9FF; --accent-dim:#1E6DB0;
+  --white:#EAF2FA; --ash:#8A97A6; --ash-dim:#55606C;
+  --void:#070B11; --void-2:#0A121C; --deck:#0D1622; --deck-2:#101C2B;
+  --edge:#1B2A3A; --edge-soft:#14202E;
+  --good:#33D68A; --warn:#FFC24B; --crit:#FF4D57;
   --face:"Bahnschrift","DIN Alternate","Oswald","Segoe UI Variable",
          "Segoe UI",system-ui,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{background:var(--void)}
 body{
-  background:transparent;color:var(--white);font-family:var(--face);
+  /* Statischer, dezenter Tiefen-Grund statt animiertem Farbnebel:
+     ein ruhiger radialer Schimmer oben, sonst tiefes Nachtblau. */
+  background:
+    radial-gradient(120% 80% at 50% -10%, #0E2136 0%, rgba(14,33,54,0) 55%),
+    radial-gradient(90% 60% at 85% 0%, rgba(63,169,255,.08) 0%, rgba(63,169,255,0) 45%),
+    var(--void);
+  background-attachment:fixed;
+  color:var(--white);font-family:var(--face);
   font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;
   -webkit-font-smoothing:antialiased;
-  max-width:1180px;margin:0 auto;padding:0 20px 60px;
+  max-width:1180px;margin:0 auto;padding:0 20px 60px;min-height:100vh;
 }
 .ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),0 2px var(--void)}
 
@@ -40,72 +50,105 @@ body.is-live    #live{display:block}
 
 header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wrap}
 .brand{font-size:26px;font-weight:700;font-stretch:75%;
-       letter-spacing:.22em;text-transform:uppercase}
+       letter-spacing:.24em;text-transform:uppercase;color:var(--white);
+       position:relative;padding-bottom:2px}
+.brand::after{content:"";position:absolute;left:0;bottom:-4px;width:44px;height:3px;
+       background:var(--accent);box-shadow:0 0 12px rgba(63,169,255,.5)}
 .lamp{display:inline-flex;align-items:center;gap:8px;font-size:13px;
       font-weight:700;font-stretch:75%;letter-spacing:.2em;
-      text-transform:uppercase;padding:4px 10px;
-      background:var(--edge);color:var(--ash)}
-.lamp i{width:8px;height:8px;background:currentColor}
-.lamp.on{background:var(--live);color:var(--void)}
-.lamp.wait{background:var(--accent);color:var(--void)}
-.lamp.lost{background:var(--flare);color:var(--white)}
+      text-transform:uppercase;padding:5px 11px;border-radius:3px;
+      background:var(--deck);border:1px solid var(--edge);color:var(--ash)}
+.lamp i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.lamp.on{background:rgba(51,214,138,.12);border-color:var(--good);color:var(--good)}
+.lamp.wait{background:rgba(255,194,75,.12);border-color:var(--warn);color:var(--warn)}
+.lamp.lost{background:rgba(255,77,87,.14);border-color:var(--crit);color:var(--crit)}
 .clock{margin-left:auto;font-size:15px;font-weight:600;color:var(--ash)}
 .clock b{color:var(--white);font-size:19px}
 body.is-standby .clock{display:none}
 
-.spine{width:9px;flex:0 0 9px;align-self:stretch;
-  background:linear-gradient(180deg,var(--accent) 0%,var(--flare) 100%);
-  box-shadow:0 0 0 2px rgba(5,7,10,.8),0 2px 16px rgba(224,27,36,.4)}
+.spine{width:8px;flex:0 0 8px;align-self:stretch;border-radius:2px;
+  background:linear-gradient(180deg,var(--accent) 0%,var(--accent-dim) 100%);
+  box-shadow:0 0 0 1px rgba(7,11,17,.8),0 0 16px rgba(63,169,255,.28)}
 
 /* Signalverlust: Werte einfrieren, sichtbar abdimmen */
-body.stale .hero-main,body.stale .vario,body.stale .rose,body.stale .bar{opacity:.34}
-body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out infinite}
+body.stale .hero-main,body.stale .vario,body.stale .rose,body.stale .adi,body.stale .bar{opacity:.34}
+body.stale #live .spine{background:var(--crit);animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.28}}
 @media(prefers-reduced-motion:reduce){body.stale #live .spine{animation:none}}
 
 /* ── Ruheansicht ────────────────────────────────────────────── */
-.standby-hero{border-top:3px solid var(--accent);padding:36px 0 34px;
+.standby-hero{border-top:3px solid var(--accent);padding:34px 0 30px;
               display:flex;gap:22px;align-items:stretch}
 .standby-hero h1{
-  font-size:clamp(40px,8vw,82px);font-weight:700;font-stretch:87.5%;
-  line-height:.94;letter-spacing:-.015em;text-transform:uppercase;max-width:15ch;
+  font-size:clamp(38px,7.4vw,76px);font-weight:700;font-stretch:87.5%;
+  line-height:.96;letter-spacing:-.015em;text-transform:uppercase;max-width:15ch;
 }
-.player{border:2px solid var(--edge);background:#000;
-        position:relative;padding-top:56.25%}
+.standby-hero .sub{margin-top:10px;font-size:15px;font-weight:600;color:var(--ash);
+  letter-spacing:.02em;text-transform:none;max-width:46ch;line-height:1.5}
+.player{border:1px solid var(--edge);background:#000;border-radius:6px;overflow:hidden;
+        position:relative;padding-top:56.25%;margin-top:26px}
 .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* Ruhe-Kacheln: letzter Flug + Bestwerte aller Flüge */
+.rest-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-top:26px}
+@media(max-width:820px){.rest-grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--deck) 0%,var(--void-2) 100%);
+  border:1px solid var(--edge);border-radius:8px;padding:18px 20px}
+.card-cap{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-cap span{color:var(--ash-dim);font-size:11px;letter-spacing:.14em}
+.mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 20px}
+.mini .k{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ash-dim)}
+.mini .v{margin-top:3px;font-size:26px;font-weight:700;font-stretch:87.5%;line-height:1}
+.mini .v small{font-size:13px;font-weight:600;color:var(--ash);margin-left:4px;text-transform:uppercase}
+#lfProfile{width:100%;height:64px;display:block;margin-top:16px}
+.card-empty{color:var(--ash-dim);font-size:14px;line-height:1.5}
+.at-list{display:flex;flex-direction:column;gap:0}
+.at-row{display:flex;align-items:baseline;justify-content:space-between;
+  padding:11px 0;border-top:1px solid var(--edge-soft)}
+.at-row:first-child{border-top:0}
+.at-row .k{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ash)}
+.at-row .v{font-size:23px;font-weight:700;font-stretch:87.5%}
+.at-row .v small{font-size:12px;color:var(--ash);margin-left:3px;text-transform:uppercase}
 
 /* ── Live-Ansicht ───────────────────────────────────────────── */
 .hero{display:flex;gap:22px;align-items:stretch;
-      border-top:3px solid var(--accent);padding-top:20px}
+      border-top:3px solid var(--accent);padding-top:20px;position:relative}
 .hero-main{flex:1;min-width:0}
 .hero-top{display:flex;gap:46px;flex-wrap:wrap}
 .giant .v{display:flex;align-items:baseline;gap:9px;
-  font-size:clamp(60px,11vw,116px);font-weight:700;font-stretch:87.5%;
-  line-height:.84;letter-spacing:-.02em}
+  font-size:clamp(58px,10.6vw,112px);font-weight:700;font-stretch:87.5%;
+  line-height:.84;letter-spacing:-.02em;transition:color .5s ease}
 .giant .v span:first-child{min-width:2ch;text-align:right}
 .giant .u{font-size:clamp(17px,2.4vw,25px);font-weight:600;font-stretch:75%;
           color:var(--ash);text-transform:uppercase;letter-spacing:.06em}
 .giant .k{margin-top:7px;font-size:14px;font-weight:700;font-stretch:75%;
   letter-spacing:.3em;text-transform:uppercase;color:var(--accent);
   text-shadow:-1px 0 var(--void),1px 0 var(--void),0 -1px var(--void),0 1px var(--void)}
-.giant.sub .v{font-size:clamp(44px,7vw,74px)}
+.giant.sub .v{font-size:clamp(42px,6.6vw,70px)}
 
 .vario{flex:0 0 auto;width:46px;display:flex;flex-direction:column;
        align-items:center;gap:7px}
-.vario-track{position:relative;flex:1;width:22px;min-height:150px;
-  background:var(--deck);outline:2px solid var(--edge)}
+.vario-track{position:relative;flex:1;width:22px;min-height:150px;border-radius:3px;
+  background:var(--deck);outline:1px solid var(--edge)}
 .vario-track::before{content:"";position:absolute;left:-5px;right:-5px;top:50%;
   height:2px;background:var(--ash-dim);transform:translateY(-1px)}
-.vario-fill{position:absolute;left:0;right:0;top:50%;bottom:50%;
+.vario-fill{position:absolute;left:0;right:0;top:50%;bottom:50%;border-radius:2px;
   background:var(--accent)}
-.vario-num{font-size:15px;font-weight:700;font-stretch:87.5%}
+.vario-num{font-size:15px;font-weight:700;font-stretch:87.5%;transition:color .4s}
 .vario-cap{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.2em;
   text-transform:uppercase;color:var(--accent)}
 
-.rose{flex:0 0 auto;width:190px;height:190px;position:relative}
-@media(max-width:820px){.rose{width:150px;height:150px}}
-.rose svg{width:100%;height:100%;overflow:visible}
-.rose .ring{fill:none;stroke:var(--edge);stroke-width:2}
+/* Runde Instrumente: Kompass + Kunsthorizont */
+.inst{flex:0 0 auto;display:flex;gap:16px;align-items:flex-start}
+@media(max-width:820px){.inst{width:100%;justify-content:space-around}}
+.rose,.adi{width:172px;height:172px;position:relative}
+@media(max-width:900px){.rose,.adi{width:150px;height:150px}}
+.rose svg,.adi svg{width:100%;height:100%;overflow:visible;display:block}
+.rose .ring,.adi .ring{fill:none;stroke:var(--edge);stroke-width:2}
 .rose .tick{stroke:var(--ash-dim);stroke-width:2}
 .rose text{fill:var(--ash);font-size:13px;font-weight:700;font-stretch:75%;
            letter-spacing:.1em;text-anchor:middle}
@@ -113,24 +156,40 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .rose .craft{fill:var(--white);stroke:var(--void);stroke-width:2}
 .rose .home{fill:var(--accent);stroke:var(--void);stroke-width:2}
 .rose .hub{fill:var(--void);stroke:var(--edge);stroke-width:2}
-.rose-key{position:absolute;bottom:-4px;left:0;right:0;display:flex;
-  justify-content:center;gap:16px;font-size:11px;font-weight:700;
-  font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
-.rose-key i{display:inline-block;width:9px;height:9px;margin-right:5px;
-            vertical-align:-1px}
+.inst-key{position:absolute;bottom:-2px;left:0;right:0;display:flex;
+  justify-content:center;gap:14px;font-size:11px;font-weight:700;
+  font-stretch:75%;letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}
+.inst-key i{display:inline-block;width:9px;height:9px;margin-right:5px;vertical-align:-1px}
+.inst-cap{position:absolute;top:-2px;left:0;right:0;text-align:center;
+  font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--accent);pointer-events:none}
+/* Kunsthorizont */
+.adi .sky{fill:#2E6FA8}
+.adi .gnd{fill:#6B4A2A}
+.adi .hl{stroke:#EAF2FA;stroke-width:2.5}
+.adi .lad{stroke:rgba(234,242,250,.85);stroke-width:1.5}
+.adi .ladt{fill:rgba(234,242,250,.9);font-size:8px;font-weight:700;text-anchor:middle}
+.adi .plane{fill:none;stroke:var(--warn);stroke-width:3;stroke-linecap:round}
+.adi .planedot{fill:var(--warn)}
+.adi .rollarc{fill:none;stroke:var(--ash-dim);stroke-width:2}
+.adi .rolltick{stroke:var(--ash);stroke-width:2}
+.adi .rollptr{fill:var(--accent)}
+.adi.nodata{opacity:.4}
+.adi .nodatatext{fill:var(--ash-dim);font-size:12px;font-weight:700;text-anchor:middle;
+  font-stretch:75%;letter-spacing:.1em}
 
 .bar{display:flex;flex-wrap:wrap;border-top:2px solid var(--accent);margin-top:26px}
-.slot{flex:1 1 120px;padding:13px 17px;border-left:1px solid rgba(255,90,31,.35)}
+.slot{flex:1 1 120px;padding:13px 17px;border-left:1px solid var(--edge)}
 .slot:first-child{border-left:0;padding-left:0}
 .slot .k{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.2em;
          text-transform:uppercase;color:var(--accent)}
-.slot .v{margin-top:3px;font-size:29px;font-weight:700;font-stretch:87.5%;line-height:1}
+.slot .v{margin-top:3px;font-size:29px;font-weight:700;font-stretch:87.5%;line-height:1;
+  transition:color .4s ease}
 .slot .v small{font-size:14px;font-weight:600;color:var(--ash);
                margin-left:5px;text-transform:uppercase}
-.slot.alert .v{color:var(--flare)}
-#tape{display:flex;gap:3px;height:9px;margin-top:8px;
-      outline:2px solid rgba(5,7,10,.85)}
-#tape div{flex:1;background:rgba(255,255,255,.14)}
+#tape{display:flex;gap:3px;height:9px;margin-top:8px;border-radius:2px;
+      outline:1px solid rgba(7,11,17,.85)}
+#tape div{flex:1;background:rgba(255,255,255,.12);border-radius:1px}
 #tape div.on{background:var(--tape,var(--accent))}
 
 .panels{display:grid;grid-template-columns:1fr 340px;gap:22px;
@@ -139,32 +198,79 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .panel-cap{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.24em;
   text-transform:uppercase;color:var(--accent);margin-bottom:9px}
 #graph{width:100%;height:190px;display:block;background:var(--deck);
-       outline:2px solid var(--edge)}
-/* Bildergalerie: Kacheln + Lightbox. Bilder liegen im images/-Ordner des Repos
-   und werden automatisch gelistet (GitHub-API, Fallback images/manifest.json). */
-.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
-.gal-tile{position:relative;aspect-ratio:1;overflow:hidden;background:var(--deck);
-  border:1px solid var(--edge);cursor:zoom-in}
-.gal-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s ease}
-.gal-tile:hover img{transform:scale(1.06)}
-.gal-dl{position:absolute;right:8px;bottom:8px;width:38px;height:38px;border-radius:9px;
-  display:flex;align-items:center;justify-content:center;background:rgba(5,7,10,.82);
-  border:1px solid var(--edge);color:var(--white);text-decoration:none;
-  opacity:0;transform:translateY(4px);transition:.2s}
-.gal-tile:hover .gal-dl{opacity:1;transform:none}
-.gal-dl:hover{background:var(--accent);border-color:var(--flare);color:var(--void)}
-.gal-dl svg{width:18px;height:18px}
-.gal-empty{color:var(--ash);font-size:14px;padding:10px 0}
-@media(hover:none){.gal-dl{opacity:1;transform:none}}
+       outline:1px solid var(--edge);border-radius:6px}
+
+.records{display:flex;flex-wrap:wrap;margin-top:18px;border-top:1px solid var(--edge)}
+.rec{flex:1 1 110px;padding:11px 15px;border-left:1px solid var(--edge)}
+.rec:first-child{border-left:0;padding-left:0}
+.rec .k{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.18em;
+        text-transform:uppercase;color:var(--ash-dim)}
+.rec .v{margin-top:2px;font-size:22px;font-weight:700;font-stretch:87.5%;transition:color .4s}
+.rec .v small{font-size:12px;color:var(--ash);margin-left:4px;text-transform:uppercase}
+#radar{width:100%;aspect-ratio:1/1;display:block;background:var(--deck);
+       outline:1px solid var(--edge);border-radius:6px}
+
+section{margin-top:54px}
+h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
+   text-transform:uppercase;color:var(--accent);
+   border-bottom:2px solid var(--edge);padding-bottom:9px;margin-bottom:20px}
+.links{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:560px){.links{grid-template-columns:1fr}}
+@media(max-width:820px){.hero{gap:14px;flex-wrap:wrap}.hero-top{gap:26px}
+  .standby-hero{gap:16px;padding:28px 0 24px}
+  .vario{flex-direction:row;width:100%;order:3;align-items:center;gap:12px}
+  .vario-track{min-height:0;height:20px;width:auto;flex:1}
+  .vario-track::before{left:50%;right:auto;top:-5px;bottom:-5px;
+    width:2px;height:auto;transform:translateX(-1px)}}
+.links a{display:flex;flex-direction:column;gap:5px;padding:22px 24px;
+  text-decoration:none;color:var(--white);background:var(--deck);
+  border-left:4px solid var(--edge);border-radius:0 6px 6px 0;transition:.15s}
+.links a:hover,.links a:focus-visible{background:var(--accent);color:var(--void);
+  border-left-color:var(--white);outline:0}
+.links b{font-size:22px;font-weight:700;font-stretch:87.5%;
+         letter-spacing:.08em;text-transform:uppercase}
+.links span{font-size:14px;font-weight:600;color:var(--ash)}
+.links a:hover span,.links a:focus-visible span{color:rgba(7,11,17,.75)}
+
+/* ── Diashow (Galerie) ──────────────────────────────────────── */
+.show{position:relative;overflow:hidden;border:1px solid var(--edge);border-radius:8px;
+  background:var(--deck);aspect-ratio:16/9;max-height:72vh;
+  -webkit-user-select:none;user-select:none}
+.show-track{display:flex;height:100%;will-change:transform}
+.show-track.anim{transition:transform .62s cubic-bezier(.4,0,.2,1)}
+.show-slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;
+  justify-content:center;background:var(--void-2)}
+.show-slide img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;
+  cursor:zoom-in;display:block;pointer-events:none}
+.show-arw{position:absolute;top:50%;transform:translateY(-50%);z-index:3;
+  width:52px;height:52px;border-radius:12px;border:1px solid var(--edge);
+  background:rgba(10,18,28,.72);color:var(--white);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:.18s;backdrop-filter:blur(4px)}
+.show-arw svg{width:24px;height:24px}
+.show:hover .show-arw{opacity:1}
+.show-arw:hover{background:var(--accent);border-color:var(--white);color:var(--void)}
+.show-prev{left:14px}.show-next{right:14px}
+.show-dots{position:absolute;left:0;right:0;bottom:12px;z-index:3;display:flex;
+  gap:7px;justify-content:center;flex-wrap:wrap;padding:0 40px;pointer-events:none}
+.show-dots i{width:8px;height:8px;border-radius:50%;background:rgba(234,242,250,.32);
+  transition:.2s;pointer-events:auto;cursor:pointer}
+.show-dots i.on{background:var(--accent);transform:scale(1.25);box-shadow:0 0 8px rgba(63,169,255,.6)}
+.show-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--ash);font-size:14px;text-align:center;padding:20px}
+@media(hover:none){.show-arw{opacity:1;width:44px;height:44px}}
+@media(max-width:560px){.show-arw{width:42px;height:42px}}
+
+/* Lightbox */
 .lb{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
   padding:24px;background:rgba(5,7,10,.95)}
 .lb.open{display:flex}
 .lb-img{max-width:92vw;max-height:80vh;object-fit:contain;border:1px solid var(--edge);
-  background:var(--deck)}
+  background:var(--deck);border-radius:6px}
 .lb-btn{position:absolute;background:rgba(12,17,22,.92);border:1px solid var(--edge);
   color:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;
   width:48px;height:48px;border-radius:11px;transition:.15s}
-.lb-btn:hover{background:var(--accent);border-color:var(--flare);color:var(--void)}
+.lb-btn:hover{background:var(--accent);border-color:var(--white);color:var(--void)}
 .lb-btn svg{width:22px;height:22px}
 .lb-close{top:20px;right:20px}
 .lb-prev{left:20px;top:50%;transform:translateY(-50%)}
@@ -175,48 +281,16 @@ body.stale #live .spine{background:var(--flare);animation:pulse 1.6s ease-in-out
 .lb-dl{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:9px;
   background:var(--accent);color:var(--void);text-decoration:none;font-weight:700;
   font-stretch:87.5%;letter-spacing:.06em;text-transform:uppercase;font-size:13px}
-.lb-dl:hover{background:var(--flare)}
+.lb-dl:hover{background:var(--white)}
 .lb-dl svg{width:16px;height:16px}
 @media(max-width:560px){.lb-prev,.lb-next{width:40px;height:40px}}
 
-.records{display:flex;flex-wrap:wrap;margin-top:18px;
-         border-top:1px solid var(--edge)}
-.rec{flex:1 1 110px;padding:11px 15px;border-left:1px solid var(--edge)}
-.rec:first-child{border-left:0;padding-left:0}
-.rec .k{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.18em;
-        text-transform:uppercase;color:var(--ash-dim)}
-.rec .v{margin-top:2px;font-size:22px;font-weight:700;font-stretch:87.5%}
-.rec .v small{font-size:12px;color:var(--ash);margin-left:4px;
-              text-transform:uppercase}
-
-section{margin-top:54px}
-h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
-   text-transform:uppercase;color:var(--accent);
-   border-bottom:2px solid var(--edge);padding-bottom:9px;margin-bottom:20px}
-.links{display:grid;grid-template-columns:1fr 1fr;gap:0}
-@media(max-width:560px){.links{grid-template-columns:1fr}}
-@media(max-width:820px){.hero{gap:14px;flex-wrap:wrap}.hero-top{gap:26px}
-  .standby-hero{gap:16px;padding:28px 0 26px}
-  .vario{flex-direction:row;width:100%;order:3;align-items:center;gap:12px}
-  .vario-track{min-height:0;height:20px;width:auto;flex:1}
-  .vario-track::before{left:50%;right:auto;top:-5px;bottom:-5px;
-    width:2px;height:auto;transform:translateX(-1px)}}
-.links a{display:flex;flex-direction:column;gap:5px;padding:22px 24px;
-  text-decoration:none;color:var(--white);background:var(--deck);
-  border-left:4px solid var(--edge)}
-.links a:hover,.links a:focus-visible{background:var(--accent);color:var(--void);
-  border-left-color:var(--flare);outline:0}
-.links b{font-size:22px;font-weight:700;font-stretch:87.5%;
-         letter-spacing:.08em;text-transform:uppercase}
-.links span{font-size:14px;font-weight:600;color:var(--ash)}
-.links a:hover span,.links a:focus-visible span{color:rgba(5,7,10,.75)}
-
 #dbg{position:fixed;right:12px;bottom:12px;z-index:99;
-  background:rgba(5,7,10,.94);border:1px solid var(--edge);padding:10px 13px;
+  background:rgba(5,7,10,.94);border:1px solid var(--edge);padding:10px 13px;border-radius:6px;
   font:12px/1.6 ui-monospace,monospace;color:var(--ash);white-space:pre;
   pointer-events:none}
 
-/* --- Persoenlichkeit: Schlaf-Emoji, Brand-Schimmer, Rekord-Pop, Radar --- */
+/* Persönlichkeit: Schlaf-Emoji + Rekord-Pop (dezent, kein Dauer-Repaint) */
 .snooze{display:inline-flex;align-items:flex-start;gap:1px;font-size:20px;line-height:1;position:relative;top:1px}
 body:not(.is-standby) .snooze{display:none}
 .snooze b{font:700 11px/1 var(--face);color:var(--ash);opacity:0;animation:zfloat 2.6s ease-in-out infinite}
@@ -224,53 +298,32 @@ body:not(.is-standby) .snooze{display:none}
 .snooze b:nth-of-type(2){animation-delay:.5s;font-size:13px}
 .snooze b:nth-of-type(3){animation-delay:1s;font-size:15px}
 @keyframes zfloat{0%{opacity:0;transform:translate(0,3px)}25%{opacity:1}70%{opacity:.85}100%{opacity:0;transform:translate(7px,-13px) rotate(10deg)}}
-@supports ((-webkit-background-clip:text) or (background-clip:text)){
-  .brand{background:linear-gradient(92deg,#ff7a1f,#2fd07a 34%,#9146ff 66%,#2fd07a 82%,#ff7a1f);
-    background-size:280% 100%;-webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;color:transparent;animation:brandflow 7s linear infinite;will-change:background-position}
-  @keyframes brandflow{to{background-position:-280% 0}}
-}
-.lamp.on{animation:lampglow 1.9s ease-in-out infinite}
-@keyframes lampglow{0%,100%{box-shadow:0 0 0 0 rgba(47,208,122,0)}50%{box-shadow:0 0 0 4px rgba(47,208,122,.18)}}
-.rec .v{transition:color .45s}
-.rec.pop{animation:recpop .6s ease}
-@keyframes recpop{0%{transform:scale(1)}30%{transform:scale(1.14);color:var(--accent)}100%{transform:scale(1)}}
-#radar{width:100%;aspect-ratio:1/1;display:block;background:var(--deck);outline:2px solid var(--edge)}
-@media(prefers-reduced-motion:reduce){.snooze b,.lamp.on,.rec.pop{animation:none}.snooze b{opacity:.7}}
+.lamp.on i{animation:lampglow 1.9s ease-in-out infinite}
+@keyframes lampglow{0%,100%{box-shadow:0 0 0 0 rgba(51,214,138,0)}50%{box-shadow:0 0 0 4px rgba(51,214,138,.22)}}
+.rec.pop .v{animation:recpop .6s ease}
+@keyframes recpop{0%{transform:scale(1)}30%{transform:scale(1.14)}100%{transform:scale(1)}}
 
-/* Speed-Aura hinter den Zahlen + einfliegende Ansicht */
-.hero{position:relative}
-.hero>:not(.aura){position:relative;z-index:1}
-.aura{position:absolute;inset:-12px -22px;z-index:0;pointer-events:none;opacity:0;
-  background:radial-gradient(46% 74% at 30% 46%,var(--accent),transparent 72%);
-  filter:blur(30px);transition:opacity .5s ease,background .6s ease}
+/* Einfliegende Ansicht (günstige Entrance-Animation, kein Dauerlauf) */
 @keyframes flyin{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 body.is-live #live .hero-top>.giant{animation:flyin .55s cubic-bezier(.2,.7,.2,1) both}
 body.is-live #live .hero-top>.giant:nth-of-type(2){animation-delay:.07s}
 body.is-live #live .hero-top>.giant:nth-of-type(3){animation-delay:.14s}
 body.is-live #live .vario{animation:flyin .55s .12s cubic-bezier(.2,.7,.2,1) both}
-body.is-live #live .rose{animation:flyin .55s .18s cubic-bezier(.2,.7,.2,1) both}
+body.is-live #live .inst{animation:flyin .55s .18s cubic-bezier(.2,.7,.2,1) both}
 body.is-live #live .bar{animation:flyin .5s .24s cubic-bezier(.2,.7,.2,1) both}
 body.is-live #live .panels{animation:flyin .5s .32s cubic-bezier(.2,.7,.2,1) both}
 body.is-standby #standby .standby-hero{animation:flyin .5s cubic-bezier(.2,.7,.2,1) both}
-body.is-standby #standby .player{animation:flyin .6s .12s ease both}
+body.is-standby #standby .rest-grid{animation:flyin .55s .1s cubic-bezier(.2,.7,.2,1) both}
+body.is-standby #standby .player{animation:flyin .6s .18s ease both}
 @media(prefers-reduced-motion:reduce){
-  .hero-top>.giant,.vario,.rose,.bar,.panels,.standby-hero,#standby .player{animation:none!important}
-  .aura{transition:none}
+  .hero-top>.giant,.vario,.inst,.bar,.panels,.standby-hero,.rest-grid,#standby .player{animation:none!important}
+  .snooze b,.lamp.on i,.rec.pop .v{animation:none}
+  .snooze b{opacity:.7}
+  .show-track.anim{transition:none}
 }
-
-/* Ambientes, langsam rotierendes Farbspiel im Hintergrund */
-.aurora{position:fixed;inset:-30%;z-index:-1;pointer-events:none;opacity:.55;
-  background:conic-gradient(from 0deg,#5c2e0a,#1f5c3a,#3a1f6e,#5c2e0a);
-  filter:blur(90px) saturate(1.35);animation:auroraspin 44s linear infinite;will-change:transform}
-@keyframes auroraspin{to{transform:rotate(360deg)}}
-.panel-cap,h2{transition:color .35s ease}
-.hero,.standby-hero,.spine,.vario-track::before{transition:border-color .35s ease,background-color .35s ease}
-@media(prefers-reduced-motion:reduce){.aurora,.brand{animation:none!important}}
 </style>
 </head>
 <body class="is-standby">
-<div class="aurora" aria-hidden="true"></div>
 
 <header>
   <span class="brand" id="brand">TANGO KILO</span>
@@ -282,14 +335,33 @@ body.is-standby #standby .player{animation:flyin .6s .12s ease both}
 <div id="standby">
   <div class="standby-hero">
     <div class="spine"></div>
-    <h1>Gerade nicht in der Luft</h1>
+    <div>
+      <h1>Gerade nicht in der Luft</h1>
+      <div class="sub">Sobald der Flieger startet, springt die Seite automatisch auf die Live-Telemetrie um. Bis dahin: der letzte Flug und die Bestwerte.</div>
+    </div>
   </div>
+
+  <div class="rest-grid">
+    <div class="card" id="lfCard">
+      <div class="card-cap">Letzter Flug <span id="lfWhen"></span></div>
+      <div id="lfBody"><div class="card-empty">Noch kein Flug aufgezeichnet. Nach der ersten Landung erscheint hier die Zusammenfassung.</div></div>
+    </div>
+    <div class="card" id="atCard">
+      <div class="card-cap">Rekorde · alle Flüge</div>
+      <div class="at-list" id="atBody">
+        <div class="at-row"><span class="k">Top-Speed</span><span class="v"><span id="atSpd">—</span><small>km/h</small></span></div>
+        <div class="at-row"><span class="k">Max Höhe</span><span class="v"><span id="atAlt">—</span><small>m</small></span></div>
+        <div class="at-row"><span class="k">Max Entfernung</span><span class="v"><span id="atDist">—</span><small id="atDistU">m</small></span></div>
+        <div class="at-row"><span class="k">Bestes Steigen</span><span class="v"><span id="atVar">—</span><small>m/s</small></span></div>
+      </div>
+    </div>
+  </div>
+
   <div class="player" id="player"></div>
 </div>
 
 <div id="live">
   <div class="hero">
-    <div class="aura" id="aura"></div>
     <div class="spine"></div>
     <div class="hero-main">
       <div class="hero-top">
@@ -314,21 +386,47 @@ body.is-standby #standby .player{animation:flyin .6s .12s ease both}
       <div class="vario-cap">Vario</div>
     </div>
 
-    <div class="rose">
-      <svg viewBox="0 0 200 200" aria-label="Kompass mit Kurs und Heimatrichtung">
-        <circle class="ring" cx="100" cy="100" r="86"/>
-        <g id="ticks"></g>
-        <text x="100" y="26">N</text><text x="180" y="106">O</text>
-        <text x="100" y="188">S</text><text x="20" y="106">W</text>
-        <g class="needle" id="nHome">
-          <polygon class="home" points="100,40 107,100 93,100"/></g>
-        <g class="needle" id="nCraft">
-          <polygon class="craft" points="100,46 104,100 96,100"/></g>
-        <circle class="hub" cx="100" cy="100" r="7"/>
-      </svg>
-      <div class="rose-key">
-        <span><i style="background:var(--white)"></i>Kurs</span>
-        <span><i style="background:var(--accent)"></i>Heim</span>
+    <div class="inst">
+      <div class="rose">
+        <div class="inst-cap">Kurs</div>
+        <svg viewBox="0 0 200 200" aria-label="Kompass mit Kurs und Heimatrichtung">
+          <circle class="ring" cx="100" cy="100" r="86"/>
+          <g id="ticks"></g>
+          <text x="100" y="26">N</text><text x="180" y="106">O</text>
+          <text x="100" y="188">S</text><text x="20" y="106">W</text>
+          <g class="needle" id="nHome">
+            <polygon class="home" points="100,40 107,100 93,100"/></g>
+          <g class="needle" id="nCraft">
+            <polygon class="craft" points="100,46 104,100 96,100"/></g>
+          <circle class="hub" cx="100" cy="100" r="7"/>
+        </svg>
+        <div class="inst-key">
+          <span><i style="background:var(--white)"></i>Kurs</span>
+          <span><i style="background:var(--accent)"></i>Heim</span>
+        </div>
+      </div>
+
+      <div class="adi" id="adi">
+        <div class="inst-cap">Lage</div>
+        <svg viewBox="0 0 200 200" aria-label="Künstlicher Horizont">
+          <defs><clipPath id="adiClip"><circle cx="100" cy="100" r="86"/></clipPath></defs>
+          <g clip-path="url(#adiClip)">
+            <g id="adiRoll">
+              <g id="adiPitch">
+                <rect class="sky" x="-140" y="-260" width="480" height="360"/>
+                <rect class="gnd" x="-140" y="100" width="480" height="360"/>
+                <line class="hl" x1="-140" y1="100" x2="340" y2="100"/>
+                <g id="adiLadder"></g>
+              </g>
+            </g>
+          </g>
+          <g id="adiRollScale"></g>
+          <!-- fester Flieger-Index -->
+          <path class="plane" d="M62,100 L86,100 M114,100 L138,100 M100,112 l0,0"/>
+          <circle class="planedot" cx="100" cy="100" r="3"/>
+          <circle class="ring" cx="100" cy="100" r="86"/>
+          <text id="adiNoData" class="nodatatext" x="100" y="104" style="display:none">keine Lagedaten</text>
+        </svg>
       </div>
     </div>
   </div>
@@ -381,9 +479,25 @@ body.is-standby #standby .player{animation:flyin .6s .12s ease both}
   </div>
 </section>
 
+<section>
+  <h2>Werkzeuge</h2>
+  <div class="links">
+    <a href="/flugpfad.html">
+      <b>Flugpfad-Viewer</b><span>EdgeTX-Log (CSV) hochladen → 3D-Flugpfad direkt im Browser. Nichts wird gespeichert oder hochgeladen.</span></a>
+  </div>
+</section>
+
 <section class="gallery">
   <h2>Galerie</h2>
-  <div class="gal-grid" id="galGrid"></div>
+  <div class="show" id="show">
+    <div class="show-track" id="showTrack"></div>
+    <button class="show-arw show-prev" id="showPrev" aria-label="Vorheriges">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <button class="show-arw show-next" id="showNext" aria-label="Nächstes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+    <div class="show-dots" id="showDots"></div>
+    <div class="show-empty" id="showEmpty">Galerie wird geladen …</div>
+  </div>
 </section>
 
 <script>
@@ -395,7 +509,7 @@ body.is-standby #standby .player{animation:flyin .6s .12s ease both}
    ══════════════════════════════════════════════════════════════ */
 var CFG = {
   brand:    "TANGO KILO",
-  ws:       "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop
+  ws:       "wss://ws.tangokilo.de/ws",   // Tunnel zum Laptop (Bridge!)
   twitch:   "tommtee",
 
   ghRepo:   "tommsehurra/tangokilo",   // Repo mit dem images/-Ordner fuer die Galerie
@@ -407,15 +521,18 @@ var CFG = {
 
   vFull: 4.20, vEmpty: 3.40,
   varioMax: 5,      // Vollausschlag des Variobalkens in m/s
-  packMah: 23000,    // Akkukapazitaet fuer die Restlaufzeit-Schaetzung
-  graphMin: 3       // Minuten Verlauf im Hoehengraphen
+  packMah: 23000,   // Akkukapazitaet fuer die Restlaufzeit-Schaetzung
+  graphMin: 3,      // Minuten Verlauf im Hoehengraphen
+
+  slideMs: 3500,    // Diashow: Wechsel-Intervall
+  rampSpeed: 120,   // Wert-Faerbung: Skala-Obergrenzen fuer die kuehl->heiss-Rampe
+  rampAlt:   200,
+  rampDist:  1200,
+  rampAmp:   80
 };
 
 /* ══════════════════════════════════════════════════════════════
    2 — ZUSTAND
-   Alles hier oben deklariert. In der letzten Fassung stand der
-   Debug-Block am Ende, wurde aber schon beim Start benutzt --
-   das hat das ganze Skript abgebrochen.
    ══════════════════════════════════════════════════════════════ */
 function $(id){ return document.getElementById(id); }
 
@@ -423,15 +540,16 @@ var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 var debug  = new URLSearchParams(location.search).has("debug");
 
 var tgt = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
-           volt:null,amp:null,mah:null,sats:null};
+           volt:null,amp:null,mah:null,sats:null,roll:null,pitch:null};
 var cur = {spd:null,dist:null,alt:null,vario:null,hdg:null,home:null,
-           volt:null,amp:null,mah:null,sats:null};
+           volt:null,amp:null,mah:null,sats:null,roll:null,pitch:null};
 var rec = {spd:0, alt:0, dist:0, vario:0};
 
 var sock = null, msgAt = null, snap = null, snapAt = 0;
 var seenGps = false, view = "", stale = null;
-var track = [], sampleAt = 0, t0 = null, flying = false;
-var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, accentRGB = [255,122,31], retry = 1500;
+var track = [], sampleAt = 0, t0 = null, flying = false, flightDurMs = 0;
+var cellCount = 0, tPrev = 0, graphAt = 0, radarAt = 0, retry = 1500;
+var ACCENT = [63,169,255];   // fixes Instrumenten-Blau (kein Farbdrift mehr)
 
 var cv = $("graph"), cx = cv.getContext("2d");
 var tape = $("tape");
@@ -443,30 +561,32 @@ if (debug){
   document.body.appendChild(dbgBox);
 }
 
+/* ── Wert-Faerbung ─────────────────────────────────────────────
+   Leistungswerte laufen kuehl->heiss (Blau->Cyan->Gelb->Orange->Rot),
+   je hoeher der Wert. Sicherheitswerte nutzen eine Ampel. Farbe wird nur
+   gesetzt, wenn sie sich aendert (kein Dauer-Repaint). */
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+var RAMP = [[0,205,90,64],[0.40,172,72,58],[0.62,46,92,64],[0.82,26,95,60],[1,2,86,60]];
+function ramp(t){
+  t = clamp(t,0,1);
+  for (var i=1;i<RAMP.length;i++){
+    if (t <= RAMP[i][0]){
+      var a=RAMP[i-1], b=RAMP[i], f=(t-a[0])/((b[0]-a[0])||1);
+      return "hsl("+lerp(a[1],b[1],f).toFixed(0)+" "+lerp(a[2],b[2],f).toFixed(0)+"% "+lerp(a[3],b[3],f).toFixed(0)+"%)";
+    }
+  }
+  return "hsl(2 86% 60%)";
+}
+function battCol(f){ return "hsl("+(clamp(f,0,1)*130).toFixed(0)+" 78% 56%)"; }
+function setColor(el, col){ if (el && el.__c !== col){ el.__c = col; el.style.color = col; } }
+
 /* ══════════════════════════════════════════════════════════════
-   3 — ALTERSBERECHNUNG
-
-   Der Server liefert zwei verschiedene Alter, und die Unterscheidung
-   ist der Kern der ganzen Zustandslogik:
-
-     age_s       seit dem letzten GPS-Frame. Faellt die Telemetrie
-                 aus, steigt NUR dieser Wert.        -> "kein Signal"
-
-     link_age_s  seit IRGENDEINEM gueltigen Frame. Die Funke sendet
-                 ueber USB auch ohne Modell weiter, also bleibt er
-                 niedrig. Er steigt erst, wenn die Funke selbst weg
-                 ist.                                 -> Ruheansicht
-
-   Genau das war der Fehler: die Seite hat link_age_s benutzt, wo
-   age_s gemeint war. Deshalb kam nie "kein Signal".
-
-   Dazu msgAge: wann kam die letzte Nachricht ueber den WebSocket.
-   Auf onclose allein ist kein Verlass -- stirbt cloudflared abrupt,
-   bleibt die Verbindung offen haengen.
+   3 — ALTERSBERECHNUNG  (age_s = seit letztem GPS, link_age_s = seit
+   irgendeinem Frame; die Unterscheidung ist der Kern der Zustandslogik.)
    ══════════════════════════════════════════════════════════════ */
 function now(){ return performance.now(); }
 function msgAge(){ return msgAt === null ? Infinity : now() - msgAt; }
-
 function since(field){
   if (!snap || snap[field] === null || snap[field] === undefined) return Infinity;
   return snap[field] + (now() - snapAt) / 1000;
@@ -474,13 +594,12 @@ function since(field){
 function gpsAge(){ return since("age_s"); }
 function linkAge(){ return since("link_age_s"); }
 
-/* Laeuft der Laptop und ist die Funke angeschlossen? */
 function rigOnline(){
-  if (!sock || sock.readyState !== 1) return false;   // 1 = OPEN
+  if (!sock || sock.readyState !== 1) return false;
   if (msgAge() > CFG.msgDead) return false;
   if (!snap) return false;
-  if (snap.connected === false) return false;         // USB/Serial weg
-  return linkAge() < CFG.linkHold;                    // CRSF-Frames kommen an
+  if (snap.connected === false) return false;
+  return linkAge() < CFG.linkHold;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -492,10 +611,12 @@ function applyState(){
   var isStale = (v === "live") && (gpsAge() >= CFG.gpsHold);
 
   if (v !== view || isStale !== stale){
+    var wasLive = (view === "live");
     view = v; stale = isStale;
     document.body.className = "is-" + v + (isStale ? " stale" : "");
-    document.title = (v === "live" && !isStale) ? CFG.brand + " \u00b7 LIVE" : CFG.brand;
+    document.title = (v === "live" && !isStale) ? CFG.brand + " · LIVE" : CFG.brand;
     if (v === "live") requestAnimationFrame(sizeGraph);
+    if (v === "standby" && wasLive) finishFlight();   // Landung -> Zusammenfassung
     managePlayer(v);
   }
 
@@ -510,25 +631,24 @@ function applyState(){
     lamp.className = "lamp on";   $("lampText").textContent = "live";
   }
 
-  /* Haengende Verbindung aktiv abraeumen, damit der Reconnect greift. */
   if (sock && sock.readyState === 1 && msgAge() > CFG.msgDead * 2){
     try { sock.close(); } catch (e) {}
   }
-
   if (dbgBox) paintDebug();
 }
 
 function paintDebug(){
   var names = ["CONNECTING","OPEN","CLOSING","CLOSED"];
-  var rs = sock ? names[sock.readyState] : "\u2014";
-  function s(x){ return x === Infinity ? "\u221e" : x.toFixed(1) + " s"; }
+  var rs = sock ? names[sock.readyState] : "—";
+  function s(x){ return x === Infinity ? "∞" : x.toFixed(1) + " s"; }
   dbgBox.textContent =
       "socket     " + rs
   + "\nmsgAge     " + (msgAge() === Infinity ? "nie" : Math.round(msgAge()) + " ms")
-  + "\nconnected  " + (snap ? String(snap.connected) : "\u2014")
+  + "\nconnected  " + (snap ? String(snap.connected) : "—")
   + "\nage_s      " + s(gpsAge())  + "   GPS"
   + "\nlink_age_s " + s(linkAge()) + "   Funke"
-  + "\nfix / sats " + (snap ? snap.fix + " / " + snap.sats : "\u2014")
+  + "\nfix / sats " + (snap ? snap.fix + " / " + snap.sats : "—")
+  + "\nroll/pitch " + (snap ? snap.roll_deg + " / " + snap.pitch_deg : "—")
   + "\nseenGps    " + seenGps
   + "\nview       " + view + (stale ? " + stale" : "");
 }
@@ -550,29 +670,50 @@ function onData(d){
   if (d.current_a   != null) tgt.amp   = d.current_a;
   if (d.mah         != null) tgt.mah   = d.mah;
   if (d.sats        != null) tgt.sats  = d.sats;
+  if (d.roll_deg    != null) tgt.roll  = d.roll_deg;
+  if (d.pitch_deg   != null) tgt.pitch = d.pitch_deg;
   if (d.home_set && d.dist_m != null){
     tgt.dist = d.dist_m;
     tgt.home = d.home_bearing_deg;
   }
 
   if (!flying && d.fix && d.speed_kmh > 5){
-    flying = true; t0 = Date.now();
+    flying = true; t0 = Date.now(); flightDurMs = 0;
     rec.spd = 0; rec.alt = 0; rec.dist = 0; rec.vario = 0;
     track = [];
     drawRadar._track = [];
   }
 
-  /* Rekorde aus den Rohwerten, nicht aus den geglaetteten */
   if (d.speed_kmh != null) rec.spd   = Math.max(rec.spd,   d.speed_kmh);
   if (d.alt_m     != null) rec.alt   = Math.max(rec.alt,   d.alt_m);
   if (d.dist_m    != null) rec.dist  = Math.max(rec.dist,  d.dist_m);
   if (d.vspeed_ms != null) rec.vario = Math.max(rec.vario, d.vspeed_ms);
 
-  /* Hoehenpuffer, ein Wert pro Sekunde */
   if (d.alt_m != null && now() - sampleAt > 1000){
     sampleAt = now();
     track.push(d.alt_m);
     if (track.length > CFG.graphMin * 60) track.shift();
+  }
+
+  updateServerStats(d);
+}
+
+/* Globale Rekorde + letzter Flug kommen jetzt von der Bridge (fuer ALLE gleich).
+   localStorage dient nur noch als Offline-Cache, falls der Laptop aus ist. */
+function updateServerStats(d){
+  var got = false;
+  if (d.at_speed_kmh != null){ if (d.at_speed_kmh > allTime.spd)   allTime.spd   = d.at_speed_kmh; got = true; }
+  if (d.at_alt_m     != null){ if (d.at_alt_m     > allTime.alt)   allTime.alt   = d.at_alt_m;   got = true; }
+  if (d.at_dist_m    != null){ if (d.at_dist_m    > allTime.dist)  allTime.dist  = d.at_dist_m;  got = true; }
+  if (d.at_vario_ms  != null){ if (d.at_vario_ms  > allTime.vario) allTime.vario = d.at_vario_ms; got = true; }
+  if (d.last_flight && d.last_flight.durS){
+    if (!lastFlight || (d.last_flight.at || 0) >= (lastFlight.at || 0)) lastFlight = d.last_flight;
+    got = true;
+  }
+  if (got){
+    lsSet(LS_AT, allTime);
+    if (lastFlight) lsSet(LS_LAST, lastFlight);
+    if (view !== "live") renderStandbyStats();
   }
 }
 
@@ -581,7 +722,6 @@ function connect(){
   catch (e) { setTimeout(connect, retry); return; }
 
   sock.onopen = function(){ retry = 1500; msgAt = now(); applyState(); };
-
   sock.onmessage = function(e){
     msgAt = now();
     var d;
@@ -589,14 +729,12 @@ function connect(){
     onData(d);
     applyState();
   };
-
   sock.onclose = function(){
     snap = null; seenGps = false; flying = false; t0 = null;
     applyState();
     setTimeout(connect, retry);
     retry = Math.min(retry * 1.5, 15000);
   };
-
   sock.onerror = function(){ try { sock.close(); } catch (e) {} };
 }
 
@@ -608,7 +746,6 @@ function ease(v, t, k){
   if (v === null || v === undefined || reduce) return t;
   return v + (t - v) * k;
 }
-
 function easeDeg(v, t, k){
   if (t === null || t === undefined) return null;
   if (v === null || v === undefined || reduce) return t;
@@ -631,20 +768,21 @@ function paintTape(v){
     $("cells").textContent = n + "S";
   }
   var f = Math.max(0, Math.min(1, (v / n - CFG.vEmpty) / (CFG.vFull - CFG.vEmpty)));
-  var col = "hsl(" + (20 * f) + " " + (88 - 8 * f) + "% " + (52 - 6 * (1 - f)) + "%)";
+  var col = battCol(f);
   var lit = Math.round(f * n);
   var kids = tape.children;
   for (var j = 0; j < kids.length; j++){
     kids[j].classList.toggle("on", j < lit);
     kids[j].style.setProperty("--tape", col);
   }
+  setColor($("volt"), battCol(f));
 }
 
 function paintVario(v){
   var fill = $("varioFill"), num = $("varioNum");
   if (v === null || v === undefined){
     if (fill.__k !== "x"){ fill.__k = "x"; fill.style.top = "50%"; fill.style.bottom = "50%"; }
-    setText(num, "\u2014");
+    setText(num, "—"); setColor(num, "");
     return;
   }
   var f = Math.max(-1, Math.min(1, v / CFG.varioMax));
@@ -653,9 +791,10 @@ function paintVario(v){
     fill.__k = key;
     if (up){ fill.style.top = (50 - pct) + "%"; fill.style.bottom = "50%"; }
     else   { fill.style.top = "50%"; fill.style.bottom = (50 - pct) + "%"; }
-    fill.style.background = up ? "var(--live)" : "var(--flare)";
+    fill.style.background = up ? "var(--good)" : "var(--crit)";
   }
   setText(num, (v >= 0 ? "+" : "") + v.toFixed(1));
+  setColor(num, up ? "var(--good)" : "var(--crit)");
 }
 
 function sizeGraph(){
@@ -664,7 +803,6 @@ function sizeGraph(){
   cv.height = cv.clientHeight * r;
   drawGraph();
 }
-
 function drawGraph(){
   var w = cv.width, h = cv.height, r = Math.min(window.devicePixelRatio || 1, 2);
   if (!w || !h) return;
@@ -673,37 +811,26 @@ function drawGraph(){
 
   var lo = Math.min.apply(null, track), hi = Math.max.apply(null, track);
   if (hi - lo < 20){ var m = (hi + lo) / 2; lo = m - 10; hi = m + 10; }
-  var pad = (hi - lo) * 0.12;
-  lo -= pad; hi += pad;
-
+  var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
   function px(i){ return (i / (track.length - 1)) * w; }
   function py(v){ return h - ((v - lo) / (hi - lo)) * h; }
 
-  cx.strokeStyle = "#1B242D"; cx.lineWidth = r;
-  for (var i = 1; i < 4; i++){
-    var y = (h / 4) * i;
-    cx.beginPath(); cx.moveTo(0, y); cx.lineTo(w, y); cx.stroke();
-  }
+  cx.strokeStyle = "#172433"; cx.lineWidth = r;
+  for (var i = 1; i < 4; i++){ var y=(h/4)*i; cx.beginPath(); cx.moveTo(0,y); cx.lineTo(w,y); cx.stroke(); }
 
-  cx.beginPath();
-  cx.moveTo(px(0), h);
+  cx.beginPath(); cx.moveTo(px(0), h);
   for (var a = 0; a < track.length; a++) cx.lineTo(px(a), py(track[a]));
-  cx.lineTo(px(track.length - 1), h);
-  cx.closePath();
+  cx.lineTo(px(track.length - 1), h); cx.closePath();
   var g = cx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "rgba(255,90,31,.35)");
-  g.addColorStop(1, "rgba(255,90,31,0)");
+  g.addColorStop(0, "rgba(63,169,255,.34)");
+  g.addColorStop(1, "rgba(63,169,255,0)");
   cx.fillStyle = g; cx.fill();
 
   cx.beginPath();
-  for (var b = 0; b < track.length; b++){
-    if (b) cx.lineTo(px(b), py(track[b])); else cx.moveTo(px(b), py(track[b]));
-  }
-  cx.strokeStyle = "#FF5A1F"; cx.lineWidth = 2 * r;
-  cx.lineJoin = "round"; cx.lineCap = "round";
-  cx.stroke();
+  for (var b = 0; b < track.length; b++){ if (b) cx.lineTo(px(b), py(track[b])); else cx.moveTo(px(b), py(track[b])); }
+  cx.strokeStyle = "#3FA9FF"; cx.lineWidth = 2 * r; cx.lineJoin = "round"; cx.lineCap = "round"; cx.stroke();
 
-  cx.fillStyle = "#5C666F";
+  cx.fillStyle = "#55606C";
   drawGraph._ff = drawGraph._ff || getComputedStyle(document.body).fontFamily;
   cx.font = (11 * r) + "px " + drawGraph._ff;
   cx.fillText(Math.round(hi) + " m", 8 * r, 15 * r);
@@ -711,25 +838,13 @@ function drawGraph(){
 }
 
 function fmtDist(m, elV, elU){
-  if (m === null || m === undefined){
-    elV.textContent = "\u2014";
-    if (elU) elU.textContent = "m";
-  } else if (m < 1000){
-    elV.textContent = Math.round(m);
-    if (elU) elU.textContent = "m";
-  } else {
-    elV.textContent = (m / 1000).toFixed(2);
-    if (elU) elU.textContent = "km";
-  }
+  if (m === null || m === undefined){ elV.textContent = "—"; if (elU) elU.textContent = "m"; }
+  else if (m < 1000){ elV.textContent = Math.round(m); if (elU) elU.textContent = "m"; }
+  else { elV.textContent = (m / 1000).toFixed(2); if (elU) elU.textContent = "km"; }
 }
-
-function r0(v){
-  return (v === null || v === undefined) ? "\u2014" : String(Math.round(v));
-}
-
+function r0(v){ return (v === null || v === undefined) ? "—" : String(Math.round(v)); }
 function setText(el, s){ if (el && el.__t !== s){ el.__t = s; el.textContent = s; } }
 
-/* Laesst die Rekord-Kachel kurz aufpoppen, wenn ein neuer Bestwert faellt. */
 function popRec(id, val){
   var el = $(id); if (!el) return;
   if (val && (el.__pv === undefined || val > el.__pv + 1e-6)){
@@ -739,6 +854,26 @@ function popRec(id, val){
   el.__pv = val;
 }
 
+/* Kunsthorizont: Himmel/Boden kippen mit Roll, wandern mit Nick. */
+var ADI_PXDEG = 2.0;
+function paintADI(){
+  var adi = $("adi");
+  if (cur.roll === null || cur.pitch === null){
+    if (!adi.classList.contains("nodata")){ adi.classList.add("nodata"); $("adiNoData").style.display = ""; }
+    return;
+  }
+  if (adi.classList.contains("nodata")){ adi.classList.remove("nodata"); $("adiNoData").style.display = "none"; }
+  // Roll kommt als 0..360 aus easeDeg; fuer die Anzeige auf -180..180 bringen.
+  var roll = cur.roll > 180 ? cur.roll - 360 : cur.roll;
+  var pitch = clamp(cur.pitch, -40, 40);
+  var rk = "r" + roll.toFixed(1) + "p" + pitch.toFixed(1);
+  if (paintADI._k === rk) return;
+  paintADI._k = rk;
+  $("adiRoll").setAttribute("transform", "rotate(" + (-roll).toFixed(1) + " 100 100)");
+  $("adiPitch").setAttribute("transform", "translate(0 " + (pitch * ADI_PXDEG).toFixed(1) + ")");
+  $("adiRollPtr").setAttribute("transform", "rotate(" + (-roll).toFixed(1) + " 100 100)");
+}
+
 function frame(t){
   requestAnimationFrame(frame);
   if (view !== "live" || document.hidden){ tPrev = t; return; }
@@ -746,12 +881,11 @@ function frame(t){
   var k = reduce ? 1 : 1 - Math.exp(-((t - tPrev) / 1000) / 0.22);
   tPrev = t;
 
-  var keys = ["spd","dist","alt","vario","volt","amp","mah","sats"];
-  for (var i = 0; i < keys.length; i++){
-    cur[keys[i]] = ease(cur[keys[i]], tgt[keys[i]], k);
-  }
+  var keys = ["spd","dist","alt","vario","volt","amp","mah","sats","pitch"];
+  for (var i = 0; i < keys.length; i++){ cur[keys[i]] = ease(cur[keys[i]], tgt[keys[i]], k); }
   cur.hdg  = easeDeg(cur.hdg,  tgt.hdg,  k);
   cur.home = easeDeg(cur.home, tgt.home, k);
+  cur.roll = easeDeg(cur.roll, tgt.roll, k);
 
   setText($("spd"),  r0(cur.spd));
   setText($("alt"),  r0(cur.alt));
@@ -763,44 +897,55 @@ function frame(t){
   fmtDist(cur.dist, $("dist"), $("distU"));
   paintVario(cur.vario);
 
+  /* Wert-Faerbung: Leistungswerte auf der kuehl->heiss-Rampe */
+  if (cur.spd  !== null) setColor($("spd"),  ramp(cur.spd  / CFG.rampSpeed));
+  if (cur.alt  !== null) setColor($("alt"),  ramp(cur.alt  / CFG.rampAlt));
+  if (cur.dist !== null) setColor($("dist"), ramp(cur.dist / CFG.rampDist));
+  if (cur.amp  !== null) setColor($("amp"),  ramp(cur.amp  / CFG.rampAmp));
+
+  /* Restlaufzeit + Ampel */
   if (cur.amp !== null && cur.amp > 0.5 && cur.mah !== null){
     var left = Math.max(0, CFG.packMah * 0.8 - cur.mah);
     var min = left / (cur.amp * 1000) * 60;
     setText($("rest"), min > 99 ? "99+" : String(Math.round(min)));
-    $("sRest").className = "slot" + (min < 3 ? " alert" : "");
-  } else {
-    setText($("rest"), "—");
+    setColor($("rest"), min < 3 ? "var(--crit)" : (min < 5 ? "var(--warn)" : "var(--good)"));
     $("sRest").className = "slot";
+  } else { setText($("rest"), "—"); setColor($("rest"), ""); $("sRest").className = "slot"; }
+
+  /* Sats-Ampel */
+  if (cur.sats !== null){
+    setColor($("sats"), cur.sats < 6 ? "var(--crit)" : (cur.sats < 9 ? "var(--warn)" : "var(--good)"));
   }
 
   $("nCraft").style.transform = "rotate(" + (cur.hdg  || 0) + "deg)";
   $("nHome").style.transform  = "rotate(" + (cur.home || 0) + "deg)";
   $("nHome").style.visibility = (cur.home === null) ? "hidden" : "visible";
+  paintADI();
 
   paintTape(cur.volt);
-  $("sSats").className = "slot" + ((cur.sats !== null && cur.sats < 6) ? " alert" : "");
 
   setText($("rSpd"), rec.spd ? String(Math.round(rec.spd)) : "—");
   setText($("rAlt"), rec.alt ? String(Math.round(rec.alt)) : "—");
   setText($("rVar"), rec.vario ? "+" + rec.vario.toFixed(1) : "—");
   fmtDist(rec.dist || null, $("rDist"), $("rDistU"));
+  if (rec.spd)  setColor($("rSpd"),  ramp(rec.spd  / CFG.rampSpeed));
+  if (rec.alt)  setColor($("rAlt"),  ramp(rec.alt  / CFG.rampAlt));
+  if (rec.dist) setColor($("rDist"), ramp(rec.dist / CFG.rampDist));
+  if (rec.vario) setColor($("rVar"), "var(--good)");
   popRec("rSpd", rec.spd); popRec("rAlt", rec.alt); popRec("rVar", rec.vario); popRec("rDist", rec.dist);
 
   if (t0){
-    var s = Math.floor((Date.now() - t0) / 1000);
+    flightDurMs = Date.now() - t0;
+    var s = Math.floor(flightDurMs / 1000);
     setText($("ft"), Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"));
   }
-
-  var sp = cur.spd || 0;
-  var au = $("aura"); if (au){ var ao = Math.min(0.7, sp / 150 * 0.7);
-    if (Math.abs((au.__o || 0) - ao) > 0.02){ au.__o = ao; au.style.opacity = ao; } }
 
   if (t - graphAt > 500){ graphAt = t; drawGraph(); }
   if (t - radarAt > 200){ radarAt = t; drawRadar(); }
 }
 
-/* Relativ-Radar: Flieger als Punkt relativ zum Startpunkt (Entfernung +
-   Heimpeilung). Zeigt nie echte Koordinaten -> GPS-Regel gewahrt. */
+/* Relativ-Radar: Flieger relativ zum Startpunkt (Entfernung + Heimpeilung).
+   Zeigt nie echte Koordinaten -> GPS-Regel gewahrt. */
 function drawRadar(){
   var c = $("radar"); if (!c) return;
   var r = Math.min(window.devicePixelRatio || 1, 2);
@@ -818,26 +963,25 @@ function drawRadar(){
   var want = Math.max(200, pathMax * 1.15);
   function niceUp(z){ for (var q = 0; q < nice.length; q++) if (nice[q] >= z) return nice[q]; return nice[nice.length - 1]; }
   var tgtRange = drawRadar._tr || 300;
-  if (want > tgtRange) tgtRange = niceUp(want);              // sofort groesser, damit der ganze Pfad passt
-  else if (want < tgtRange * 0.55) tgtRange = niceUp(want);  // erst reinzoomen, wenn man deutlich naeher ist
+  if (want > tgtRange) tgtRange = niceUp(want);
+  else if (want < tgtRange * 0.55) tgtRange = niceUp(want);
   drawRadar._tr = tgtRange;
   var range = drawRadar._disp || tgtRange;
-  range += (tgtRange - range) * 0.08;                        // weich nachfahren
+  range += (tgtRange - range) * 0.08;
   drawRadar._disp = range;
 
-  x.strokeStyle = "#1B242D"; x.lineWidth = r;
+  x.strokeStyle = "#172433"; x.lineWidth = r;
   for (var i = 1; i <= 3; i++){ x.beginPath(); x.arc(mx, my, R * i / 3, 0, Math.PI * 2); x.stroke(); }
   x.beginPath(); x.moveTo(mx - R, my); x.lineTo(mx + R, my);
   x.moveTo(mx, my - R); x.lineTo(mx, my + R); x.stroke();
 
   drawRadar._ff = drawRadar._ff || getComputedStyle(document.body).fontFamily;
-  x.fillStyle = "#5C666F"; x.font = (10 * r) + "px " + drawRadar._ff;
+  x.fillStyle = "#55606C"; x.font = (10 * r) + "px " + drawRadar._ff;
   x.textAlign = "center"; x.fillText("N", mx, my - R - 3 * r);
   x.textAlign = "left";
   x.fillText(tgtRange >= 1000 ? (tgtRange / 1000) + " km" : tgtRange + " m", mx + 5 * r, my - R + 13 * r);
 
-  x.fillStyle = "#9BA3AB"; x.beginPath(); x.arc(mx, my, 4 * r, 0, Math.PI * 2); x.fill();
-
+  x.fillStyle = "#8A97A6"; x.beginPath(); x.arc(mx, my, 4 * r, 0, Math.PI * 2); x.fill();
   if (dist == null || brg == null) return;
 
   drawRadar._track = drawRadar._track || [];
@@ -850,25 +994,152 @@ function drawRadar(){
 
   var tr = drawRadar._track;
   for (var j = 0; j < tr.length; j++){ var p = place(tr[j][0], tr[j][1]), a = (j / tr.length) * 0.45;
-    x.fillStyle = "rgba(" + accentRGB[0] + "," + accentRGB[1] + "," + accentRGB[2] + "," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
+    x.fillStyle = "rgba(" + ACCENT[0] + "," + ACCENT[1] + "," + ACCENT[2] + "," + a + ")"; x.beginPath(); x.arc(p[0], p[1], 2 * r, 0, Math.PI * 2); x.fill(); }
 
   var pos = place(dist, brg);
   if (cur.hdg != null){ var hh = cur.hdg * Math.PI / 180;
     x.strokeStyle = "#fff"; x.lineWidth = 2 * r; x.beginPath(); x.moveTo(pos[0], pos[1]);
     x.lineTo(pos[0] + Math.sin(hh) * 11 * r, pos[1] - Math.cos(hh) * 11 * r); x.stroke(); }
-  x.fillStyle = "rgb(" + accentRGB[0] + "," + accentRGB[1] + "," + accentRGB[2] + ")"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
+  x.fillStyle = "rgb(" + ACCENT[0] + "," + ACCENT[1] + "," + ACCENT[2] + ")"; x.beginPath(); x.arc(pos[0], pos[1], 5 * r, 0, Math.PI * 2); x.fill();
 }
 
 /* ══════════════════════════════════════════════════════════════
-   7 — START
+   7 — FLUG-ZUSAMMENFASSUNG + ALL-TIME-REKORDE
+   Persistenz per localStorage (nur diese Werte, keine Koordinaten).
+   In der Vorschau kann localStorage fehlen -> alles in try/catch.
+   ══════════════════════════════════════════════════════════════ */
+var LS_LAST = "tk_lastflight", LS_AT = "tk_alltime";
+var allTime = {spd:0, alt:0, dist:0, vario:0};
+var lastFlight = null;
+
+function lsGet(key){ try { return JSON.parse(localStorage.getItem(key)); } catch(e){ return null; } }
+function lsSet(key, val){ try { localStorage.setItem(key, JSON.stringify(val)); } catch(e){} }
+
+function finishFlight(){
+  // Nur echte Fluege zaehlen (mind. 20 s in der Luft oder spuerbar bewegt).
+  if (flightDurMs < 20000 && rec.spd < 12) { flightDurMs = 0; return; }
+  lastFlight = {
+    at: Date.now(), durS: Math.round(flightDurMs / 1000),
+    spd: Math.round(rec.spd), alt: Math.round(rec.alt),
+    dist: Math.round(rec.dist), vario: +rec.vario.toFixed(1),
+    prof: track.slice(-120)
+  };
+  lsSet(LS_LAST, lastFlight);
+  allTime.spd   = Math.max(allTime.spd,   rec.spd);
+  allTime.alt   = Math.max(allTime.alt,   rec.alt);
+  allTime.dist  = Math.max(allTime.dist,  rec.dist);
+  allTime.vario = Math.max(allTime.vario, rec.vario);
+  lsSet(LS_AT, allTime);
+  flightDurMs = 0;
+  renderStandbyStats();
+}
+
+function fmtAgo(ts){
+  var s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 90) return "gerade eben";
+  var m = Math.floor(s / 60); if (m < 90) return "vor " + m + " min";
+  var h = Math.floor(m / 60); if (h < 36) return "vor " + h + " h";
+  return "vor " + Math.floor(h / 24) + " Tagen";
+}
+function distStr(m){ return m < 1000 ? Math.round(m) + " m" : (m/1000).toFixed(2) + " km"; }
+
+function renderStandbyStats(){
+  // Letzter Flug
+  if (lastFlight){
+    var d = lastFlight, mm = Math.floor(d.durS/60), ss = String(d.durS%60).padStart(2,"0");
+    $("lfWhen").textContent = fmtAgo(d.at);
+    $("lfBody").innerHTML =
+      '<div class="mini-grid">' +
+        '<div class="mini"><div class="k">Flugzeit</div><div class="v">'+mm+':'+ss+'</div></div>' +
+        '<div class="mini"><div class="k">Top-Speed</div><div class="v" style="color:'+ramp(d.spd/CFG.rampSpeed)+'">'+d.spd+'<small>km/h</small></div></div>' +
+        '<div class="mini"><div class="k">Max Höhe</div><div class="v" style="color:'+ramp(d.alt/CFG.rampAlt)+'">'+d.alt+'<small>m</small></div></div>' +
+        '<div class="mini"><div class="k">Max Entfernung</div><div class="v" style="color:'+ramp(d.dist/CFG.rampDist)+'">'+distStr(d.dist)+'</div></div>' +
+      '</div>' +
+      '<canvas id="lfProfile"></canvas>';
+    drawProfile(d.prof);
+  }
+  // All-Time
+  var a = allTime;
+  setText($("atSpd"),  a.spd  ? String(Math.round(a.spd))  : "—");
+  setText($("atAlt"),  a.alt  ? String(Math.round(a.alt))  : "—");
+  setText($("atVar"),  a.vario? "+"+a.vario.toFixed(1)     : "—");
+  if (a.dist){ fmtDist(a.dist, $("atDist"), $("atDistU")); } else { setText($("atDist"),"—"); }
+  if (a.spd)  $("atSpd").style.color  = ramp(a.spd/CFG.rampSpeed);
+  if (a.alt)  $("atAlt").style.color  = ramp(a.alt/CFG.rampAlt);
+  if (a.dist) $("atDist").style.color = ramp(a.dist/CFG.rampDist);
+  if (a.vario)$("atVar").style.color  = "var(--good)";
+}
+
+function drawProfile(prof){
+  var c = $("lfProfile"); if (!c || !prof || prof.length < 2) return;
+  var r = Math.min(window.devicePixelRatio || 1, 2);
+  var W = c.clientWidth * r, H = c.clientHeight * r; c.width = W; c.height = H;
+  var g = c.getContext("2d");
+  var lo = Math.min.apply(null, prof), hi = Math.max.apply(null, prof);
+  if (hi - lo < 10){ var m=(hi+lo)/2; lo=m-5; hi=m+5; }
+  function px(i){ return (i/(prof.length-1))*W; }
+  function py(v){ return H - ((v-lo)/(hi-lo))*H*0.86 - H*0.07; }
+  g.beginPath(); g.moveTo(px(0), H);
+  for (var i=0;i<prof.length;i++) g.lineTo(px(i), py(prof[i]));
+  g.lineTo(px(prof.length-1), H); g.closePath();
+  var grd = g.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,"rgba(63,169,255,.30)"); grd.addColorStop(1,"rgba(63,169,255,0)");
+  g.fillStyle = grd; g.fill();
+  g.beginPath();
+  for (var j=0;j<prof.length;j++){ if(j) g.lineTo(px(j),py(prof[j])); else g.moveTo(px(j),py(prof[j])); }
+  g.strokeStyle = "#3FA9FF"; g.lineWidth = 2*r; g.lineJoin="round"; g.lineCap="round"; g.stroke();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   8 — START
    ══════════════════════════════════════════════════════════════ */
 $("brand").textContent = CFG.brand;
 
-/* Player und Chat. Twitch verlangt den parent-Parameter mit der
-   Domain, auf der eingebettet wird. */
-/* Twitch-Player nur laden, wenn die Ruheansicht sichtbar ist. Beim Wechsel
-   auf "live" wird das iframe entfernt -> im Hintergrund dekodiert kein Video
-   mehr, das war der groesste Ruckel-Verursacher. */
+/* Kunsthorizont: Nickleiter + Roll-Skala einmalig aufbauen */
+(function buildADI(){
+  var lad = $("adiLadder"), svgns = "http://www.w3.org/2000/svg";
+  [-30,-20,-10,10,20,30].forEach(function(deg){
+    var y = 100 - deg * ADI_PXDEG;   // Nase-hoch (deg>0) -> Linie nach oben
+    var half = (deg % 20 === 0) ? 26 : 15;
+    var ln = document.createElementNS(svgns,"line");
+    ln.setAttribute("class","lad");
+    ln.setAttribute("x1",100-half); ln.setAttribute("y1",y);
+    ln.setAttribute("x2",100+half); ln.setAttribute("y2",y);
+    lad.appendChild(ln);
+    if (deg % 20 === 0){
+      [ -1, 1 ].forEach(function(sgn){
+        var tx = document.createElementNS(svgns,"text");
+        tx.setAttribute("class","ladt");
+        tx.setAttribute("x",100 + sgn*(half+8)); tx.setAttribute("y",y+3);
+        tx.textContent = Math.abs(deg);
+        lad.appendChild(tx);
+      });
+    }
+  });
+  // Roll-Skala (fester Bogen) + beweglicher Zeiger
+  var sc = $("adiRollScale");
+  var arc = document.createElementNS(svgns,"path");
+  arc.setAttribute("class","rollarc");
+  arc.setAttribute("d","M 44 46 A 78 78 0 0 1 156 46");   // oberer Bogen
+  sc.appendChild(arc);
+  [-60,-45,-30,-20,-10,0,10,20,30,45,60].forEach(function(a){
+    var rad = (a-90)*Math.PI/180;
+    var x1 = 100 + Math.cos(rad)*78, y1 = 100 + Math.sin(rad)*78;
+    var len = (a % 30 === 0) ? 9 : 5;
+    var x2 = 100 + Math.cos(rad)*(78-len), y2 = 100 + Math.sin(rad)*(78-len);
+    var tk = document.createElementNS(svgns,"line");
+    tk.setAttribute("class","rolltick");
+    tk.setAttribute("x1",x1); tk.setAttribute("y1",y1);
+    tk.setAttribute("x2",x2); tk.setAttribute("y2",y2);
+    sc.appendChild(tk);
+  });
+  var ptr = document.createElementNS(svgns,"polygon");
+  ptr.setAttribute("id","adiRollPtr"); ptr.setAttribute("class","rollptr");
+  ptr.setAttribute("points","100,20 95,30 105,30");
+  sc.appendChild(ptr);
+})();
+
+/* Twitch-Player nur laden, wenn die Ruheansicht sichtbar ist. */
 var playerHost = location.hostname || "localhost";
 function managePlayer(v){
   var box = $("player"); if (!box) return;
@@ -882,47 +1153,31 @@ function managePlayer(v){
       f.setAttribute("title", "Twitch-Kanal");
       box.appendChild(f);
     }
-  } else if (box.firstChild){
-    box.innerHTML = "";
-  }
+  } else if (box.firstChild){ box.innerHTML = ""; }
 }
 managePlayer("standby");
 
-/* Bildergalerie: listet den images/-Ordner automatisch (GitHub-Contents-API,
-   Fallback images/manifest.json). Kacheln + Lightbox + Download. Bilder kommen
-   von der eigenen Pages-Domain (/images/...) -> Download funktioniert (same-origin). */
-(function gallery(){
-  var grid = $("galGrid");
-  if (!grid) return;
+/* Gespeicherte Werte laden */
+(function loadStats(){
+  var a = lsGet(LS_AT); if (a && typeof a === "object"){
+    allTime.spd=+a.spd||0; allTime.alt=+a.alt||0; allTime.dist=+a.dist||0; allTime.vario=+a.vario||0;
+  }
+  var lf = lsGet(LS_LAST); if (lf && typeof lf === "object" && lf.durS) lastFlight = lf;
+  renderStandbyStats();
+})();
+
+/* ── Diashow (Galerie) ──────────────────────────────────────── */
+(function slideshow(){
+  var show = $("show"), tr = $("showTrack"), dots = $("showDots"), empty = $("showEmpty");
+  if (!show) return;
   var dir = (CFG.imagesDir || "images").replace(/^\/+|\/+$/g, "");
   var rx = /\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i;
-  var items = [], cur = 0;
-
+  var items = [], pos = 0, timer = null, n = 0, hovering = false, animating = false;
   function srcFor(name){ return "/" + dir + "/" + encodeURIComponent(name); }
   var DL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
 
-  function build(names){
-    items = names;
-    if (!names.length){ grid.innerHTML = '<div class="gal-empty">Noch keine Bilder im images-Ordner.</div>'; return; }
-    grid.innerHTML = "";
-    names.forEach(function(name, i){
-      var tile = document.createElement("div");
-      tile.className = "gal-tile";
-      var img = document.createElement("img");
-      img.loading = "lazy"; img.src = srcFor(name); img.alt = name;
-      tile.appendChild(img);
-      var dl = document.createElement("a");
-      dl.className = "gal-dl"; dl.href = srcFor(name); dl.download = name;
-      dl.title = "Herunterladen"; dl.setAttribute("aria-label", "Herunterladen"); dl.innerHTML = DL;
-      dl.addEventListener("click", function(e){ e.stopPropagation(); });
-      tile.appendChild(dl);
-      tile.addEventListener("click", function(){ open(i); });
-      grid.appendChild(tile);
-    });
-  }
-
-  /* Lightbox */
-  var lb, lbImg, lbName, lbDl;
+  /* Lightbox (unbegrenzt vergroessert, Pfeile, Download) */
+  var lb, lbImg, lbName, lbDl, lbIdx = 0;
   function ensureLb(){
     if (lb) return;
     lb = document.createElement("div"); lb.className = "lb";
@@ -933,46 +1188,113 @@ managePlayer("standby");
       '<img class="lb-img" alt="">' +
       '<div class="lb-bar"><span class="lb-name"></span><a class="lb-dl" download>' + DL + ' Herunterladen</a></div>';
     document.body.appendChild(lb);
-    lbImg  = lb.querySelector(".lb-img");
-    lbName = lb.querySelector(".lb-name");
-    lbDl   = lb.querySelector(".lb-dl");
-    lb.querySelector(".lb-close").addEventListener("click", close);
-    lb.querySelector(".lb-prev").addEventListener("click", function(e){ e.stopPropagation(); step(-1); });
-    lb.querySelector(".lb-next").addEventListener("click", function(e){ e.stopPropagation(); step(1); });
-    lb.addEventListener("click", function(e){ if (e.target === lb) close(); });
+    lbImg = lb.querySelector(".lb-img"); lbName = lb.querySelector(".lb-name"); lbDl = lb.querySelector(".lb-dl");
+    lb.querySelector(".lb-close").addEventListener("click", closeLb);
+    lb.querySelector(".lb-prev").addEventListener("click", function(e){ e.stopPropagation(); stepLb(-1); });
+    lb.querySelector(".lb-next").addEventListener("click", function(e){ e.stopPropagation(); stepLb(1); });
+    lb.addEventListener("click", function(e){ if (e.target === lb) closeLb(); });
     document.addEventListener("keydown", function(e){
       if (!lb || !lb.classList.contains("open")) return;
-      if (e.key === "Escape") close();
-      else if (e.key === "ArrowLeft") step(-1);
-      else if (e.key === "ArrowRight") step(1);
+      if (e.key === "Escape") closeLb();
+      else if (e.key === "ArrowLeft") stepLb(-1);
+      else if (e.key === "ArrowRight") stepLb(1);
     });
   }
-  function show(){
-    var name = items[cur];
-    lbImg.src = srcFor(name); lbImg.alt = name;
-    lbName.textContent = name;
+  function showLb(){
+    var name = items[lbIdx];
+    lbImg.src = srcFor(name); lbImg.alt = name; lbName.textContent = name;
     lbDl.href = srcFor(name); lbDl.setAttribute("download", name);
   }
-  function open(i){ ensureLb(); cur = i; show(); lb.classList.add("open"); }
-  function close(){ if (lb) lb.classList.remove("open"); }
-  function step(d){ if (!items.length) return; cur = (cur + d + items.length) % items.length; show(); }
+  function openLb(i){ ensureLb(); lbIdx = i; showLb(); lb.classList.add("open"); stop(); }
+  function closeLb(){ if (lb) lb.classList.remove("open"); start(); }
+  function stepLb(d){ if (!items.length) return; lbIdx = (lbIdx + d + items.length) % items.length; showLb(); }
 
-  /* Liste laden: erst GitHub-API (oeffentliches Repo), sonst eigenes Manifest */
-  function fromApi(){
-    var repo = CFG.ghRepo;
-    if (!repo) return Promise.reject();
-    return fetch("https://api.github.com/repos/" + repo + "/contents/" + dir)
-      .then(function(r){ if (!r.ok) throw 0; return r.json(); })
-      .then(function(arr){
-        if (!Array.isArray(arr)) throw 0;
-        return arr.filter(function(f){ return f.type === "file" && rx.test(f.name); })
-                  .map(function(f){ return f.name; });
-      });
+  function renderDots(){
+    dots.innerHTML = "";
+    for (var i = 0; i < n; i++){
+      var it = document.createElement("i");
+      (function(idx){ it.addEventListener("click", function(){ goTo(idx); reset(); }); })(i);
+      dots.appendChild(it);
+    }
+    markDots();
   }
+  function markDots(){
+    var kids = dots.children, act = ((pos % n) + n) % n;
+    for (var i = 0; i < kids.length; i++) kids[i].classList.toggle("on", i === act);
+  }
+  function setX(animate){
+    tr.classList.toggle("anim", !!animate && !reduce);
+    tr.style.transform = "translateX(" + (-pos * 100) + "%)";
+  }
+  function goTo(i){ pos = i; setX(true); markDots(); }
+  function next(){ if (n <= 1) return; animating = true; pos += 1; setX(true); markDots(); }
+  function prev(){
+    if (n <= 1) return;
+    if (pos <= 0){                       // vom Anfang sauf das geklonte Ende springen
+      tr.classList.remove("anim"); pos = n; tr.style.transform = "translateX(" + (-pos*100) + "%)";
+      void tr.offsetWidth;               // reflow, damit der naechste Schritt animiert
+    }
+    animating = true; pos -= 1; setX(true); markDots();
+  }
+  tr.addEventListener("transitionend", function(){
+    animating = false;
+    if (pos >= n){                       // beim Klon angekommen -> ohne Animation auf 0
+      tr.classList.remove("anim"); pos = 0; tr.style.transform = "translateX(0)";
+    }
+    markDots();
+  });
+
+  function start(){ if (timer || n <= 1) return; timer = setInterval(function(){ if (!hovering && !document.hidden) next(); }, CFG.slideMs); }
+  function stop(){ if (timer){ clearInterval(timer); timer = null; } }
+  function reset(){ stop(); start(); }
+
+  function build(names){
+    items = names; n = names.length;
+    empty.style.display = n ? "none" : "";
+    if (!n){ empty.textContent = "Noch keine Bilder im images-Ordner."; return; }
+    tr.innerHTML = "";
+    function slide(name, i){
+      var s = document.createElement("div"); s.className = "show-slide";
+      var img = document.createElement("img");
+      img.loading = "lazy"; img.src = srcFor(name); img.alt = name; img.draggable = false;
+      s.appendChild(img);
+      s.addEventListener("click", function(){ if (!dragMoved) openLb(i % n); });
+      return s;
+    }
+    names.forEach(function(name, i){ tr.appendChild(slide(name, i)); });
+    if (n > 1) tr.appendChild(slide(names[0], 0));   // Klon fuer nahtlosen Loop
+    pos = 0; setX(false); renderDots(); start();
+  }
+
+  /* Wischen per Touch/Maus */
+  var dragX = 0, dragging = false, dragMoved = false;
+  show.addEventListener("pointerdown", function(e){ dragging = true; dragMoved = false; dragX = e.clientX; hovering = true; });
+  show.addEventListener("pointermove", function(e){ if (dragging && Math.abs(e.clientX - dragX) > 8) dragMoved = true; });
+  window.addEventListener("pointerup", function(e){
+    if (!dragging) return; dragging = false;
+    var dx = e.clientX - dragX;
+    if (dx < -40){ next(); reset(); } else if (dx > 40){ prev(); reset(); }
+    setTimeout(function(){ hovering = false; }, 50);
+  });
+  show.addEventListener("mouseenter", function(){ hovering = true; });
+  show.addEventListener("mouseleave", function(){ hovering = false; });
+  $("showPrev").addEventListener("click", function(){ prev(); reset(); });
+  $("showNext").addEventListener("click", function(){ next(); reset(); });
+
+  /* Bilderliste laden: erst eigenes Manifest, sonst GitHub-API */
   function fromManifest(){
     return fetch("/" + dir + "/manifest.json", { cache: "no-cache" })
       .then(function(r){ if (!r.ok) throw 0; return r.json(); })
-      .then(function(a){ return (a || []).filter(function(n){ return rx.test(n); }); });
+      .then(function(a){ return (a || []).filter(function(nm){ return rx.test(nm); }); });
+  }
+  function fromApi(){
+    if (!CFG.ghRepo) return Promise.reject();
+    return fetch("https://api.github.com/repos/" + CFG.ghRepo + "/contents/" + dir)
+      .then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(arr){
+        if (!Array.isArray(arr)) throw 0;
+        return arr.filter(function(f){ return f.type === "file" && rx.test(f.name); }).map(function(f){ return f.name; });
+      });
   }
   fromManifest().catch(fromApi).then(function(names){
     names.sort(function(a, b){ return a.localeCompare(b, "de", { numeric: true }); });
@@ -980,7 +1302,7 @@ managePlayer("standby");
   }).catch(function(){ build([]); });
 })();
 
-/* Kompass-Teilung. An N/O/S/W steht der Buchstabe, dort kein Strich. */
+/* Kompass-Teilung */
 (function compass(){
   var g = $("ticks");
   for (var a = 0; a < 360; a += 15){
@@ -996,32 +1318,9 @@ managePlayer("standby");
   }
 })();
 
-window.addEventListener("resize", sizeGraph);
+window.addEventListener("resize", function(){ sizeGraph(); if (view === "standby" && lastFlight) drawProfile(lastFlight.prof); });
 
-/* Eigener Takt: laeuft auch weiter, wenn der Tab im Hintergrund ist
-   und requestAnimationFrame pausiert. */
 setInterval(applyState, 400);
-
-/* Dynamische Akzentfarbe: driftet zwischen Orange, Gruen und Lila, schneller
-   je schneller du fliegst. Faerbt Ueberschriften, Kanten, Aura und Radar. */
-var ACCENT_COLS = [[255,122,31],[47,208,122],[145,70,255]];   // orange, gruen, lila
-var accentPhase = 0, accentAt = performance.now();
-function accentTick(){
-  var now = performance.now(), dt = Math.min(0.5, (now - accentAt) / 1000); accentAt = now;
-  var sp = (view === "live" && cur.spd) ? cur.spd : 0;
-  accentPhase = (accentPhase + dt * (0.14 + sp * 0.004)) % 3;
-  var seg = Math.floor(accentPhase), tt = accentPhase - seg;
-  var a = ACCENT_COLS[seg], b = ACCENT_COLS[(seg + 1) % 3];
-  var r = Math.round(a[0] + (b[0] - a[0]) * tt),
-      g = Math.round(a[1] + (b[1] - a[1]) * tt),
-      bl = Math.round(a[2] + (b[2] - a[2]) * tt);
-  if (r !== accentRGB[0] || g !== accentRGB[1] || bl !== accentRGB[2]){
-    accentRGB = [r, g, bl];
-    document.documentElement.style.setProperty("--accent", "rgb(" + r + "," + g + "," + bl + ")");
-  }
-}
-accentTick();
-setInterval(accentTick, 90);
 
 applyState();
 connect();
