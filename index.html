@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -42,7 +42,7 @@ body{
   margin:0;padding:0 0 70px;min-height:100vh;
 }
 /* Inhalt in voller Breite, aber mit ruhigen Raendern statt schmaler Saeule. */
-.wrap{max-width:1340px;margin:0 auto;padding:0 clamp(18px,4.5vw,64px)}
+.wrap{max-width:none;margin:0 auto;padding:0 clamp(18px,4vw,64px)}
 .bleed{margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);width:100vw}
 .ink{text-shadow:-2px 0 var(--void),2px 0 var(--void),0 -2px var(--void),0 2px var(--void)}
 
@@ -52,7 +52,7 @@ body.is-live    #live{display:block}
 
 header{border-bottom:1px solid var(--edge-soft);
   background:linear-gradient(180deg,rgba(13,22,34,.75) 0%,rgba(10,18,28,.28) 70%,transparent 100%)}
-.hwrap{max-width:1340px;margin:0 auto;padding:20px clamp(18px,4.5vw,64px) 18px;
+.hwrap{max-width:none;margin:0 auto;padding:20px clamp(18px,4vw,64px) 18px;
   display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .brand{font-size:26px;font-weight:700;font-stretch:75%;
        letter-spacing:.24em;text-transform:uppercase;color:var(--white);
@@ -67,7 +67,7 @@ header{border-bottom:1px solid var(--edge-soft);
 .lamp.on{background:rgba(51,214,138,.12);border-color:var(--good);color:var(--good)}
 .lamp.wait{background:rgba(255,194,75,.12);border-color:var(--warn);color:var(--warn)}
 .lamp.lost{background:rgba(255,77,87,.14);border-color:var(--crit);color:var(--crit)}
-.clock{margin-left:auto;font-size:15px;font-weight:600;color:var(--ash)}
+.clock{margin-left:14px;font-size:15px;font-weight:600;color:var(--ash)}
 .clock b{color:var(--white);font-size:19px}
 body.is-standby .clock{display:none}
 
@@ -242,13 +242,13 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
 
 /* ── Diashow (Galerie) ──────────────────────────────────────── */
 .show{position:relative;overflow:hidden;border:1px solid var(--edge);border-radius:8px;
-  background:var(--deck);aspect-ratio:16/9;max-height:72vh;
+  background:var(--deck);height:clamp(300px,52vh,560px);
   -webkit-user-select:none;user-select:none}
 .show-track{display:flex;height:100%;will-change:transform}
 .show-track.anim{transition:transform .62s cubic-bezier(.4,0,.2,1)}
 .show-slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;
   justify-content:center;background:var(--void-2)}
-.show-slide img{width:100%;height:100%;object-fit:cover;
+.show-slide img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;
   cursor:zoom-in;display:block;pointer-events:none}
 .show-arw{position:absolute;top:50%;transform:translateY(-50%);z-index:3;
   width:52px;height:52px;border-radius:12px;border:1px solid var(--edge);
@@ -329,6 +329,35 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
   .snooze b{opacity:.7}
   .show-track.anim{transition:none}
 }
+
+.help-btn{margin-left:auto;width:34px;height:34px;flex:0 0 auto;border-radius:50%;
+  border:1px solid var(--edge);background:var(--deck);color:var(--accent);cursor:pointer;
+  font-family:inherit;font-size:17px;font-weight:700;line-height:1;transition:.15s}
+.help-btn:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
+#siteHelp{position:fixed;inset:0;z-index:300;display:none;padding:clamp(14px,4vw,48px);
+  background:rgba(4,7,11,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  align-items:flex-start;justify-content:center;overflow:auto}
+#siteHelp.open{display:flex}
+.sh-box{width:min(1000px,100%);background:linear-gradient(180deg,#0C1622,#080E16);
+  border:1px solid var(--edge);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
+.sh-head{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--edge);
+  position:sticky;top:0;background:#0C1622;z-index:1}
+.sh-head h2{font-size:18px;font-weight:700;font-stretch:75%;letter-spacing:.18em;text-transform:uppercase;color:var(--white)}
+.sh-head .sub{font-size:13px;color:var(--ash);font-weight:600}
+.sh-close{margin-left:auto;width:34px;height:34px;border-radius:8px;border:1px solid var(--edge);
+  background:var(--deck);color:var(--white);cursor:pointer;font-size:15px;font-family:inherit;transition:.15s}
+.sh-close:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
+.sh-body{padding:22px 24px 26px;display:grid;grid-template-columns:1fr 1fr;gap:20px 30px}
+@media(max-width:720px){.sh-body{grid-template-columns:1fr}}
+.sh-card h3{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:7px}
+.sh-card p{font-size:14px;color:var(--ash);line-height:1.6}
+.sh-card p b{color:var(--white);font-weight:700}
+.sh-legend{grid-column:1/-1;border-top:1px solid var(--edge-soft);padding-top:16px;display:flex;
+  flex-wrap:wrap;gap:10px 18px;align-items:center}
+.sh-legend .t{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;color:var(--ash)}
+.sh-chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ash)}
+.sh-chip i{width:22px;height:9px;border-radius:2px;display:inline-block}
 </style>
 </head>
 <body class="is-standby">
@@ -338,32 +367,55 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
     <span class="brand" id="brand">TANGO KILO</span>
     <span class="lamp" id="lamp"><i></i><span id="lampText">offline</span></span>
     <span class="snooze" id="snooze" aria-hidden="true">😴<b>z</b><b>z</b><b>z</b></span>
-    <span class="clock">FLUGZEIT <b id="ft">0:00</b></span>
+    <button class="help-btn" id="siteHelpBtn" aria-label="Help">?</button>
+    <span class="clock">FLIGHT TIME <b id="ft">0:00</b></span>
   </div>
 </header>
+
+<div id="siteHelp" role="dialog" aria-modal="true" aria-label="Help">
+  <div class="sh-box">
+    <div class="sh-head"><h2>Help</h2><span class="sub">What you're looking at</span>
+      <button class="sh-close" id="shClose" aria-label="Close">✕</button></div>
+    <div class="sh-body">
+      <div class="sh-card"><h3>Live view</h3><p>While the aircraft is flying, the page shows <b>live telemetry</b>: speed, distance and altitude up top, a vario bar, a compass and an artificial horizon, plus battery, current, consumption and remaining flight time. It switches here automatically the moment a flight starts.</p></div>
+      <div class="sh-card"><h3>Altitude profile &amp; radar</h3><p>The <b>altitude profile</b> tracks height over the last minutes. The <b>radar</b> shows the aircraft <b>relative to the start point only</b> — no real coordinates are ever exposed.</p></div>
+      <div class="sh-card"><h3>Records &amp; last flight</h3><p>When nothing is flying you see the <b>all-time records</b> across every flight and a summary of the <b>last flight</b> with its height profile. These values are the same for everyone.</p></div>
+      <div class="sh-card"><h3>Gallery</h3><p>A slideshow of FPV photos runs at the bottom. <b>Click an image</b> to enlarge it; use the arrows or dots to move through, or swipe on a phone.</p></div>
+      <div class="sh-card"><h3>Flight Path Viewer</h3><p>Under <b>Tools</b>, upload your own EdgeTX log (CSV) to see it as an interactive <b>3D map</b> with terrain and attitude. It runs entirely in your browser — <b>nothing is uploaded or stored</b>.</p></div>
+      <div class="sh-card"><h3>Channels</h3><p><b>Twitch</b> is where the flights run live; <b>YouTube</b> has flights to rewatch. Both are linked under Channels.</p></div>
+      <div class="sh-legend"><span class="t">Value colors</span>
+        <span class="sh-chip"><i style="background:linear-gradient(90deg,#3FA9FF,#33D68A,#FFC24B,#FF4D57)"></i>performance — cool to hot as the value climbs</span>
+        <span class="sh-chip"><i style="background:#33D68A"></i>good</span>
+        <span class="sh-chip"><i style="background:#FFC24B"></i>warning</span>
+        <span class="sh-chip"><i style="background:#FF4D57"></i>critical</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <div class="wrap">
 <div id="standby">
   <div class="standby-hero">
     <div class="spine"></div>
     <div>
-      <h1>Gerade nicht in der Luft</h1>
-      <div class="sub">Sobald der Flieger startet, springt die Seite automatisch auf die Live-Telemetrie um. Bis dahin: der letzte Flug und die Bestwerte.</div>
+      <h1>Currently not flying</h1>
+      <div class="sub">As soon as the aircraft takes off, this page switches to live telemetry automatically. Until then: the last flight and the all-time records.</div>
     </div>
   </div>
 
   <div class="rest-grid">
     <div class="card" id="lfCard">
-      <div class="card-cap">Letzter Flug <span id="lfWhen"></span></div>
-      <div id="lfBody"><div class="card-empty">Noch kein Flug aufgezeichnet. Nach der ersten Landung erscheint hier die Zusammenfassung.</div></div>
+      <div class="card-cap">Last flight <span id="lfWhen"></span></div>
+      <div id="lfBody"><div class="card-empty">No flight recorded yet. After the first landing, the summary appears here.</div></div>
     </div>
     <div class="card" id="atCard">
-      <div class="card-cap">Rekorde · alle Flüge</div>
+      <div class="card-cap">Records · all flights</div>
       <div class="at-list" id="atBody">
-        <div class="at-row"><span class="k">Top-Speed</span><span class="v"><span id="atSpd">—</span><small>km/h</small></span></div>
-        <div class="at-row"><span class="k">Max Höhe</span><span class="v"><span id="atAlt">—</span><small>m</small></span></div>
-        <div class="at-row"><span class="k">Max Entfernung</span><span class="v"><span id="atDist">—</span><small id="atDistU">m</small></span></div>
-        <div class="at-row"><span class="k">Bestes Steigen</span><span class="v"><span id="atVar">—</span><small>m/s</small></span></div>
+        <div class="at-row"><span class="k">Top speed</span><span class="v"><span id="atSpd">—</span><small>km/h</small></span></div>
+        <div class="at-row"><span class="k">Max altitude</span><span class="v"><span id="atAlt">—</span><small>m</small></span></div>
+        <div class="at-row"><span class="k">Max distance</span><span class="v"><span id="atDist">—</span><small id="atDistU">m</small></span></div>
+        <div class="at-row"><span class="k">Best climb</span><span class="v"><span id="atVar">—</span><small>m/s</small></span></div>
       </div>
     </div>
   </div>
@@ -382,11 +434,11 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
         </div>
         <div class="giant sub">
           <div class="v ink"><span id="dist">—</span><span class="u" id="distU">m</span></div>
-          <div class="k">Entfernung</div>
+          <div class="k">Distance</div>
         </div>
         <div class="giant sub">
           <div class="v ink"><span id="alt">—</span><span class="u">m</span></div>
-          <div class="k">Höhe</div>
+          <div class="k">Altitude</div>
         </div>
       </div>
     </div>
@@ -399,7 +451,7 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
 
     <div class="inst">
       <div class="rose">
-        <div class="inst-cap">Kurs</div>
+        <div class="inst-cap">Heading</div>
         <svg viewBox="0 0 200 200" aria-label="Kompass mit Kurs und Heimatrichtung">
           <circle class="ring" cx="100" cy="100" r="86"/>
           <g id="ticks"></g>
@@ -412,14 +464,14 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
           <circle class="hub" cx="100" cy="100" r="7"/>
         </svg>
         <div class="inst-key">
-          <span><i style="background:var(--white)"></i>Kurs</span>
-          <span><i style="background:var(--accent)"></i>Heim</span>
+          <span><i style="background:var(--white)"></i>Course</span>
+          <span><i style="background:var(--accent)"></i>Home</span>
         </div>
       </div>
 
       <div class="adi" id="adi">
-        <div class="inst-cap">Lage</div>
-        <svg viewBox="0 0 200 200" aria-label="Künstlicher Horizont">
+        <div class="inst-cap">Attitude</div>
+        <svg viewBox="0 0 200 200" aria-label="Artificial horizon">
           <defs><clipPath id="adiClip"><circle cx="100" cy="100" r="86"/></clipPath></defs>
           <g clip-path="url(#adiClip)">
             <g id="adiRoll">
@@ -436,78 +488,78 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
           <path class="plane" d="M62,100 L86,100 M114,100 L138,100 M100,112 l0,0"/>
           <circle class="planedot" cx="100" cy="100" r="3"/>
           <circle class="ring" cx="100" cy="100" r="86"/>
-          <text id="adiNoData" class="nodatatext" x="100" y="104" style="display:none">keine Lagedaten</text>
+          <text id="adiNoData" class="nodatatext" x="100" y="104" style="display:none">no attitude data</text>
         </svg>
       </div>
     </div>
   </div>
 
   <div class="bar">
-    <div class="slot"><div class="k">Kurs</div>
+    <div class="slot"><div class="k">Heading</div>
       <div class="v"><span id="hdg">—</span><small>°</small></div></div>
-    <div class="slot" id="sSats"><div class="k">Satelliten</div>
+    <div class="slot" id="sSats"><div class="k">Satellites</div>
       <div class="v"><span id="sats">—</span></div></div>
-    <div class="slot"><div class="k">Akku</div>
+    <div class="slot"><div class="k">Battery</div>
       <div class="v"><span id="volt">—</span><small>V</small><small id="cells"></small></div>
       <div id="tape"></div></div>
-    <div class="slot"><div class="k">Strom</div>
+    <div class="slot"><div class="k">Current</div>
       <div class="v"><span id="amp">—</span><small>A</small></div></div>
-    <div class="slot"><div class="k">Verbrauch</div>
+    <div class="slot"><div class="k">Consumption</div>
       <div class="v"><span id="mah">—</span><small>mAh</small></div></div>
-    <div class="slot" id="sRest"><div class="k">Rest</div>
+    <div class="slot" id="sRest"><div class="k">Remaining</div>
       <div class="v"><span id="rest">—</span><small>min</small></div></div>
   </div>
 
   <div class="panels">
     <div>
-      <div class="panel-cap">Höhenverlauf</div>
+      <div class="panel-cap">Altitude profile</div>
       <canvas id="graph"></canvas>
       <div class="records">
-        <div class="rec"><div class="k">Max Speed</div>
+        <div class="rec"><div class="k">Max speed</div>
           <div class="v"><span id="rSpd">—</span><small>km/h</small></div></div>
-        <div class="rec"><div class="k">Max Höhe</div>
+        <div class="rec"><div class="k">Max altitude</div>
           <div class="v"><span id="rAlt">—</span><small>m</small></div></div>
-        <div class="rec"><div class="k">Max Entfernung</div>
+        <div class="rec"><div class="k">Max distance</div>
           <div class="v"><span id="rDist">—</span><small id="rDistU">m</small></div></div>
-        <div class="rec"><div class="k">Bestes Steigen</div>
+        <div class="rec"><div class="k">Best climb</div>
           <div class="v"><span id="rVar">—</span><small>m/s</small></div></div>
       </div>
     </div>
     <div>
-      <div class="panel-cap">Radar · relativ zum Start</div>
+      <div class="panel-cap">Radar · relative to start</div>
       <canvas id="radar"></canvas>
     </div>
   </div>
 </div>
 
 <section>
-  <h2>Kanäle</h2>
+  <h2>Channels</h2>
   <div class="links">
     <a href="https://www.twitch.tv/tommtee" target="_blank" rel="noopener noreferrer">
-      <b>Twitch</b><span>tommtee — hier laufen die Flüge live</span></a>
+      <b>Twitch</b><span>tommtee — live flights here</span></a>
     <a href="https://www.youtube.com/@tiefseetaucherr" target="_blank" rel="noopener noreferrer">
-      <b>YouTube</b><span>@tiefseetaucherr — Flüge zum Nachschauen</span></a>
+      <b>YouTube</b><span>@tiefseetaucherr — flights to rewatch</span></a>
   </div>
 </section>
 
 <section>
-  <h2>Werkzeuge</h2>
+  <h2>Tools</h2>
   <div class="links">
     <a href="/flugpfad.html">
-      <b>Flugpfad-Viewer</b><span>EdgeTX-Log (CSV) hochladen → 3D-Flugpfad direkt im Browser. Nichts wird gespeichert oder hochgeladen.</span></a>
+      <b>Flight Path Viewer</b><span>Upload an EdgeTX log (CSV) → 3D flight path right in your browser. Nothing is stored or uploaded.</span></a>
   </div>
 </section>
 
 <section class="gallery">
-  <h2>Galerie</h2>
+  <h2>Gallery</h2>
   <div class="show" id="show">
     <div class="show-track" id="showTrack"></div>
-    <button class="show-arw show-prev" id="showPrev" aria-label="Vorheriges">
+    <button class="show-arw show-prev" id="showPrev" aria-label="Previous">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-    <button class="show-arw show-next" id="showNext" aria-label="Nächstes">
+    <button class="show-arw show-next" id="showNext" aria-label="Next">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
     <div class="show-dots" id="showDots"></div>
-    <div class="show-empty" id="showEmpty">Galerie wird geladen …</div>
+    <div class="show-empty" id="showEmpty">Loading gallery …</div>
   </div>
 </section>
 </div><!-- /.wrap -->
@@ -527,7 +579,7 @@ var CFG = {
   ghRepo:   "tommsehurra/tangokilo",   // Repo mit dem images/-Ordner fuer die Galerie
   imagesDir:"images",                  // Ordnername im Repo
 
-  gpsHold:  6,      // s ohne GPS-Frame     -> "kein Signal", Werte einfrieren
+  gpsHold:  6,      // s ohne GPS-Frame     -> "no signal", Werte einfrieren
   linkHold: 12,     // s ohne CRSF-Frame    -> Funke ab, zurueck zur Ruheansicht
   msgDead:  4000,   // ms ohne WS-Nachricht -> Laptop weg, zurueck zur Ruheansicht
 
@@ -636,9 +688,9 @@ function applyState(){
   if (!online){
     lamp.className = "lamp";      $("lampText").textContent = "offline";
   } else if (isStale || !seenGps){
-    lamp.className = "lamp lost"; $("lampText").textContent = "kein Signal";
+    lamp.className = "lamp lost"; $("lampText").textContent = "no signal";
   } else if (snap && !snap.fix){
-    lamp.className = "lamp wait"; $("lampText").textContent = "GPS sucht";
+    lamp.className = "lamp wait"; $("lampText").textContent = "GPS searching";
   } else {
     lamp.className = "lamp on";   $("lampText").textContent = "live";
   }
@@ -1048,10 +1100,10 @@ function finishFlight(){
 
 function fmtAgo(ts){
   var s = Math.floor((Date.now() - ts) / 1000);
-  if (s < 90) return "gerade eben";
-  var m = Math.floor(s / 60); if (m < 90) return "vor " + m + " min";
-  var h = Math.floor(m / 60); if (h < 36) return "vor " + h + " h";
-  return "vor " + Math.floor(h / 24) + " Tagen";
+  if (s < 90) return "just now";
+  var m = Math.floor(s / 60); if (m < 90) return m + " min ago";
+  var h = Math.floor(m / 60); if (h < 36) return h + " h ago";
+  return Math.floor(h / 24) + " days ago";
 }
 function distStr(m){ return m < 1000 ? Math.round(m) + " m" : (m/1000).toFixed(2) + " km"; }
 
@@ -1062,10 +1114,10 @@ function renderStandbyStats(){
     $("lfWhen").textContent = fmtAgo(d.at);
     $("lfBody").innerHTML =
       '<div class="mini-grid">' +
-        '<div class="mini"><div class="k">Flugzeit</div><div class="v">'+mm+':'+ss+'</div></div>' +
-        '<div class="mini"><div class="k">Top-Speed</div><div class="v" style="color:'+ramp(d.spd/CFG.rampSpeed)+'">'+d.spd+'<small>km/h</small></div></div>' +
-        '<div class="mini"><div class="k">Max Höhe</div><div class="v" style="color:'+ramp(d.alt/CFG.rampAlt)+'">'+d.alt+'<small>m</small></div></div>' +
-        '<div class="mini"><div class="k">Max Entfernung</div><div class="v" style="color:'+ramp(d.dist/CFG.rampDist)+'">'+distStr(d.dist)+'</div></div>' +
+        '<div class="mini"><div class="k">Flight time</div><div class="v">'+mm+':'+ss+'</div></div>' +
+        '<div class="mini"><div class="k">Top speed</div><div class="v" style="color:'+ramp(d.spd/CFG.rampSpeed)+'">'+d.spd+'<small>km/h</small></div></div>' +
+        '<div class="mini"><div class="k">Max altitude</div><div class="v" style="color:'+ramp(d.alt/CFG.rampAlt)+'">'+d.alt+'<small>m</small></div></div>' +
+        '<div class="mini"><div class="k">Max distance</div><div class="v" style="color:'+ramp(d.dist/CFG.rampDist)+'">'+distStr(d.dist)+'</div></div>' +
       '</div>' +
       '<canvas id="lfProfile"></canvas>';
     drawProfile(d.prof);
@@ -1194,11 +1246,11 @@ managePlayer("standby");
     if (lb) return;
     lb = document.createElement("div"); lb.className = "lb";
     lb.innerHTML =
-      '<button class="lb-btn lb-close" title="Schliessen" aria-label="Schliessen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-      '<button class="lb-btn lb-prev" aria-label="Vorheriges"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>' +
+      '<button class="lb-btn lb-close" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+      '<button class="lb-btn lb-prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>' +
       '<button class="lb-btn lb-next" aria-label="Naechstes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>' +
       '<img class="lb-img" alt="">' +
-      '<div class="lb-bar"><span class="lb-name"></span><a class="lb-dl" download>' + DL + ' Herunterladen</a></div>';
+      '<div class="lb-bar"><span class="lb-name"></span><a class="lb-dl" download>' + DL + ' Download</a></div>';
     document.body.appendChild(lb);
     lbImg = lb.querySelector(".lb-img"); lbName = lb.querySelector(".lb-name"); lbDl = lb.querySelector(".lb-dl");
     lb.querySelector(".lb-close").addEventListener("click", closeLb);
@@ -1263,7 +1315,7 @@ managePlayer("standby");
   function build(names){
     items = names; n = names.length;
     empty.style.display = n ? "none" : "";
-    if (!n){ empty.textContent = "Noch keine Bilder im images-Ordner."; return; }
+    if (!n){ empty.textContent = "No images in the images folder yet."; return; }
     tr.innerHTML = "";
     function slide(name, i){
       var s = document.createElement("div"); s.className = "show-slide";
@@ -1337,6 +1389,17 @@ setInterval(applyState, 400);
 applyState();
 connect();
 requestAnimationFrame(frame);
+})();
+</script>
+<script>
+(function(){
+  var o=document.getElementById("siteHelp"), b=document.getElementById("siteHelpBtn"), c=document.getElementById("shClose");
+  function open(){ if(o) o.classList.add("open"); }
+  function close(){ if(o) o.classList.remove("open"); }
+  if(b) b.addEventListener("click", open);
+  if(c) c.addEventListener("click", close);
+  if(o) o.addEventListener("click", function(e){ if(e.target===o) close(); });
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") close(); });
 })();
 </script>
 </body>
