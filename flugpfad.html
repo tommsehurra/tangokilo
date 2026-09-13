@@ -100,16 +100,6 @@ body.viewing #intro{display:none}
   <p class="note">Das ist dieselbe Auswertung wie im Flugspur-Desktopprogramm — nur direkt im Browser. Für die Karte lädt der Viewer beim ersten Öffnen Kartenmaterial aus dem Internet (OpenStreetMap/OpenTopoMap, Satellitenbild). Kennzahlen, Lageanzeige und Flugband funktionieren auch ohne Kartenverbindung.</p>
 </div>
 
-<div id="viewer">
-  <div class="vbar">
-    <span class="vb-brand">Flugspur</span>
-    <span class="vb-file" id="vfile"></span>
-    <span class="sp"></span>
-    <button class="btn" id="again">Neue Datei</button>
-  </div>
-  <iframe id="frame" title="Flugpfad" allow="fullscreen"></iframe>
-</div>
-
 <div id="busy"><div class="spin"></div><div id="busyText">Log wird ausgewertet …</div></div>
 
 <script src="/flugspur_parse.js"></script>
@@ -131,17 +121,31 @@ function getTemplate(){
   }).then(function(t){ tplCache=t; return t; });
 }
 
+// "Neue Datei"-Knopf, der in den Werkzeugkopf des Reports eingehaengt wird.
+// Der schliessende Script-Tag ist im String mit Backslash entschaerft.
+var BACK_SNIPPET =
+  '<script>(function(){function add(){var t=document.getElementById("tools");' +
+  'var b=document.createElement("button");b.type="button";b.textContent="\\u2190 Neue Datei";' +
+  'b.title="Anderes Log laden";b.style.cssText="font:inherit;cursor:pointer;color:#EAF2FA;' +
+  'background:rgba(63,169,255,.14);border:1px solid #3FA9FF;border-radius:6px;padding:6px 12px;' +
+  'letter-spacing:.04em;text-transform:uppercase;font-size:12px;font-weight:700;margin-right:6px";' +
+  'b.onmouseenter=function(){b.style.background="#3FA9FF";b.style.color="#06121f"};' +
+  'b.onmouseleave=function(){b.style.background="rgba(63,169,255,.14)";b.style.color="#EAF2FA"};' +
+  'b.onclick=function(){location.href="/flugpfad.html"};' +
+  'if(t){t.insertBefore(b,t.firstChild);}else{b.style.cssText+=";position:fixed;top:10px;left:10px;z-index:99999";document.body.appendChild(b);}}' +
+  'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",add);}else{add();}})();<\/script>';
+
 function render(payload, fname){
   busy(true, "Karte wird aufgebaut …");
   getTemplate().then(function(tpl){
-    var json = JSON.stringify(payload).replace(/</g, "\\u003c");   // schuetzt gegen frueh schliessenden Script-Tag
+    var json = JSON.stringify(payload).replace(/</g, "\\u003c");   // gegen frueh schliessenden Script-Tag
     var html = tpl.split('"__DATA__"').join(json);
-    var frame = $("frame");
-    frame.srcdoc = html;
-    $("vfile").textContent = fname ? fname : "Demo-Flug";
-    document.body.classList.add("viewing");
-    // kurze Verzögerung, bis das iframe zu rendern beginnt
-    setTimeout(function(){ busy(false); }, 400);
+    // Report wird die GANZE Seite (echte Domain-Herkunft -> Kartenkacheln laden;
+    // kein zweiter Kopfbalken). Zurueck-Knopf in den Werkzeugkopf einhaengen.
+    var bi = html.lastIndexOf("</body>");
+    if (bi >= 0) html = html.slice(0, bi) + BACK_SNIPPET + html.slice(bi);
+    document.open(); document.write(html); document.close();
+    return;
   }).catch(function(e){
     busy(false);
     showErr("Die Kartenvorlage konnte nicht geladen werden:\n"+e.message+
@@ -200,18 +204,11 @@ function demoCSV(){
   return rows.join("\n");
 }
 
-function reset(){
-  document.body.classList.remove("viewing");
-  $("frame").srcdoc = "";
-  showErr("");
-}
-
 var drop=$("drop"), fileInput=$("file");
 $("pick").addEventListener("click", function(e){ e.stopPropagation(); fileInput.click(); });
 drop.addEventListener("click", function(){ fileInput.click(); });
 fileInput.addEventListener("change", function(){ readFile(fileInput.files[0]); fileInput.value=""; });
 $("demo").addEventListener("click", function(e){ e.stopPropagation(); process(demoCSV(), null); });
-$("again").addEventListener("click", reset);
 ["dragenter","dragover"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); drop.classList.add("hot"); }); });
 ["dragleave","drop"].forEach(function(ev){ drop.addEventListener(ev,function(e){ e.preventDefault(); if(ev==="dragleave"&&e.target!==drop)return; drop.classList.remove("hot"); }); });
 drop.addEventListener("drop", function(e){ var f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) readFile(f); });
