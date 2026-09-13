@@ -14,7 +14,7 @@
   --bg:#06090B; --panel:rgba(8,12,15,.88); --panel-solid:#0A0E12; --sunk:#0D1319;
   --hair:rgba(255,255,255,.09); --hair-strong:rgba(255,255,255,.18);
   --text:#E6EDF2; --dim:#7C8A95; --dimmer:#4E5A63;
-  --amber:#F0A400; --bad:#FF4B3E; --good:#4ED6A0; --cyan:#4FC3F7;
+  --amber:#3FA9FF; --bad:#FF4B3E; --good:#4ED6A0; --cyan:#4FC3F7;
   --label:"Barlow Condensed",'Arial Narrow',system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
@@ -89,10 +89,10 @@ input[type=number]{-moz-appearance:textfield}
   letter-spacing:0;text-transform:none;line-height:1;padding:0;
   width:calc(28px * var(--ui));height:calc(28px * var(--ui));min-width:0;
   display:grid;place-items:center;border-radius:50%;margin-left:2px}
-.helpbtn:hover{border:0;color:#FFB61F;background:rgba(240,164,0,.14)}
-.helpbtn[aria-expanded="true"]{border:0;color:var(--amber);background:rgba(240,164,0,.2)}
+.helpbtn:hover{border:0;color:#3FA9FF;background:rgba(63,169,255,.14)}
+.helpbtn[aria-expanded="true"]{border:0;color:var(--amber);background:rgba(63,169,255,.2)}
 #frag{display:none;align-self:center;margin-left:12px;padding:3px 9px;border-radius:3px;
-  background:rgba(240,164,0,.13);border:1px solid rgba(240,164,0,.45);color:var(--amber);
+  background:rgba(63,169,255,.13);border:1px solid rgba(63,169,255,.45);color:var(--amber);
   font-family:var(--label);font-size:calc(11px * var(--ui));letter-spacing:.13em;text-transform:uppercase;
   white-space:nowrap;cursor:help}
 
@@ -120,7 +120,7 @@ input[type=number]{-moz-appearance:textfield}
   text-transform:uppercase;color:var(--dimmer);border:1px solid var(--hair);border-radius:2px;
   padding:1px 7px}
 .pop .tgl[aria-pressed="true"]::after{content:"An";color:var(--amber);
-  border-color:rgba(240,164,0,.5);background:rgba(240,164,0,.1)}
+  border-color:rgba(63,169,255,.5);background:rgba(63,169,255,.1)}
 .pop .hint{font-size:calc(11px * var(--ui));color:var(--dim);line-height:1.5;padding:2px 10px 6px}
 .pop .hint b{color:var(--amber);font-weight:500}
 
@@ -146,8 +146,8 @@ input[type=number]{-moz-appearance:textfield}
 .sldreset{flex:none;width:calc(26px * var(--ui));height:calc(26px * var(--ui));padding:0;display:grid;place-items:center;
   border:1px solid var(--hair);border-radius:3px;background:transparent;color:var(--dim);
   cursor:pointer;line-height:0}
-.sldreset:hover{color:var(--amber);border-color:rgba(240,164,0,.5);background:rgba(240,164,0,.08)}
-.sldreset:active{background:rgba(240,164,0,.16)}
+.sldreset:hover{color:var(--amber);border-color:rgba(63,169,255,.5);background:rgba(63,169,255,.08)}
+.sldreset:active{background:rgba(63,169,255,.16)}
 .sldreset svg{width:calc(16px * var(--ui));height:calc(16px * var(--ui));display:block}
 
 #viewMenu{right:12px;width:calc(266px * var(--ui))}
@@ -169,7 +169,7 @@ input[type=number]{-moz-appearance:textfield}
 #helpHead .sub{font-size:calc(12px * var(--ui));color:var(--dim);margin-left:2px}
 #helpClose{margin-left:auto;width:30px;height:30px;border:1px solid var(--hair);border-radius:4px;
   background:transparent;color:var(--dim);font-size:16px;cursor:pointer;line-height:1;display:grid;place-items:center}
-#helpClose:hover{color:var(--amber);border-color:rgba(240,164,0,.5);background:rgba(240,164,0,.08)}
+#helpClose:hover{color:var(--amber);border-color:rgba(63,169,255,.5);background:rgba(63,169,255,.08)}
 #helpBody{overflow-y:auto;padding:8px 20px 22px;scrollbar-width:thin;
   columns:2;column-gap:30px}
 #helpBody::-webkit-scrollbar{width:8px}
@@ -277,7 +277,7 @@ details.sect summary::after{content:"+";color:var(--dimmer)}
 details.sect[open] summary::after{content:"–"}
 details.sect[open] summary{margin-bottom:10px}
 .note{color:var(--amber);font-size:calc(11px * var(--ui));line-height:1.55;margin-top:9px;padding-left:9px;
-  border-left:2px solid rgba(240,164,0,.4)}
+  border-left:2px solid rgba(63,169,255,.4)}
 .note.plain{color:var(--dim);border-left-color:var(--hair)}
 
 /* ---------- Karte ---------- */
@@ -368,8 +368,8 @@ details.sect[open] summary{margin-bottom:10px}
   letter-spacing:.05em;border-color:rgba(255,255,255,.10);color:var(--dim);border-radius:3px;
   overflow:hidden}
 #attviews button:hover{color:var(--text);border-color:var(--hair-strong)}
-#attviews button[aria-pressed="true"]{color:var(--amber);border-color:rgba(240,164,0,.45);
-  background:rgba(240,164,0,.12)}
+#attviews button[aria-pressed="true"]{color:var(--amber);border-color:rgba(63,169,255,.45);
+  background:rgba(63,169,255,.12)}
 #attfoot{display:flex;align-items:flex-end;gap:9px;margin-top:5px;
   padding-top:6px;border-top:1px solid rgba(255,255,255,.10)}
 #attvals{flex:1;min-width:0;display:grid;grid-template-columns:1fr;gap:1px;
@@ -385,8 +385,8 @@ details.sect[open] summary{margin-bottom:10px}
 #rangePop .btnrow{display:flex;gap:8px;margin-top:8px}
 #rangePop .wide{flex:1;text-align:center;padding:7px 6px}
 #rangePop .primary{background:var(--amber);color:#0A0E12;border-color:var(--amber)}
-#rangePop .primary:hover{background:#FFB61F;border-color:#FFB61F}
-#btnRangeReset{border-color:rgba(240,164,0,.5);color:var(--amber)}
+#rangePop .primary:hover{background:#3FA9FF;border-color:#3FA9FF}
+#btnRangeReset{border-color:rgba(63,169,255,.5);color:var(--amber)}
 
 @media (max-width:820px){ #attpanel{width:calc(168px * var(--ui))}
   #attviews button{font-size:calc(9px * var(--ui));letter-spacing:.02em;padding:3px 0} }
@@ -399,21 +399,21 @@ details.sect[open] summary{margin-bottom:10px}
     <div id="brand"><i></i><b>Flugspur</b></div>
     <div id="file"><span id="fname">–</span><span id="fmeta">–</span></div>
     <div class="kpis" id="kpis"></div>
-    <div id="frag" title="">Logfragment</div>
+    <div id="frag">Log fragment</div>
     <div id="tools">
-      <button id="btnSide" title="Kennzahlen ein-/ausblenden" style="display:none">Daten</button>
-      <button id="btnFind" aria-expanded="false" title="Maxima und Werte im Flug suchen">Suche</button>
-      <button id="btnMark" aria-expanded="false" title="Datenpunkte entlang der Spur">Marken</button>
-      <button id="btnMeas" aria-expanded="false" title="Strecken und Flächen messen">Messen</button>
-      <button id="btnBatt" aria-expanded="false" title="Akkuprofil einstellen">Akku<span class="dot"></span></button>
-      <button id="btnView" aria-expanded="false" title="Darstellung und Steuerung">Ansicht</button>
-      <button id="btnHelp" class="helpbtn" title="Hilfe – alle Funktionen und Steuerung" aria-label="Hilfe">?</button>
+      <button id="btnSide" style="display:none">Data</button>
+      <button id="btnFind" aria-expanded="false">Search</button>
+      <button id="btnMark" aria-expanded="false">Marks</button>
+      <button id="btnMeas" aria-expanded="false">Measure</button>
+      <button id="btnBatt" aria-expanded="false">Battery<span class="dot"></span></button>
+      <button id="btnView" aria-expanded="false">View</button>
+      <button id="btnHelp" class="helpbtn" aria-label="Help">?</button>
     </div>
 
     <!-- Suche -->
-    <div class="pop" id="findMenu" role="dialog" aria-label="Suche">
+    <div class="pop" id="findMenu" role="dialog" aria-label="Search">
       <div class="grp">
-        <div class="gh">Extremwert finden</div>
+        <div class="gh">Find extreme value</div>
         <div class="line">
           <select id="exField" style="flex:1"></select>
           <select id="exKind" style="width:104px">
@@ -421,102 +421,99 @@ details.sect[open] summary{margin-bottom:10px}
             <option value="min">Minimum</option>
           </select>
         </div>
-        <button class="act" id="exGo">Suchen und markieren</button>
+        <button class="act" id="exGo">Search &amp; mark</button>
       </div>
       <div class="grp">
-        <div class="gh">Zeitpunkte mit bestimmtem Wert</div>
+        <div class="gh">Times at a specific value</div>
         <div class="line">
           <select id="vaField" style="flex:1"></select>
           <select id="vaCmp" style="width:106px">
-            <option value="tol">± Toleranz</option>
-            <option value="ge">größer als</option>
-            <option value="le">kleiner als</option>
+            <option value="tol">± tolerance</option>
+            <option value="ge">greater than</option>
+            <option value="le">less than</option>
           </select>
         </div>
         <div class="line">
-          <input id="vaValue" type="number" step="any" placeholder="Wert" style="width:86px">
+          <input id="vaValue" type="number" step="any" placeholder="Value" style="width:86px">
           <span class="lbl" id="vaUnit" style="width:34px">–</span>
           <span class="lbl" id="vaTolLbl">±</span>
           <input id="vaTol" type="number" step="any" style="width:66px">
-          <button id="vaGo" style="padding:4px 12px;margin-left:auto">Finden</button>
+          <button id="vaGo" style="padding:4px 12px;margin-left:auto">Find</button>
         </div>
       </div>
       <div class="grp">
-        <div class="gh" id="hitsHead">Treffer</div>
-        <div class="hits" id="hits"><div class="empty">Noch nichts gesucht.</div></div>
-        <button class="act" id="hitsClear">Alle Marken entfernen</button>
+        <div class="gh" id="hitsHead">Hits</div>
+        <div class="hits" id="hits"><div class="empty">Nothing searched yet.</div></div>
+        <button class="act" id="hitsClear">Remove all marks</button>
       </div>
     </div>
 
     <!-- Marken -->
-    <div class="pop" id="markMenu" role="dialog" aria-label="Marken">
+    <div class="pop" id="markMenu" role="dialog" aria-label="Marks">
       <div class="grp">
-        <button class="tgl" id="btnWp" aria-pressed="false">Datenpunkte auf der Spur</button>
-        <div class="line"><span class="lbl">Abstand</span>
+        <button class="tgl" id="btnWp" aria-pressed="false">Data points on the path</button>
+        <div class="line"><span class="lbl">Spacing</span>
           <select id="wpKind" style="width:132px">
-            <option value="auto" selected>automatisch</option>
-            <option value="t">nach Zeit</option>
-            <option value="d">nach Strecke</option>
+            <option value="auto" selected>automatic</option>
+            <option value="t">by time</option>
+            <option value="d">by distance</option>
           </select>
         </div>
         <div class="line" id="wpValLine" style="display:none">
-          <span class="lbl">Wert</span>
+          <span class="lbl">Value</span>
           <input id="wpVal" type="number" step="any" min="0.01" style="width:92px">
           <span class="lbl" id="wpUnit" style="flex:1">s</span>
         </div>
-        <div class="line"><span class="lbl">Beschriftung</span>
+        <div class="line"><span class="lbl">Label</span>
           <select id="wpMode" style="width:132px">
-            <option value="always" selected>immer sichtbar</option>
-            <option value="hover">nur bei Mauszeiger</option>
+            <option value="always" selected>always visible</option>
+            <option value="hover">only on hover</option>
           </select>
         </div>
       </div>
       <div class="grp">
-        <div class="gh">Inhalt der Marken</div>
+        <div class="gh">Mark content</div>
         <div id="wpFields"></div>
       </div>
     </div>
 
     <!-- Messen -->
-    <div class="pop" id="measMenu" role="dialog" aria-label="Messen">
+    <div class="pop" id="measMenu" role="dialog" aria-label="Measure">
       <div class="grp">
-        <button class="tgl" id="btnMeasOn" aria-pressed="false">Messpunkte setzen</button>
-        <div class="hint">Klick setzt einen Punkt, Ziehen verschiebt ihn. Die Abstände
-          stehen direkt auf der Karte. Führst du den letzten Punkt zurück auf Punkt 1,
-          rastet er ein und der Linienzug wird zur Fläche — der Flächeninhalt erscheint
-          dann von selbst.</div>
+        <button class="tgl" id="btnMeasOn" aria-pressed="false">Place points</button>
+        <div class="hint">Click places a point, drag moves it. Distances are shown right on the map. Bring the last point back onto point 1 and it snaps shut — the polyline becomes an area and its size appears automatically.</div>
       </div>
       <div class="grp">
-        <div class="gh">Messpunkte</div>
-        <div class="hits" id="measList"><div class="empty">Noch kein Punkt gesetzt.</div></div>
+        <div class="gh">Points</div>
+        <div class="hits" id="measList"><div class="empty">No point placed yet.</div></div>
       </div>
       <div class="grp" id="measOut"></div>
       <div class="grp">
-        <button class="act" id="measUndo">Letzten Punkt entfernen</button>
-        <button class="act" id="measClear">Alle Punkte löschen</button>
+        <button class="act" id="measUndo">Remove last point</button>
+        <button class="act" id="measClear">Clear all points</button>
       </div>
     </div>
 
     <!-- Akku -->
-    <div class="pop" id="battMenu" role="dialog" aria-label="Akkuprofil">
+    <div class="pop" id="battMenu" role="dialog" aria-label="Battery profile">
       <div class="grp">
-        <div class="line"><span class="lbl">Profil</span>
+        <div class="line"><span class="lbl">Profile</span>
           <select id="bpSel" style="flex:1"></select>
         </div>
         <div class="line"><span class="lbl">Name</span>
           <input id="bpName" type="text" style="flex:1">
         </div>
-        <div class="line"><span class="lbl">Typ</span>
+        <div class="line"><span class="lbl">Type</span>
           <select id="bpType" style="flex:1">
             <option value="lipo">LiPo</option>
             <option value="liion">Li-Ion</option>
           </select>
         </div>
-        <div class="line"><span class="lbl">Zellen</span>
+        <div class="line"><span class="lbl">Cells</span>
           <input id="bpCells" type="number" min="1" max="24" step="1" style="width:70px">
           <span class="lbl" style="flex:1" id="bpCellHint">–</span>
         </div>
-        <div class="line"><span class="lbl">Kapazität</span>
+        <div class="line"><span class="lbl">Capacity</span>
           <input id="bpCap" type="number" min="100" step="100" style="width:92px">
           <span class="lbl" style="flex:1">mAh</span>
         </div>
@@ -526,23 +523,23 @@ details.sect[open] summary{margin-bottom:10px}
     </div>
 
     <!-- Ansicht -->
-    <div class="pop" id="viewMenu" role="dialog" aria-label="Ansicht">
+    <div class="pop" id="viewMenu" role="dialog" aria-label="View">
       <div class="grp">
-        <div class="line"><span class="lbl">Karte</span>
+        <div class="line"><span class="lbl">Map</span>
           <select id="base" style="width:118px">
-            <option value="sat">Satellit</option>
-            <option value="satlbl" selected>Satellit + Namen</option>
+            <option value="sat">Satellite</option>
+            <option value="satlbl" selected>Satellite + labels</option>
             <option value="topo">OpenTopoMap</option>
-            <option value="map">Karte</option>
-            <option value="dark">Dunkel</option>
+            <option value="map">Street map</option>
+            <option value="dark">Dark</option>
           </select>
         </div>
         <div class="fsize">
-          <div class="fsize-head"><span class="lbl">Schriftgröße</span>
+          <div class="fsize-head"><span class="lbl">Text size</span>
             <span class="sldval" id="uiScaleVal">100 %</span></div>
           <div class="sldrow">
             <input id="uiScale" type="range" min="0.8" max="1.6" step="0.05" value="1">
-            <button id="uiScaleReset" class="sldreset" title="Auf 100 % zurücksetzen" aria-label="Zurücksetzen">
+            <button id="uiScaleReset" class="sldreset" aria-label="Reset">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                    stroke-linecap="round" stroke-linejoin="round">
                 <path d="M19.5 8A8 8 0 1 0 20 12"></path>
@@ -551,103 +548,93 @@ details.sect[open] summary{margin-bottom:10px}
             </button>
           </div>
         </div>
-        <div class="line"><span class="lbl">Steuerung</span>
+        <div class="line"><span class="lbl">Control</span>
           <select id="sens" style="width:118px">
-            <option value="fein" selected>Fein</option>
+            <option value="fein" selected>Fine</option>
             <option value="normal">Normal</option>
-            <option value="schnell">Schnell</option>
+            <option value="schnell">Fast</option>
           </select>
         </div>
       </div>
       <div class="grp">
-        <button class="tgl" id="btnFollow" aria-pressed="false">Kamera folgt dem Modell</button>
-        <button class="tgl" id="btnWall" aria-pressed="false">Höhenband zum Boden</button>
+        <button class="tgl" id="btnFollow" aria-pressed="false">Camera follows model</button>
+        <button class="tgl" id="btnWall" aria-pressed="false">Altitude wall to ground</button>
       </div>
       <div class="grp">
-        <button class="act" id="btnHome">Ansicht zurücksetzen</button>
-        <button class="act" id="btnShot">Kartenbild speichern</button>
+        <button class="act" id="btnHome">Reset view</button>
+        <button class="act" id="btnShot">Save map image</button>
       </div>
     </div>
   </header>
 
   <!-- Hilfe -->
-  <div id="helpWrap" role="dialog" aria-modal="true" aria-label="Hilfe">
+  <div id="helpWrap" role="dialog" aria-modal="true" aria-label="Help">
     <div id="help">
       <div id="helpHead">
-        <h2>Hilfe</h2>
-        <span class="sub">Alle Funktionen und die Steuerung auf einen Blick</span>
-        <button id="helpClose" title="Schließen" aria-label="Schließen">✕</button>
+        <h2>Help</h2>
+        <span class="sub">Every function and control at a glance</span>
+        <button id="helpClose" aria-label="Close">✕</button>
       </div>
       <div id="helpBody">
-
         <div class="hsec">
-          <h3>Karte steuern</h3>
-          <div class="hrow"><span class="hkbd">Links ziehen</span><span><b>Karte verschieben.</b></span></div>
-          <div class="hrow"><span class="hkbd">Rechts ziehen</span><span><b>Kippen und drehen</b> – waagerecht dreht die Blickrichtung, senkrecht kippt zwischen Schräg- und Draufsicht.</span></div>
-          <div class="hrow"><span class="hkbd">Mausrad drehen</span><span><b>Zoomen.</b></span></div>
-          <p>Über <b>Ansicht → Steuerung</b> lässt sich das Tempo von Zoom und Drehung auf Fein, Normal oder Schnell stellen.</p>
+          <h3>Control the map</h3>
+          <div class="hrow"><span class="hkbd">Left drag</span><span><b>Pan the map.</b></span></div>
+          <div class="hrow"><span class="hkbd">Right drag</span><span><b>Tilt &amp; rotate</b> – horizontal turns the view, vertical tilts between oblique and top-down.</span></div>
+          <div class="hrow"><span class="hkbd">Mouse wheel</span><span><b>Zoom.</b></span></div>
+          <p>Under <b>View → Control</b> you can set the pace of zoom and rotation to Fine, Normal or Fast.</p>
         </div>
-
         <div class="hsec">
-          <h3>Flugband (unten)</h3>
-          <p>Das Band zeigt den zeitlichen Verlauf. Die gefüllte Fläche entspricht der unter <b>Farbe</b> gewählten Größe, darüber liegen bis zu drei weitere Kurven.</p>
-          <div class="hrow"><span class="hkbd">Klicken</span><span>springt an die Zeitstelle.</span></div>
-          <div class="hrow"><span class="hkbd">Ziehen</span><span>wählt einen <b>Zeitausschnitt</b>. Nur dieser Bereich wird dann auf der Karte und in den Kennzahlen betrachtet.</span></div>
-          <div class="hrow"><span class="hkbd">▶ / Leertaste</span><span>Wiedergabe starten und anhalten. Das Tempo stellst du daneben ein.</span></div>
-          <p><b>Bereich</b> öffnet die genaue Eingabe von Anfang und Ende; <b>Kurven</b> legt fest, welche zusätzlichen Linien im Band liegen.</p>
+          <h3>Timeline (bottom)</h3>
+          <p>The band shows the flight over time. The filled area is the metric chosen under <b>Color</b>; up to three more curves lie on top.</p>
+          <div class="hrow"><span class="hkbd">Click</span><span>jumps to that moment.</span></div>
+          <div class="hrow"><span class="hkbd">Drag</span><span>selects a <b>time range</b> – only that range is then shown on the map and in the metrics.</span></div>
+          <div class="hrow"><span class="hkbd">▶ / Space</span><span>play and pause; set the speed next to it.</span></div>
+          <p><b>Range</b> opens exact start/end entry; <b>Curves</b> chooses which extra lines appear on the band.</p>
         </div>
-
         <div class="hsec">
-          <h3>Suche</h3>
-          <p>Findet <b>Extremwerte</b> (größter/kleinster Wert einer Größe) oder alle <b>Zeitpunkte mit einem bestimmten Wert</b> – wahlweise mit Toleranz, größer oder kleiner als. Treffer erscheinen als Marken auf der Spur und in der Liste.</p>
-          <p>Jeder Treffer zieht den <b>Zeitzeiger</b> mit: die Stelle ist sofort im Flugband als nummerierte Marke sichtbar, die Kennzahlen links stehen auf diesem Zeitpunkt. Ein Klick auf einen Treffer in der Liste springt erneut dorthin.</p>
-          <p>Ist ein Zeitausschnitt gewählt, werden Treffer außerhalb davon in der Liste <b>ausgegraut</b> und auf der Karte ausgeblendet.</p>
+          <h3>Search</h3>
+          <p>Finds <b>extreme values</b> (highest / lowest of a metric) or every <b>moment at a specific value</b> – with tolerance, greater or less than. Hits appear as marks on the path and in the list.</p>
+          <p>Each hit moves the <b>time cursor</b>: the spot shows on the timeline as a numbered mark and the metrics on the left jump to it. Click a hit in the list to return there.</p>
+          <p>With a time range selected, hits outside it are <b>greyed out</b> in the list and hidden on the map.</p>
         </div>
-
         <div class="hsec">
-          <h3>Marken</h3>
-          <p>Legt <b>Datenpunkte entlang der Spur</b> ab – automatisch, in festen Zeit- oder Streckenabständen. Die Beschriftung kann dauerhaft sichtbar sein oder nur beim Überfahren mit der Maus erscheinen.</p>
+          <h3>Marks</h3>
+          <p>Drops <b>data points along the path</b> – automatically, at fixed time or distance spacing. Labels can stay visible or appear only on hover.</p>
         </div>
-
         <div class="hsec">
-          <h3>Messen</h3>
-          <p>Setzt per Klick Punkte auf die Karte und misst <b>Strecken und Flächen</b>. Punkte lassen sich verschieben; endet der Zug wieder am ersten Punkt, entsteht eine geschlossene Fläche.</p>
+          <h3>Measure</h3>
+          <p>Click to place points on the map and measure <b>distances and areas</b>. Points can be dragged; bring the chain back to the first point to close an area.</p>
         </div>
-
         <div class="hsec">
-          <h3>Akku</h3>
-          <p>Wählt ein <b>Akkuprofil</b> (Zellenzahl, Kapazität). Damit rechnet Flugspur aus Strom und verbrauchter Kapazität den Ladezustand und zeigt ihn als Balken. Die Profile selbst werden im Programm angelegt.</p>
+          <h3>Battery</h3>
+          <p>Pick a <b>battery profile</b> (cell count, capacity). Flugspur then computes state of charge from current and used capacity and shows it as a bar.</p>
         </div>
-
         <div class="hsec">
-          <h3>Ansicht</h3>
-          <div class="hrow"><span class="hkbd">Karte</span><span>Kartenhintergrund: Satellit, Satellit mit Namen, OpenTopoMap, einfache Karte oder dunkel.</span></div>
-          <div class="hrow"><span class="hkbd">Schriftgröße</span><span>Regler für die Größe der Oberfläche; der Knopf rechts setzt auf 100 % zurück.</span></div>
-          <div class="hrow"><span class="hkbd">Steuerung</span><span>Empfindlichkeit von Zoom und Drehung.</span></div>
-          <p><b>Kamera folgt dem Modell</b> heftet die Ansicht ans Flugzeug, <b>Höhenband zum Boden</b> zeigt die Höhe als senkrechte Wand. Darunter setzt du die Ansicht zurück oder speicherst ein Kartenbild.</p>
+          <h3>View</h3>
+          <div class="hrow"><span class="hkbd">Map</span><span>background: satellite, satellite with labels, OpenTopoMap, plain map or dark.</span></div>
+          <div class="hrow"><span class="hkbd">Text size</span><span>scales the interface; the button on the right resets to 100 %.</span></div>
+          <div class="hrow"><span class="hkbd">Control</span><span>sensitivity of zoom and rotation.</span></div>
+          <p><b>Camera follows model</b> locks the view to the aircraft; <b>Altitude wall to ground</b> draws height as a vertical wall. Below you can reset the view or save a map image.</p>
         </div>
-
         <div class="hsec">
-          <h3>Lageanzeige</h3>
-          <p>Oben rechts dreht sich das Flugzeugmodell mit der tatsächlichen Lage aus <b>Pitch</b> (Längsneigung) und <b>Roll</b> (Querneigung).</p>
-          <div class="hrow"><span class="hkbd">Modell ziehen</span><span>dreht die Blickrichtung – waagerecht um die Hochachse, senkrecht kippt die Ansicht zwischen Seiten- und Draufsicht.</span></div>
-          <div class="hrow"><span class="hkbd">Doppelklick</span><span>stellt die <b>Frontansicht</b> wieder her.</span></div>
-          <p>Die Knöpfe <b>Vorn</b>, <b>Hinten</b>, <b>Seite</b>, <b>Oben</b> und <b>Schräg</b> darunter setzen feste Ansichten; der aktive Blickwinkel ist orange hinterlegt.</p>
+          <h3>Attitude display</h3>
+          <p>Top right, the aircraft model turns with the real attitude from <b>pitch</b> and <b>roll</b>.</p>
+          <div class="hrow"><span class="hkbd">Drag model</span><span>rotates the viewing angle – horizontal around the vertical axis, vertical tilts between side and top view.</span></div>
+          <div class="hrow"><span class="hkbd">Double-click</span><span>restores the <b>front view</b>.</span></div>
+          <p>The buttons <b>Front</b>, <b>Rear</b>, <b>Side</b>, <b>Top</b> and <b>Oblique</b> set fixed views; the active angle is highlighted.</p>
         </div>
-
         <div class="hsec">
-          <h3>Start- und Bezugspunkt</h3>
-          <p>Der orange Marker <b>START</b> bzw. <b>LANDUNG</b> zeigt den am Boden erkannten Bezugspunkt. Beginnt das Log bereits in der Luft, steht dort <b>LOG-BEGINN</b> auf der tatsächlichen Höhe des ersten Messpunkts. Entfernungen und Höhen beziehen sich auf diesen Punkt.</p>
-          <p>Endet die Aufzeichnung am Boden, sitzt am Ende der Spur zusätzlich ein grüner Marker <b>LANDUNG</b> – die Beschriftung hängt unter dem Punkt, damit sie sich bei Start und Landung am selben Platz nicht mit dem Startmarker überdeckt. Maßgeblich ist dabei, wo das Log aufhört – eine sauber stehende Bodenphase muss nicht im Log sein, denn die Telemetrie bricht oft schon beim Disarmen ab. Endet die Aufzeichnung dagegen in der Luft (<b>Logfragment</b>), gibt es keinen Landepunkt; ein solcher Punkt würde nur eine Landung vortäuschen, die im Log nicht steht.</p>
+          <h3>Start &amp; reference point</h3>
+          <p>The <b>START</b> or <b>LANDING</b> marker shows the reference point detected on the ground. If the log already begins in the air it reads <b>LOG START</b> at the height of the first sample. Distances and heights are relative to this point.</p>
+          <p>If the recording ends on the ground, a green <b>LANDING</b> marker sits at the end of the path. What matters is where the log stops – a clean standing ground phase need not be present, since telemetry often cuts off at disarm. If the recording ends in the air (a <b>log fragment</b>), there is no landing point.</p>
         </div>
-
       </div>
     </div>
   </div>
 
   <aside id="side">
     <div class="sect">
-      <h2>Aktueller Punkt <span id="fmnow" style="display:none"></span></h2>
+      <h2>Current point <span id="fmnow" style="display:none"></span></h2>
       <div id="att">
         <div id="attinfo">
           <span id="now">--:--:--</span>
@@ -662,74 +649,71 @@ details.sect[open] summary{margin-bottom:10px}
       <div id="tiles"></div>
       <div id="mini"></div>
     </div>
-    <div class="sect"><h2>Kennzahlen</h2><div id="stats"></div></div>
-    <div class="sect" id="secFm"><h2>Flugmodi</h2><div class="fmbar" id="fmbar"></div><div class="fmleg" id="fmleg"></div></div>
-    <details class="sect" id="secLog"><summary>Aufzeichnung</summary><div id="meta"></div></details>
+    <div class="sect"><h2>Metrics</h2><div id="stats"></div></div>
+    <div class="sect" id="secFm"><h2>Flight modes</h2><div class="fmbar" id="fmbar"></div><div class="fmleg" id="fmleg"></div></div>
+    <details class="sect" id="secLog"><summary>Recording</summary><div id="meta"></div></details>
   </aside>
 
   <div id="map">
     <div id="globe"></div>
     <div id="attpanel">
-      <canvas id="attc" width="264" height="264"
-              title="Modell mit der Maus drehen · Doppelklick setzt auf Vorn zurück"></canvas>
+      <canvas id="attc" width="264" height="264"></canvas>
       <div id="attviews">
-        <button data-az="0" data-el="0" title="Ansicht von vorn">Vorn</button>
-        <button data-az="180" data-el="0" title="Ansicht von hinten">Hinten</button>
-        <button data-az="-90" data-el="0" title="Ansicht von der Seite">Seite</button>
-        <button data-az="180" data-el="90" title="Ansicht von oben">Oben</button>
-        <button data-az="-35" data-el="22" title="Schrägansicht">Schräg</button>
+        <button data-az="0" data-el="0">Front</button>
+        <button data-az="180" data-el="0">Rear</button>
+        <button data-az="-90" data-el="0">Side</button>
+        <button data-az="180" data-el="90">Top</button>
+        <button data-az="-35" data-el="22">Oblique</button>
       </div>
       <div id="attfoot">
         <div id="attvals"></div>
       </div>
     </div>
     <div id="legend">
-      <span class="lbl" id="lgtitle">Farbe</span>
+      <span class="lbl" id="lgtitle">Color</span>
       <div id="lgbar"></div>
       <div id="lgscale"><span id="lgmin">–</span><span id="lgmid">–</span><span id="lgmax">–</span></div>
     </div>
-    <div id="err"><div><h3 id="errh">Karte nicht geladen</h3><p id="errp"></p></div></div>
+    <div id="err"><div><h3 id="errh">Map not loaded</h3><p id="errp"></p></div></div>
   </div>
 
   <footer id="tape">
     <div id="tapebar">
-      <button id="play" title="Abspielen (Leertaste)">▶</button>
+      <button id="play">▶</button>
       <span id="clock"><b>0:00</b> / 0:00</span>
-      <div class="seg"><span class="lbl">Tempo</span>
+      <div class="seg"><span class="lbl">Speed</span>
         <select id="rate">
           <option value="1">1×</option><option value="4">4×</option>
           <option value="10" selected>10×</option><option value="25">25×</option>
           <option value="60">60×</option>
         </select>
       </div>
-      <div class="seg"><span class="lbl">Farbe</span><select id="metric"></select></div>
+      <div class="seg"><span class="lbl">Color</span><select id="metric"></select></div>
       <div class="popwrap">
-        <button id="btnCurve" aria-expanded="false" title="Welche Kurven im Flugband liegen">Kurven <b id="curveN">1</b></button>
+        <button id="btnCurve" aria-expanded="false">Curves <b id="curveN">1</b></button>
         <div id="curvePop">
-        <div class="grp"><div class="gh">Zusätzliche Kurven</div><div id="curveList"></div></div>
-        <div class="hint">Die Fläche zeigt immer die unter <b>Farbe</b> gewählte Größe. Hier kommen bis zu drei weitere Linien mit eigenem Strichbild darüber.</div>
+        <div class="grp"><div class="gh">Additional curves</div><div id="curveList"></div></div>
+        <div class="hint">The filled area always shows the metric chosen under <b>Color</b>. Up to three more lines, each with its own stroke, can be layered on top.</div>
         </div>
       </div>
       <div class="popwrap">
-        <button id="btnRange" aria-expanded="false" title="Zeitausschnitt festlegen">Bereich</button>
+        <button id="btnRange" aria-expanded="false">Range</button>
         <div id="rangePop">
           <div class="grp">
-            <div class="gh">Zeitausschnitt</div>
-            <div class="fld"><span class="lbl">Von</span>
+            <div class="gh">Time range</div>
+            <div class="fld"><span class="lbl">From</span>
               <input id="rgFrom" type="text" placeholder="0:00"></div>
-            <div class="fld"><span class="lbl">Bis</span>
+            <div class="fld"><span class="lbl">To</span>
               <input id="rgTo" type="text" placeholder="0:00"></div>
             <div class="btnrow">
-              <button id="rgApply" class="wide primary">Anwenden</button>
-              <button id="rgReset" class="wide">Ganzer Flug</button>
+              <button id="rgApply" class="wide primary">Apply</button>
+              <button id="rgReset" class="wide">Whole flight</button>
             </div>
           </div>
-          <div class="hint">Eingabe als <b>m:ss</b> oder <b>h:mm:ss</b> ab Flugbeginn.
-            Im Flugband lässt sich ein Bereich auch mit gedrückter Umschalttaste aufziehen.
-            Der Ausschnitt begrenzt auch die Flugspur und alle Marken.</div>
+          <div class="hint">Enter as <b>m:ss</b> or <b>h:mm:ss</b> from the start of the flight. You can also drag a range on the timeline while holding Shift. The range limits the flight path and all marks too.</div>
         </div>
       </div>
-      <button id="btnRangeReset" title="Zeitausschnitt aufheben" style="display:none">Reset</button>
+      <button id="btnRangeReset" style="display:none">Reset</button>
       <span class="lbl" id="tapeinfo"></span>
     </div>
     <div id="tapewrap">
@@ -748,16 +732,16 @@ const FACES = [{"c":"#B9C4CD","n":[0.065,0.996,-0.06],"v":[[-0.818,-0.13,-0.973]
 const F = FL.f, HAVE = FL.have, ST = FL.stats, N = F.t.length;
 
 const HOME_KNOWN = FL.meta.homeKnown !== false;
-const HOME_TAG = HOME_KNOWN ? (FL.meta.homeSource === "landing" ? "LANDUNG" : "START") : "LOG-BEGINN";
+const HOME_TAG = HOME_KNOWN ? (FL.meta.homeSource === "landing" ? "LANDING" : "START") : "LOG START";
 const DIST_LONG = HOME_KNOWN
-  ? (FL.meta.homeSource === "landing" ? "Entfernung zum Landeplatz" : "Entfernung zum Start")
-  : "Abstand vom Loganfang";
-const DIST_KPI = HOME_KNOWN ? "Max. Entfernung" : "Max. Abstand";
+  ? (FL.meta.homeSource === "landing" ? "Distance to landing" : "Distance to start")
+  : "Distance from log start";
+const DIST_KPI = HOME_KNOWN ? "Max distance" : "Max distance";
 /* Landepunkt: nur vorhanden, wenn das Log wirklich am Boden endet. Bei einem
    Logfragment, das in der Luft abbricht, liefert der Leser hier null. */
 const LAND = (FL.land && FL.landIdx != null) ? FL.land : null;
 const LAND_I = LAND ? FL.landIdx : -1;
-const ALT_LONG = FL.meta.altMode === "raw" ? "Höhe (Logwert)" : "Höhe über Start";
+const ALT_LONG = FL.meta.altMode === "raw" ? "Altitude (raw)" : "Altitude above start";
 
 /* ====================================================== Helfer */
 function el(id){ return document.getElementById(id); }
@@ -768,7 +752,7 @@ function nf(v,d){
   let neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
   const p = s.split("."); let i = p[0];
   i = i.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-  return (neg ? "−" : "") + i + (p[1] ? "," + p[1] : "");
+  return (neg ? "−" : "") + i + (p[1] ? "." + p[1] : "");
 }
 function dur(s){
   s = Math.max(0, Math.round(s));
@@ -791,9 +775,9 @@ function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
 
 /* ====================================================== Farbverläufe */
 const SCALES = {
-  seq:  ["#2E6FE8","#22B8A6","#8FD04A","#F5C518","#F5762B","#FF3B30"],
-  div:  ["#2E6FE8","#5FA8F0","#DCE6EE","#F5A623","#FF5A2C"],
-  link: ["#FF3B30","#F5762B","#F5C518","#8FD04A","#4ED6A0"]
+  seq:  ["#0E2A47","#1E6DB0","#3FA9FF","#5FE3D0","#B7F5D8","#EAF2FA"],
+  div:  ["#3FA9FF","#8FD0FF","#0D1622","#7DE0A8","#33D68A"],
+  link: ["#FF4D57","#FFC24B","#33D68A"]
 };
 const SCALE_RGB = {};
 for (const k in SCALES) SCALE_RGB[k] = SCALES[k].map(function(h){
@@ -812,27 +796,27 @@ function cssGradient(scale){
 
 /* ====================================================== Feldkatalog */
 const FIELDS = [
-  {k:"alt",  n:ALT_LONG,          sh:"Höhe",     u:"m",    d:0, s:"seq",  c:"#F0A400"},
-  {k:"msl",  n:"Höhe über NN",    sh:"MSL",      u:"m",    d:0, s:"seq",  c:"#FFD166", need:"terr"},
-  {k:"agl",  n:"Höhe über Grund", sh:"AGL",      u:"m",    d:0, s:"seq",  c:"#F5762B", need:"terr"},
-  {k:"gnd",  n:"Geländehöhe",     sh:"Gelände",  u:"m",    d:0, s:"seq",  c:"#6E8494", need:"terr"},
-  {k:"spd",  n:"Geschwindigkeit", sh:"Speed",    u:"km/h", d:0, s:"seq",  c:"#4FC3F7"},
-  {k:"vspd", n:"Steigen/Sinken",  sh:"Vertikal", u:"m/s",  d:1, s:"div",  c:"#B388FF", sym:true},
-  {k:"dist", n:DIST_LONG,         sh:HOME_KNOWN?"Entfernung":"Abstand", u:"m", d:0, s:"seq", c:"#8FD04A"},
-  {k:"batt", n:"Akkuprofil",      sh:"Akku-SoC", u:"%",    d:0, s:"link", c:"#4ED6A0", need:"batt"},
-  {k:"rxbt", n:"Akkuspannung",    sh:"Akku",     u:"V",    d:2, s:"link", c:"#4ED6A0"},
-  {k:"curr", n:"Strom",           sh:"Strom",    u:"A",    d:1, s:"seq",  c:"#FF5A2C"},
-  {k:"capa", n:"Verbrauch",       sh:"Verbr.",   u:"mAh",  d:0, s:"seq",  c:"#E9A0FF"},
-  {k:"rqly", n:"Link-Qualität",   sh:"Link",     u:"%",    d:0, s:"link", c:"#4ED6A0"},
-  {k:"rss1", n:"RSSI Antenne 1",  sh:"RSSI 1",   u:"dBm",  d:0, s:"link", c:"#7FE3C4"},
-  {k:"rss2", n:"RSSI Antenne 2",  sh:"RSSI 2",   u:"dBm",  d:0, s:"link", c:"#5FB6A0"},
-  {k:"rsnr", n:"Signal-Rausch",   sh:"SNR",      u:"dB",   d:0, s:"link", c:"#9AD1FF"},
-  {k:"tpwr", n:"Sendeleistung",   sh:"TX",       u:"mW",   d:0, s:"seq",  c:"#FFB74D"},
-  {k:"sats", n:"Satelliten",      sh:"Sats",     u:"",     d:0, s:"link", c:"#B0BEC5"},
-  {k:"hdg",  n:"Kurs",            sh:"Kurs",     u:"°",    d:0, s:"seq",  c:"#90A4AE"},
+  {k:"alt",  n:ALT_LONG,          sh:"Altitude",     u:"m",    d:0, s:"seq",  c:"#3FA9FF"},
+  {k:"msl",  n:"Altitude MSL",    sh:"MSL",      u:"m",    d:0, s:"seq",  c:"#78C8FF", need:"terr"},
+  {k:"agl",  n:"Altitude AGL", sh:"AGL",      u:"m",    d:0, s:"seq",  c:"#5FE3D0", need:"terr"},
+  {k:"gnd",  n:"Terrain elevation",     sh:"Terrain",  u:"m",    d:0, s:"seq",  c:"#6E8494", need:"terr"},
+  {k:"spd",  n:"Speed", sh:"Speed",    u:"km/h", d:0, s:"seq",  c:"#4FC3F7"},
+  {k:"vspd", n:"Climb/Sink",  sh:"Vertical", u:"m/s",  d:1, s:"div",  c:"#B388FF", sym:true},
+  {k:"dist", n:DIST_LONG,         sh:HOME_KNOWN?"Distance":"Distance", u:"m", d:0, s:"seq", c:"#8FD04A"},
+  {k:"batt", n:"Battery profile",      sh:"Batt SoC", u:"%",    d:0, s:"link", c:"#4ED6A0", need:"batt"},
+  {k:"rxbt", n:"Battery voltage",    sh:"Battery",     u:"V",    d:2, s:"link", c:"#4ED6A0"},
+  {k:"curr", n:"Current",           sh:"Current",    u:"A",    d:1, s:"seq",  c:"#FF4D57"},
+  {k:"capa", n:"Consumption",       sh:"Cons.",   u:"mAh",  d:0, s:"seq",  c:"#E9A0FF"},
+  {k:"rqly", n:"Link quality",   sh:"Link",     u:"%",    d:0, s:"link", c:"#4ED6A0"},
+  {k:"rss1", n:"RSSI antenna 1",  sh:"RSSI 1",   u:"dBm",  d:0, s:"link", c:"#7FE3C4"},
+  {k:"rss2", n:"RSSI antenna 2",  sh:"RSSI 2",   u:"dBm",  d:0, s:"link", c:"#5FB6A0"},
+  {k:"rsnr", n:"Signal/noise",   sh:"SNR",      u:"dB",   d:0, s:"link", c:"#9AD1FF"},
+  {k:"tpwr", n:"TX power",   sh:"TX",       u:"mW",   d:0, s:"seq",  c:"#9AD1FF"},
+  {k:"sats", n:"Satellites",      sh:"Sats",     u:"",     d:0, s:"link", c:"#B0BEC5"},
+  {k:"hdg",  n:"Heading",            sh:"Heading",     u:"°",    d:0, s:"seq",  c:"#90A4AE"},
   {k:"ptch", n:"Pitch",           sh:"Pitch",    u:"°",    d:0, s:"div",  c:"#CE93D8", sym:true},
-  {k:"roll", n:"Rollwinkel",      sh:"Roll",     u:"°",    d:0, s:"div",  c:"#F48FB1", sym:true},
-  {k:"txbat",n:"Senderakku",      sh:"Sender",   u:"V",    d:2, s:"link", c:"#A5D6A7"}
+  {k:"roll", n:"Roll angle",      sh:"Roll",     u:"°",    d:0, s:"div",  c:"#F48FB1", sym:true},
+  {k:"txbat",n:"TX battery",      sh:"TX",   u:"V",    d:2, s:"link", c:"#A5D6A7"}
 ];
 const FMAP = {};
 FIELDS.forEach(function(f){ FMAP[f.k] = f; });
@@ -1061,8 +1045,8 @@ async function loadTerrain(){
 function terrainFailed(){
   TER.ok = false;
   el("meta").insertAdjacentHTML("beforeend",
-    '<div class="note">Die Geländedaten sind nicht erreichbar. Höhe über NN und über '
-    + 'Grund lassen sich deshalb nicht berechnen.</div>');
+    '<div class="note">Terrain data is unavailable, so MSL and above-ground '
+    + 'heights cannot be computed.</div>');
 }
 function buildTerrainFields(){
   const raw = FL.meta.altMode === "raw";
@@ -1090,9 +1074,9 @@ function buildTerrainFields(){
   const plausibleMSL = !raw || (altMin > gndAvg - 60 && altMax < gndAvg + 12000);
 
   if (!plausibleMSL){
-    terrainUnusable("Das Log beginnt in der Luft und enthält nur Höhen relativ zu "
-      + "einem Startpunkt, der nicht mit aufgezeichnet wurde. Höhe über NN und über "
-      + "Grund lassen sich daraus nicht bestimmen.");
+    terrainUnusable("The log starts in the air and only contains heights relative to "
+      + "a start point that was not recorded. MSL and above-ground heights "
+      + "cannot be derived from it.");
     return;
   }
 
@@ -1114,17 +1098,17 @@ function buildTerrainFields(){
     if (agl[i] < -30) below++;
   }
   if (checked && below / checked > 0.5){
-    terrainUnusable("Der Höhenbezug des Logs passt nicht zum Geländemodell – die "
-      + "Spur läge größtenteils unter Grund. Es wird ohne Geländebezug gezeichnet.");
+    terrainUnusable("The log's height reference does not match the terrain model – the "
+      + "path would lie mostly below ground. Drawn without terrain reference.");
     return;
   }
 
   F.gnd = gnd; F.msl = msl; F.agl = agl;
   el("meta").insertAdjacentHTML("beforeend",
-    '<div class="note plain">Geländemodell geladen: ' +
-    (HOME_KNOWN ? "Startpunkt " : "Loganfang ") + nf(TER.homeGnd,0) + ' m über NN, ' +
-    'Raster ' + (TER.z >= 13 ? "rund 20 m" : TER.z >= 12 ? "rund 40 m" : "rund 75 m") +
-    ' (elevation-tiles-prod, ' + TER.count + ' Kacheln).</div>');
+    '<div class="note plain">Terrain model loaded: ' +
+    (HOME_KNOWN ? "Start point " : "Log start ") + nf(TER.homeGnd,0) + ' m MSL, ' +
+    'Grid ' + (TER.z >= 13 ? "about 20 m" : TER.z >= 12 ? "about 40 m" : "about 75 m") +
+    ' (elevation-tiles-prod, ' + TER.count + ' tiles).</div>');
 }
 
 function terrainUnusable(reason){
@@ -1209,11 +1193,11 @@ el("fmeta").textContent = [FL.meta.date, FL.meta.start ? FL.meta.start.slice(0,5
   dur(ST.flight_duration)].filter(Boolean).join(" · ");
 
 const KPI = [
-  ["Flugzeit", dur(ST.flight_duration), ""],
+  ["Flight time", dur(ST.flight_duration), ""],
   [DIST_KPI, ST.dist_max != null ? (ST.dist_max>=1000 ? nf(ST.dist_max/1000,2) : nf(ST.dist_max,0)) : "–",
              ST.dist_max != null && ST.dist_max>=1000 ? "km" : "m"],
-  ["Max. Höhe", nf(ST.alt_max,0), "m"],
-  ["Strecke", nf(ST.path_len/1000,2), "km"]
+  ["Max altitude", nf(ST.alt_max,0), "m"],
+  ["Distance", nf(ST.path_len/1000,2), "km"]
 ];
 el("kpis").innerHTML = KPI.map(function(k){
   return '<div class="kpi"><span class="lbl">'+k[0]+'</span><span class="v">'+k[1]+
@@ -1222,8 +1206,8 @@ el("kpis").innerHTML = KPI.map(function(k){
 if (!HOME_KNOWN){
   const fr = el("frag");
   fr.style.display = "block";
-  fr.title = "Die Aufzeichnung beginnt und endet in der Luft. Es gibt keinen Startplatz im Log; "
-           + "Entfernungen zählen ab dem ersten Messpunkt.";
+  fr.title = "The recording starts and ends in the air. There is no start point in the log; "
+           + "distances are counted from the first sample.";
 }
 
 function rows(list){
@@ -1232,26 +1216,26 @@ function rows(list){
            '</span><span class="v">'+r[1]+(r[2]?'<u>'+r[2]+'</u>':'')+'</span></div>'; }).join("");
 }
 const GROUPS = [
-  ["Flug", [
-    ["Flugzeit", dur(ST.flight_duration), ""],
-    ["Strecke (3D)", nf(ST.path_len/1000,2), "km"],
+  ["Flight", [
+    ["Flight time", dur(ST.flight_duration), ""],
+    ["Distance (3D)", nf(ST.path_len/1000,2), "km"],
     [DIST_KPI, km(ST.dist_max), ""],
-    HAVE.alt && ["Höhe max / ⌀", nf(ST.alt_max,0)+" / "+nf(ST.alt_avg,0), "m"],
+    HAVE.alt && ["Altitude max / avg", nf(ST.alt_max,0)+" / "+nf(ST.alt_avg,0), "m"],
     HAVE.spd && ["Speed max / ⌀", nf(ST.spd_max,0)+" / "+nf(ST.spd_avg,0), "km/h"],
-    HAVE.vspd && ["Steigen / Sinken", nf(ST.climb_max,1)+" / "+nf(ST.sink_max,1), "m/s"]
+    HAVE.vspd && ["Climb / Sink", nf(ST.climb_max,1)+" / "+nf(ST.sink_max,1), "m/s"]
   ]],
   ["Antrieb", [
-    ST.mah != null && ["Verbrauch", nf(ST.mah,0), "mAh"],
+    ST.mah != null && ["Consumption", nf(ST.mah,0), "mAh"],
     HAVE.curr && ["Strom ⌀ / max", nf(ST.curr_avg,1)+" / "+nf(ST.curr_max,1), "A"],
-    HAVE.rxbt && ["Akku Start → Ende", nf(ST.rxbt_start,2)+" → "+nf(ST.rxbt_end,2), "V"],
+    HAVE.rxbt && ["Battery start → end", nf(ST.rxbt_start,2)+" → "+nf(ST.rxbt_end,2), "V"],
     HAVE.rxbt && ["Akku Minimum", nf(ST.rxbt_min,2), "V"]
   ]],
-  ["Funkstrecke", [
+  ["Radio link", [
     HAVE.rqly && ["Link min / ⌀", nf(ST.rqly_min,0)+" / "+nf(ST.rqly_avg,0), "%"],
-    HAVE.rqly && ["Link unter 90 %", nf(ST.rqly_drops,0)+" Punkte", "", ST.rqly_drops>0],
+    HAVE.rqly && ["Link unter 90 %", nf(ST.rqly_drops,0)+" points", "", ST.rqly_drops>0],
     HAVE.rss1 && ["RSSI Minimum", nf(ST.rss_min,0), "dBm"],
     HAVE.rsnr && ["SNR Minimum", nf(ST.snr_min,0), "dB"],
-    HAVE.tpwr && ["Sendeleistung", nf(ST.tpwr_max,0), "mW"],
+    HAVE.tpwr && ["TX power", nf(ST.tpwr_max,0), "mW"],
     HAVE.sats && ["Satelliten min / max", nf(ST.sats_min,0)+" / "+nf(ST.sats_max,0), ""]
   ]]
 ];
@@ -1261,14 +1245,14 @@ el("stats").innerHTML = GROUPS.map(function(g){
 
 el("meta").innerHTML = rows([
   ["Datum", FL.meta.date || "–", ""],
-  ["Startzeit", FL.meta.start || "–", ""],
-  ["Messpunkte", nf(FL.meta.points,0)+(FL.meta.decimated>1?" von "+nf(FL.meta.raw,0):""), ""],
+  ["Start time", FL.meta.start || "–", ""],
+  ["Samples", nf(FL.meta.points,0)+(FL.meta.decimated>1?" of "+nf(FL.meta.raw,0):""), ""],
   ["Abtastrate", nf(FL.meta.rate,2), "Hz"],
-  [HOME_KNOWN ? "Startpunkt" : "Erster Messpunkt",
+  [HOME_KNOWN ? "Start point" : "First sample",
    FL.home[0].toFixed(5)+", "+FL.home[1].toFixed(5), ""],
-  ["Höhenbezug", !HOME_KNOWN ? "unverändert aus dem Log"
-     : (FL.meta.altMode === "msl" ? "NN, auf Startpunkt genullt" : "relativ zum Start"), ""],
-  ["Log gesamt", dur(ST.log_duration), ""]
+  ["Height reference", !HOME_KNOWN ? "unchanged from log"
+     : (FL.meta.altMode === "msl" ? "MSL, zeroed to start point" : "relativ zum Start"), ""],
+  ["Log total", dur(ST.log_duration), ""]
 ]);
 if (FL.meta.notes.length){
   el("meta").insertAdjacentHTML("beforeend",
@@ -1278,7 +1262,7 @@ if (FL.meta.notes.length){
 
 if (FL.fmNames.length && ST.fm_secs.length){
   const tot = ST.fm_secs.reduce(function(a,b){ return a+b; },0) || 1;
-  const cols = ["#4ED6A0","#F0A400","#2E6FE8","#B388FF","#FF5A2C","#8FD04A","#FF3B30","#22B8A6"];
+  const cols = ["#4ED6A0","#3FA9FF","#2E6FE8","#B388FF","#FF4D57","#8FD04A","#FF3B30","#22B8A6"];
   el("fmbar").innerHTML = FL.fmNames.map(function(n,i){
     return '<span style="width:'+(100*ST.fm_secs[i]/tot).toFixed(2)+'%;background:'+cols[i%cols.length]+'"></span>'; }).join("");
   el("fmleg").innerHTML = FL.fmNames.map(function(n,i){
@@ -1509,7 +1493,7 @@ function buildWall(){
   if (pos.length < 2) return;
   try {
     wallEnt = viewer.entities.add({ wall:{ positions:pos, minimumHeights:min, outline:false,
-      material: C.Color.fromCssColorString("#F0A400").withAlpha(0.13) } });
+      material: C.Color.fromCssColorString("#3FA9FF").withAlpha(0.13) } });
   } catch(e){ console.warn("Wall:", e); }
 }
 function buildGround(){
@@ -1540,7 +1524,7 @@ const LBL = function(C){ return {
 function drawStatics(){
   const C = Cesium;
   const white = C.Color.fromCssColorString("#E6EDF2");
-  const amber = C.Color.fromCssColorString("#F0A400");
+  const amber = C.Color.fromCssColorString("#3FA9FF");
   viewer.entities.add({
     position: C.Cartesian3.fromDegrees(FL.home[1], FL.home[0], HOME_KNOWN ? gndOff(winFrom) : hAt(winFrom)),
     point:{ pixelSize:11, color:amber, outlineColor:C.Color.BLACK, outlineWidth:2,
@@ -1561,7 +1545,7 @@ function drawStatics(){
       point:{ pixelSize:11, color:C.Color.fromCssColorString("#4ED6A0"),
               outlineColor:C.Color.BLACK, outlineWidth:2,
               disableDepthTestDistance:Number.POSITIVE_INFINITY },
-      label: Object.assign({}, LBL(C), { text:"LANDUNG",
+      label: Object.assign({}, LBL(C), { text:"LANDING",
               pixelOffset: new C.Cartesian2(0,18),
               verticalOrigin: C.VerticalOrigin.TOP }) });
   }
@@ -1796,12 +1780,12 @@ function drawHitMarkers(){
 }
 function renderHits(){
   const box = el("hits");
-  if (!hits.length){ box.innerHTML = '<div class="empty">Noch nichts gesucht.</div>'; return; }
+  if (!hits.length){ box.innerHTML = '<div class="empty">Nothing searched yet.</div>'; return; }
   box.innerHTML = hits.map(function(h,k){
     // Treffer außerhalb des gewählten Zeitausschnitts inaktiv (durchsichtig).
     const off = !inRange(h.i);
     return '<button class="hit'+(off?" inactive":"")+'" data-i="'+h.i+'"'+
-           (off?' title="Außerhalb des gewählten Bereichs"':'')+'>'+
+           (off?'':'')+'>'+
            '<span class="n">'+(k+1)+'</span>'+
            '<span class="t">T+'+dur(F.t[h.i]-F.t[winFrom])+'</span>'+
            '<span class="v">'+esc(h.text)+(h.n>1?" ×"+h.n:"")+'</span></button>'; }).join("");
@@ -1905,7 +1889,7 @@ function measDraw(){
   /* Linienzug */
   if (carts.length >= 2){
     measLine = viewer.entities.add({ polyline:{ positions:carts.slice(), width:2.5,
-      material: new C.ColorMaterialProperty(C.Color.fromCssColorString("#F0A400")) } });
+      material: new C.ColorMaterialProperty(C.Color.fromCssColorString("#3FA9FF")) } });
   }
   /* Fläche, sobald der Zug tatsächlich geschlossen ist */
   if (measIsRing()){
@@ -1914,7 +1898,7 @@ function measDraw(){
     try {
       measArea = viewer.entities.add({ polygon:{
         hierarchy: new C.PolygonHierarchy(ring),
-        material: C.Color.fromCssColorString("#F0A400").withAlpha(0.16),
+        material: C.Color.fromCssColorString("#3FA9FF").withAlpha(0.16),
         perPositionHeight: true, outline:false } });
     } catch(e){ console.warn("Flaeche:", e); }
   }
@@ -1928,7 +1912,7 @@ function measDraw(){
       label: Object.assign({}, LBL(C), {
         text: km(measGeo(a,b)),
         font:'600 12px Consolas, "DejaVu Sans Mono", monospace',
-        fillColor: C.Color.fromCssColorString("#FFD98A"),
+        fillColor: C.Color.fromCssColorString("#78C8FF"),
         backgroundColor: C.Color.fromCssColorString("#0A0E12").withAlpha(0.88),
         pixelOffset: new C.Cartesian2(0,0),
         verticalOrigin: C.VerticalOrigin.CENTER }) });
@@ -1943,7 +1927,7 @@ function measDraw(){
     const e = viewer.entities.add({
       position: carts[k],
       point:{ pixelSize: isDup ? 8 : 12, color:C.Color.fromCssColorString("#FFFFFF"),
-              outlineColor:C.Color.fromCssColorString(isDup ? "#4ED6A0" : "#F0A400"),
+              outlineColor:C.Color.fromCssColorString(isDup ? "#4ED6A0" : "#3FA9FF"),
               outlineWidth:3, disableDepthTestDistance:Number.POSITIVE_INFINITY },
       label: isDup ? undefined : Object.assign({}, LBL(C), { text:String(k+1),
               font:'600 12px Consolas, "DejaVu Sans Mono", monospace',
@@ -1959,7 +1943,7 @@ function measDraw(){
 function measReport(){
   const list = el("measList"), out = el("measOut");
   if (!measPts.length){
-    list.innerHTML = '<div class="empty">Noch kein Punkt gesetzt.</div>';
+    list.innerHTML = '<div class="empty">No point placed yet.</div>';
     out.innerHTML = "";
     return;
   }
@@ -1972,7 +1956,7 @@ function measReport(){
       total += d;
       seg = "→ " + km(d);
     }
-    if (measIsRing() && k === measPts.length-1) seg = "→ zurück zu 1";
+    if (measIsRing() && k === measPts.length-1) seg = "→ back to 1";
     return '<button class="hit" data-i="'+k+'"><span class="n">'+(k+1)+'</span>'+
            '<span class="t">'+p.lat.toFixed(5)+", "+p.lon.toFixed(5)+'</span>'+
            '<span class="v">'+seg+'</span></button>';
@@ -1990,13 +1974,13 @@ function measReport(){
   });
 
   if (measPts.length >= 2 && !measIsRing()){
-    parts.push(["Gesamtstrecke", km(total), ""]);
+    parts.push(["Total distance", km(total), ""]);
     parts.push(["Luftlinie 1 → " + measPts.length,
                 km(measGeo(measPts[0], measPts[measPts.length-1])), ""]);
   }
   if (measIsRing()){
     parts.push(["Umfang", km(total), ""]);
-    parts.push(["Fläche", fmtArea(measPolyArea(measRingPts())), ""]);
+    parts.push(["Area", fmtArea(measPolyArea(measRingPts())), ""]);
   }
   out.innerHTML = parts.length ? rows(parts) : "";
 }
@@ -2096,7 +2080,7 @@ function measHook(){
 
 /* ====================================================== Lageanzeige */
 const attc = el("attc"), actx = attc.getContext("2d");
-/* Blickrichtung auf das Modell. Ab Werk von vorn. Direkt am Modell drehbar. */
+/* Blickrichtung auf das Modell. Ab Werk of vorn. Direkt am Modell drehbar. */
 let attAz = 0, attEl = 0;
 const LIGHT = (function(){ const v=[-0.30,0.80,0.52];
   const m=Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]); return [v[0]/m,v[1]/m,v[2]/m]; })();
@@ -2402,11 +2386,11 @@ function drawTape(){
   tctx.beginPath(); tctx.moveTo(0,bot+.5); tctx.lineTo(TW,bot+.5); tctx.stroke();
 
   if (zoom){
-    tctx.fillStyle = "rgba(240,164,0,.9)";
+    tctx.fillStyle = "rgba(63,169,255,.9)";
     tctx.font = '10px "Barlow Condensed", sans-serif';
     tctx.fillText("AUSSCHNITT " + dur(tMin-t0) + " – " + dur(tMax-t0), TW-146, TH-6);
   }
-  el("tapeinfo").textContent = nf(FL.meta.points,0) + " Messpunkte · " + nf(FL.meta.rate,1) + " Hz";
+  el("tapeinfo").textContent = nf(FL.meta.points,0) + " samples · " + nf(FL.meta.rate,1) + " Hz";
   drawCurveLegend(cur);
 }
 function drawCurveLegend(cur){
@@ -2415,7 +2399,7 @@ function drawCurveLegend(cur){
     const r = sRangeRaw(k);
     const st = k === "gnd" ? "solid" : (i === 0 ? "solid"
              : (i===1 ? "dashed" : i===2 ? "dotted" : "dashed"));
-    const col = i === 0 && k !== "gnd" ? "#F0A400" : f.c;
+    const col = i === 0 && k !== "gnd" ? "#3FA9FF" : f.c;
     return '<span><i style="border-top:2px '+st+' '+col+'"></i>'+f.sh+
            ' <b style="color:var(--dimmer);font-weight:400">'+nf(r[0],f.d)+"–"+nf(r[1],f.d)+
            (f.u?" "+f.u:"")+'</b></span>'; }).join("");
@@ -2426,9 +2410,9 @@ function drawHead(){
   drawFinds(bot);
   if (t < tMin || t > tMax) return;
   const x = Math.round(t2x(t)) + .5;
-  hctx.strokeStyle = "#F0A400"; hctx.lineWidth = 1;
+  hctx.strokeStyle = "#3FA9FF"; hctx.lineWidth = 1;
   hctx.beginPath(); hctx.moveTo(x,0); hctx.lineTo(x, bot+3); hctx.stroke();
-  hctx.fillStyle = "#F0A400";
+  hctx.fillStyle = "#3FA9FF";
   hctx.beginPath(); hctx.moveTo(x-4,0); hctx.lineTo(x+4,0); hctx.lineTo(x,6); hctx.closePath(); hctx.fill();
   const k0 = metric.k;
   if (F[k0]){
@@ -2443,9 +2427,9 @@ function drawHead(){
   }
   if (dragSel){
     const a = Math.min(dragSel[0],dragSel[1]), b = Math.max(dragSel[0],dragSel[1]);
-    hctx.fillStyle = "rgba(240,164,0,.16)";
+    hctx.fillStyle = "rgba(63,169,255,.16)";
     hctx.fillRect(a,0,b-a,bot+3);
-    hctx.strokeStyle = "rgba(240,164,0,.7)";
+    hctx.strokeStyle = "rgba(63,169,255,.7)";
     hctx.strokeRect(a+.5,.5,b-a-1,bot+2);
   }
 }
@@ -2525,7 +2509,7 @@ function setT(v){ t = clamp(v, tMin, tMax); refresh(); }
 function setPlaying(p){
   playing = p;
   el("play").textContent = p ? "❚❚" : "▶";
-  el("play").title = p ? "Pause (Leertaste)" : "Abspielen (Leertaste)";
+  el("play").title = p ? "Pause (space)" : "Play (space)";
 }
 function setZoom(a,b){
   const t0 = F.t[winFrom], t1 = F.t[winTo];
@@ -2645,7 +2629,7 @@ function refreshMenus(){
   el("curveList").innerHTML = av.map(function(f){
     if (f.k === metric.k)
       return '<button class="chk" data-k="'+f.k+'" aria-pressed="true" disabled>'+
-             '<i></i>'+f.n+'<span class="sw" style="border-top:2px solid #F0A400;height:0"></span>'+
+             '<i></i>'+f.n+'<span class="sw" style="border-top:2px solid #3FA9FF;height:0"></span>'+
              '</button>';
     const pos = cur.indexOf(f.k);
     const on = pos > 0;
@@ -2666,7 +2650,7 @@ function refreshMenus(){
   el("curveN").textContent = curves().length;
 
   /* Markenfelder */
-  const wpAv = [{k:"clock",n:"Zeit ab Start"}].concat(av);
+  const wpAv = [{k:"clock",n:"Time from start"}].concat(av);
   el("wpFields").innerHTML = wpAv.map(function(f){
     const on = wpFields.indexOf(f.k) >= 0;
     return '<button class="chk" data-k="'+f.k+'" aria-pressed="'+(on?"true":"false")+'"><i></i>'+
@@ -2755,8 +2739,8 @@ function findValue(){
     }
   }
   if (!bands.length){
-    el("hits").innerHTML = '<div class="empty">Nichts gefunden für '+esc(f.sh+" "+label)+'.</div>';
-    el("hitsHead").textContent = "Treffer";
+    el("hits").innerHTML = '<div class="empty">Nothing found for '+esc(f.sh+" "+label)+'.</div>';
+    el("hitsHead").textContent = "Hits";
     setBands([]);
     return;
   }
@@ -2771,9 +2755,9 @@ function findValue(){
   if (hits.length > 40) hits = hits.slice(-40);
   setBands(bands);
   drawHitMarkers(); renderHits();
-  el("hitsHead").textContent = "Treffer · " + merged.length +
+  el("hitsHead").textContent = "Hits · " + merged.length +
     (merged.length === 1 ? " Stelle" : " Stellen") +
-    (bands.length > merged.length ? " aus " + bands.length + " Fundstellen" : "");
+    (bands.length > merged.length ? " aus " + bands.length + " matches" : "");
   jumpToIdx(merged[0].i);
 }
 
@@ -2796,28 +2780,28 @@ function battPanel(){
   if (!BP.valid){
     el("bpOut").innerHTML = "";
     el("bpHint").innerHTML = HAVE.rxbt
-      ? "Zellenzahl eintragen, dann werden Ladezustand, Spannungslage und Reserve berechnet. "
+      ? "Enter the cell count to compute state of charge, voltage level and reserve. "
         + "Ohne Profil bleibt <b>Farbe nach Akkuprofil</b> gesperrt."
-      : "Dieses Log enthält keine Akkuspannung, ein Profil hilft hier nicht weiter.";
+      : "This log has no battery voltage, so a profile does not help here.";
     return;
   }
   const s = BP.stats;
   const note = [];
-  if (s.vmax > 4.28) note.push("Spannung über 4,28 V je Zelle – Zellenzahl vermutlich zu niedrig.");
+  if (s.vmax > 4.28) note.push("Voltage above 4.28 V per cell – cell count probably too low.");
   if (s.reserve != null && s.reserve < 15)
-    note.push("Nur " + nf(s.reserve,0) + " % Reserve am Ende – knapp kalkuliert.");
+    note.push("Nur " + nf(s.reserve,0) + " % reserve at the end – cutting it close.");
   if (BP.byEnergy && BP.whUsed > BP.whTotal * 1.05)
     note.push("Es wurden " + nf(BP.whUsed,1) + " Wh entnommen, das Profil gibt nur "
-      + nf(BP.whTotal,1) + " Wh her – Zellenzahl oder Kapazität passen nicht zum Akku.");
+      + nf(BP.whTotal,1) + " Wh – cell count or capacity does not match the pack.");
   if (BP.cap > 0 && s.crate > 0 && s.crate > 12)
-    note.push("Spitzenlast " + nf(s.crate,0) + " C – für Li-Ion-Zellen meist zu viel.");
+    note.push("Spitzenlast " + nf(s.crate,0) + " C – usually too much for Li-Ion cells.");
 
   el("bpOut").innerHTML = rows([
-    ["Ladezustand Start → Ende", nf(s.socStart,0)+" → "+nf(s.socEnd,0), "%"],
+    ["State of charge start → end", nf(s.socStart,0)+" → "+nf(s.socEnd,0), "%"],
     BP.whTotal > 0 && ["Energieinhalt", nf(BP.whTotal,1), "Wh"],
-    BP.byEnergy && ["Energie verbraucht", nf(BP.whUsed,1)+" von "+nf(BP.whTotal,1), "Wh"],
+    BP.byEnergy && ["Energy used", nf(BP.whUsed,1)+" of "+nf(BP.whTotal,1), "Wh"],
     s.reserve != null && ["Rechnerische Reserve", nf(s.reserve,0), "%",  s.reserve < 15],
-    s.left != null && ["Verbleibend", nf(s.left,0)+" von "+nf(BP.cap,0), "mAh"],
+    s.left != null && ["Verbleibend", nf(s.left,0)+" of "+nf(BP.cap,0), "mAh"],
     ["Zellspannung min / max", nf(s.vmin,2)+" / "+nf(s.vmax,2), "V"],
     ["Max. Spannungseinbruch", nf(s.sag,2), "V"],
     BP.cap > 0 && ["Spitzenlast", nf(s.crate,1), "C"],
@@ -2825,9 +2809,9 @@ function battPanel(){
   ]);
   el("bpHint").innerHTML = note.length ? "<b>Hinweis:</b> " + note.map(esc).join(" ")
     : (BP.byEnergy
-        ? "Ladezustand aus tatsächlich entnommener Energie (U × I über die Zeit), "
-          + "Spannungskurve als Gegenprobe. Lastkorrektur mit " + BP.ri + " mΩ je Zelle."
-        : "Ohne Stromwerte im Log wird der Ladezustand aus der Spannungskurve geschätzt.");
+        ? "State of charge from energy actually drawn (V × I over time), "
+          + "voltage curve as a cross-check. Load correction with " + BP.ri + " mΩ je Zelle."
+        : "Without current in the log, state of charge is estimated from the voltage curve.");
 }
 function battApply(){
   BP.type = el("bpType").value;
@@ -2999,7 +2983,7 @@ el("btnWp").onclick = function(){
 function wpUnitSync(){
   const kind = el("wpKind").value;
   el("wpValLine").style.display = kind === "auto" ? "none" : "flex";
-  el("wpUnit").textContent = kind === "d" ? "km" : "Sekunden";
+  el("wpUnit").textContent = kind === "d" ? "km" : "seconds";
   if (!el("wpVal").value || parseFloat(el("wpVal").value) <= 0)
     el("wpVal").value = kind === "d" ? 0.5 : 30;
 }
@@ -3033,7 +3017,7 @@ el("exGo").onclick = function(){ findExtreme(); };
 el("vaField").onchange = function(){ updateVaUnit(); };
 el("vaGo").onclick = function(){ findValue(); };
 el("vaValue").addEventListener("keydown", function(e){ if (e.key === "Enter") findValue(); });
-el("hitsClear").onclick = function(){ clearHits(); el("hitsHead").textContent = "Treffer"; };
+el("hitsClear").onclick = function(){ clearHits(); el("hitsHead").textContent = "Hits"; };
 
 el("bpSel").onchange = function(){
   const i = parseInt(this.value,10);
@@ -3139,18 +3123,18 @@ requestAnimationFrame(loop);
       try { initMap(); }
       catch(e){
         console.error(e);
-        fail("3D-Karte konnte nicht starten", "Der Browser meldet: "+esc(e.message)+
-          "<br><br>Meist fehlt WebGL. In Chrome unter <b>chrome://gpu</b> prüfen oder die "+
-          "Hardwarebeschleunigung einschalten.");
+        fail("3D map could not start", "Der Browser meldet: "+esc(e.message)+
+          "<br><br>Usually WebGL is missing. Check <b>chrome://gpu</b> in Chrome or "+
+          "enable hardware acceleration.");
       }
       return;
     } catch(e){ /* nächste Quelle */ }
   }
-  fail("Kartendaten nicht erreichbar",
-    "Die 3D-Karte lädt Kartenmaterial aus dem Internet. Beim ersten Öffnen wird deshalb "+
-    "eine Verbindung gebraucht.<br><br>Prüfe die Internetverbindung oder ob eine Firewall "+
-    "<b>unpkg.com</b> und <b>arcgisonline.com</b> blockiert. Kennzahlen, Lageanzeige und "+
-    "Flugband funktionieren auch ohne Karte.");
+  fail("Map data unavailable",
+    "The 3D map loads tiles from the internet, so the first open needs "+
+    "a connection.<br><br>Check your internet connection or whether a firewall blocks "+
+    "<b>unpkg.com</b> and <b>arcgisonline.com</b>. Metrics, attitude display and "+
+    "timeline work without the map too.");
 })();
 </script>
 </body>
