@@ -119,18 +119,18 @@ function LogError(msg){ this.name="LogError"; this.message=msg; }
 
 function load(text, sourceName, maxPoints){
   maxPoints = maxPoints || 25000;
-  if(!text || !text.length) throw new LogError("Die Datei ist leer.");
+  if(!text || !text.length) throw new LogError("The file is empty.");
   var lines = text.split(/\r\n|\r|\n/);
   // erste nicht-leere Zeile = Header
   var hi=0; while(hi<lines.length && !lines[hi].trim()) hi++;
-  if(hi>=lines.length) throw new LogError("Die erste Zeile der Datei ist leer – es fehlt der Spaltenkopf.");
+  if(hi>=lines.length) throw new LogError("The first line of the file is empty \u2013 the header row is missing.");
   var first = lines[hi];
   var delim = sniffDelim(first);
   var header = splitCSV(first, delim).map(function(h){return h.trim();});
   var rows = [];
   for(var i=hi+1;i<lines.length;i++){ if(lines[i].length) rows.push(splitCSV(lines[i], delim)); }
   // trailing leere Zeile faellt weg (letzte Zeile ""), aber splitCSV("") -> [""], laenge<2 filtert unten
-  if(!rows.length) throw new LogError("Die Datei enthält einen Spaltenkopf, aber keine Datenzeilen.");
+  if(!rows.length) throw new LogError("The file has a header row but no data rows.");
 
   var nrm = header.map(norm), un = header.map(unit);
 
@@ -149,9 +149,9 @@ function load(text, sourceName, maxPoints){
   var haveComb = idx.gps!==undefined;
   var haveSplit = idx.lat!==undefined && idx.lon!==undefined;
   if(!(haveComb||haveSplit)){
-    throw new LogError("Keine GPS-Spalte gefunden.\n\nErwartet wird entweder eine Spalte 'GPS' mit 'Breite Länge' "+
-      "(EdgeTX-Standard) oder je eine Spalte für Breite und Länge. Prüfe, ob im Sender die GPS-Telemetrie mit "+
-      "aufgezeichnet wurde.\n\nGefundene Spalten: "+header.slice(0,14).join(", ")+(header.length>14?" ...":""));
+    throw new LogError("No GPS column found.\n\nExpected either a 'GPS' column with 'lat lon' "+
+      "(EdgeTX standard) or separate columns for latitude and longitude. Check that GPS telemetry was "+
+      "recorded on the radio.\n\nColumns found: "+header.slice(0,14).join(", ")+(header.length>14?" ...":""));
   }
 
   var fSpd = idx.spd!==undefined ? speedFactor(un[idx.spd]) : 1;
@@ -185,8 +185,8 @@ function load(text, sourceName, maxPoints){
     cl+=dayOff; prevClock=cl;
     raw.push([cl,la,lo,row]);
   }
-  if(raw.length<2) throw new LogError("Im Log steht keine verwertbare GPS-Position ("+badGps+
-    " Zeilen ohne Fix). Vermutlich wurde ohne GPS-Empfang aufgezeichnet.");
+  if(raw.length<2) throw new LogError("The log has no usable GPS position ("+badGps+
+    " rows without a fix). It was probably recorded without GPS reception.");
 
   var fl={ source_name:sourceName||"log.csv", date:"", notes:[], fm_names:[], cols:{},
     t:[],clock:[],lat:[],lon:[],alt:[],spd:[],vspd:[],hdg:[],dist:[],sats:[],
@@ -204,7 +204,7 @@ function load(text, sourceName, maxPoints){
   if(raw.length>maxPoints){
     step=Math.ceil(raw.length/maxPoints);
     var dec=[]; for(var s2=0;s2<raw.length;s2+=step) dec.push(raw[s2]);
-    fl.notes.push("Log auf jeden "+step+". Messpunkt reduziert ("+dec.length+" von "+fl.n_raw+"), damit die Karte flüssig bleibt.");
+    fl.notes.push("Log reduced to every "+step+" sample ("+dec.length+" of "+fl.n_raw+") so the map stays smooth.");
     raw=dec;
   }
   fl.decimated=step;
@@ -255,7 +255,7 @@ function load(text, sourceName, maxPoints){
   for(var i3=1;i3<n;i3++){ var j=li[li.length-1];
     if(fl.lat[i3]!==fl.lat[j]||fl.lon[i3]!==fl.lon[j]||fl.alt[i3]!==fl.alt[j]) li.push(i3); }
   fl.line_idx=li;
-  if(li.length<2) throw new LogError("Das Log enthält nur eine einzige Position – daraus lässt sich keine Flugspur zeichnen.");
+  if(li.length<2) throw new LogError("The log contains only a single position \u2013 no flight path can be drawn from it.");
 
   fl.stats=stats(fl);
   return payload(fl);
@@ -306,7 +306,7 @@ function resolveReference(fl){
     for(var i=0;i<n;i++) fl.alt[i]=fl.alt[i]===null?null:r1(fl.alt[i]-fl.alt_ref,1);
     fl._alt_min -= fl.alt_ref;
     if(Math.abs(fl.alt_ref)>25){ fl.alt_mode="msl";
-      fl.notes.push("Die Höhen sind im Log absolut angegeben. Als Nullpunkt dient die am Boden gemessene Höhe von "+Math.round(fl.alt_ref)+" m."); }
+      fl.notes.push("Altitudes are absolute in the log. The ground height of "+Math.round(fl.alt_ref)+" m measured at the reference point is used as zero."); }
   } else if(!fl.home_known){ fl.alt_mode="raw"; }
 
   fl.alt_base = fl.home_known?0:r1(fl._alt_min,1);
@@ -319,10 +319,10 @@ function resolveReference(fl){
   }
 
   if(!fl.home_known){
-    fl.notes.push("Im Log gibt es keine Phase am Boden – die Aufzeichnung beginnt und endet in der Luft. "+
-      "Startplatz und Höhe über Grund sind daraus nicht bestimmbar. Entfernungen beziehen sich auf den ersten Messpunkt, Höhen sind unveränderte Logwerte.");
+    fl.notes.push("The log has no phase on the ground \u2013 the recording starts and ends in the air. "+
+      "Start point and height above ground cannot be derived. Distances are relative to the first sample, altitudes are unchanged log values.");
   } else if(fl.home_source==="landing"){
-    fl.notes.push("Die Aufzeichnung beginnt bereits in der Luft. Als Bezugspunkt dient deshalb der Landeplatz am Ende des Logs.");
+    fl.notes.push("The recording already starts in the air, so the landing point at the end of the log is used as the reference.");
   }
 }
 function tailFrom(fl,secs){ var n=fl.t.length,i=n-1; while(i>0 && fl.t[n-1]-fl.t[i-1]<=secs) i--; return i; }
