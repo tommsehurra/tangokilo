@@ -994,7 +994,7 @@ Array.prototype.forEach.call($("tileSeg").children, function(b){
   });
 });
 $("coords").addEventListener("change", function(){
-  try { var c = parseCoords($("coords").value); setCenter(c[0], c[1], false); }
+  try { var c = parseCoords($("coords").value); setCenter(c[0], c[1], false); labelCentre(c[0], c[1]); }
   catch(e){ if ($("coords").value.trim()) setStatus(e.message); }
 });
 
@@ -1067,16 +1067,32 @@ function setCenter(lat, lon, keepView){
   state.center = { lat:lat, lon:lon };
   if (!marker){
     marker = L.marker([lat,lon], { draggable:true }).addTo(map);
-    marker.on("dragend", function(){ var p = marker.getLatLng(); state.center={lat:p.lat,lon:p.lng}; updateArea(); estimate(); scheduleThumbs(); });
+    marker.on("dragend", function(){ var p = marker.getLatLng(); state.center={lat:p.lat,lon:p.lng}; updateArea(); estimate(); scheduleThumbs(); labelCentre(p.lat, p.lng); });
   } else marker.setLatLng([lat,lon]);
   updateArea(); estimate(); scheduleThumbs();
   if (!keepView) fitArea();
 }
 
+/* Update the "Centre set — <place>" status from a picked point via reverse geocoding.
+   Shows the place NAME only — never coordinates. */
+var _labelSeq = 0;
+function labelCentre(lat, lon){
+  var seq = ++_labelSeq;
+  setStatus("Centre set");
+  fetch("https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon), { headers:{ "Accept":"application/json" } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (seq !== _labelSeq) return;              // a newer pick superseded this one
+      var name = d && d.display_name ? String(d.display_name).split(",").slice(0,2).join(",").trim() : "";
+      if (name) setStatus("Centre set — "+name);
+    })
+    .catch(function(){ /* keep the plain "Centre set" — never fall back to coordinates */ });
+}
+
 (function initMap(){
   map = L.map("map", { zoomControl:true, worldCopyJump:true }).setView([48.5, 9.5], 6);
   setBaseLayer();
-  map.on("click", function(e){ setCenter(e.latlng.lat, e.latlng.lng, true); });
+  map.on("click", function(e){ setCenter(e.latlng.lat, e.latlng.lng, true); labelCentre(e.latlng.lat, e.latlng.lng); });
   $("airKey").value = AIR_KEY;
   updateAirKeyUI();
   $("airKey").addEventListener("change", function(){
