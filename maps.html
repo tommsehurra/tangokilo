@@ -117,7 +117,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
         <div class="sep"></div>
 
         <span class="lbl">Centre (lat, lon)</span>
-        <input class="field" id="coords" placeholder="50.795612, 7.206893" autocomplete="off">
+        <input class="field" id="coords" placeholder="" autocomplete="off">
 
         <div class="row" style="margin-top:18px">
           <span class="lbl" style="margin:0">Radius</span>
@@ -785,7 +785,7 @@ var PV = 520;
 var GUIDE =
 "SETUP ON THE RADIO\n\n"+
 "1  Copy the MAPS folder to the ROOT of the SD card.\n"+
-"   The result must look like  E:\\MAPS\\16\\68723\\44510.png\n"+
+"   The result must look like  E:\\MAPS\\<zoom>\\<x>\\<y>.png\n"+
 "   Not inside IMAGES, not inside SCRIPTS.\n\n"+
 "2  Copy the WIDGETS folder to the ROOT of the SD card.\n"+
 "   If WIDGETS already exists, merge it. The result must be\n"+
@@ -857,7 +857,7 @@ function tileRanges(lat, lon, r, z){
 }
 function parseCoords(text){
   var parts = String(text).replace(/;/g,",").trim().split(",").filter(function(p){ return p.trim(); });
-  if (parts.length !== 2) throw new Error("Expected format:  50.795612, 7.206893");
+  if (parts.length !== 2) throw new Error("Expected format:  latitude, longitude");
   var lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
   if (isNaN(lat) || isNaN(lon)) throw new Error("Coordinates are not numbers.");
   if (!(lat>-85 && lat<85) || !(lon>=-180 && lon<=180)) throw new Error("Coordinates out of range.");
