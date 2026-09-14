@@ -70,7 +70,7 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 </header>
 
 <div class="page">
-  <h1>Flight Path Viewer</h1>
+  <h1>✈️ Flight Path Viewer</h1>
   <p class="lead">Load a flight log and see your flight as an interactive 3D map — with terrain, attitude display, metrics and a timeline. Works with an <b>EdgeTX / OpenTX telemetry log (.csv)</b> and with a <b>raw INAV / Betaflight blackbox log (.txt / .bbl / .bfl)</b>, which adds airspeed, wind, G-force, HDOP, baro temperature and more. <b>Everything runs directly in your browser; the file is never uploaded or stored.</b></p>
 
   <div class="drop" id="drop">
@@ -85,13 +85,12 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
   </div>
 
   <div class="feat">
-    <div><h3>3D map</h3><p>The flight path over real terrain and satellite imagery, free to rotate and zoom.</p></div>
-    <div><h3>Attitude display</h3><p>A 3D model shows roll, pitch and yaw at every moment of the flight.</p></div>
-    <div><h3>Metrics</h3><p>Altitude, speed, climb, distance, battery, link quality — read automatically from the log.</p></div>
-    <div><h3>Timeline</h3><p>Scrub through the flight on the band, toggle extra curves on and off.</p></div>
+    <div><h3>🗺️ 3D map</h3><p>The flight path over real terrain and satellite imagery, free to rotate and zoom.</p></div>
+    <div><h3>🛩️ Attitude display</h3><p>A 3D model shows roll, pitch and yaw at every moment of the flight.</p></div>
+    <div><h3>📊 Metrics</h3><p>Altitude, speed, climb, distance, battery, link quality — read automatically from the log. Blackbox logs add airspeed, wind, G-force and more.</p></div>
+    <div><h3>⏱️ Timeline</h3><p>Scrub through the flight on the band, toggle extra curves on and off.</p></div>
   </div>
 
-  <p class="note">This is the same analysis as the Flugspur desktop program, just in the browser. For the map, the viewer loads tiles from the internet on first open (OpenStreetMap / OpenTopoMap, satellite imagery). Metrics, attitude display and the timeline also work without a map connection.</p>
 </div>
 
 <div id="busy"><div class="spin"></div><div id="busyText">Reading log …</div></div>
@@ -101,7 +100,7 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 (function(){
 "use strict";
 function $(id){ return document.getElementById(id); }
-var TPL_URL = "/flugspur_report_tpl.html?v=10";
+var TPL_URL = "/flugspur_report_tpl.html?v=11";
 var tplCache = null;
 
 function showErr(msg){ var e=$("err"); e.textContent=msg||""; e.classList.toggle("show", !!msg); }
