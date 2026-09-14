@@ -377,12 +377,13 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
     <div class="sh-head"><h2>Help</h2><span class="sub">What you're looking at</span>
       <button class="sh-close" id="shClose" aria-label="Close">✕</button></div>
     <div class="sh-body">
-      <div class="sh-card"><h3>Live view</h3><p>While the aircraft is flying, the page shows <b>live telemetry</b>: speed, distance and altitude up top, a vario bar, a compass and an artificial horizon, plus battery, current, consumption and remaining flight time. It switches here automatically the moment a flight starts.</p></div>
-      <div class="sh-card"><h3>Altitude profile &amp; radar</h3><p>The <b>altitude profile</b> tracks height over the last minutes. The <b>radar</b> shows the aircraft <b>relative to the start point only</b> — no real coordinates are ever exposed.</p></div>
-      <div class="sh-card"><h3>Records &amp; last flight</h3><p>When nothing is flying you see the <b>all-time records</b> across every flight and a summary of the <b>last flight</b> with its height profile. These values are the same for everyone.</p></div>
-      <div class="sh-card"><h3>Gallery</h3><p>A slideshow of FPV photos runs at the bottom. <b>Click an image</b> to enlarge it; use the arrows or dots to move through, or swipe on a phone.</p></div>
-      <div class="sh-card"><h3>Flight Path Viewer</h3><p>Under <b>Tools</b>, upload your own EdgeTX log (CSV) to see it as an interactive <b>3D map</b> with terrain and attitude. It runs entirely in your browser — <b>nothing is uploaded or stored</b>.</p></div>
-      <div class="sh-card"><h3>Channels</h3><p><b>Twitch</b> is where the flights run live; <b>YouTube</b> has flights to rewatch. Both are linked under Channels.</p></div>
+      <div class="sh-card"><h3>🛰️ Live view</h3><p>While the aircraft is flying, the page shows <b>live telemetry</b>: speed, distance and altitude up top, a vario bar, a compass and an artificial horizon, plus battery, current, consumption and remaining flight time. It switches here automatically the moment a flight starts.</p></div>
+      <div class="sh-card"><h3>📈 Altitude profile &amp; radar</h3><p>The <b>altitude profile</b> tracks height over the last minutes. The <b>radar</b> shows the aircraft <b>relative to the start point only</b> — no real coordinates are ever exposed.</p></div>
+      <div class="sh-card"><h3>🏆 Records &amp; last flight</h3><p>When nothing is flying you see the <b>all-time records</b> across every flight and a summary of the <b>last flight</b> with its height profile. These values are the same for everyone.</p></div>
+      <div class="sh-card"><h3>📸 Gallery</h3><p>A slideshow of FPV photos runs at the bottom. <b>Click an image</b> to enlarge it; use the arrows or dots to move through, or swipe on a phone.</p></div>
+      <div class="sh-card"><h3>🗺️ Map Downloader</h3><p>Under <b>Tools</b>, download offline map tiles for the <b>SatMap</b> widget on your radio and generate the Lua widget — pick an area on the map, write it straight to the SD card. Nothing leaves your browser.</p></div>
+      <div class="sh-card"><h3>✈️ Flight Path Viewer</h3><p>Under <b>Tools</b>, upload your own EdgeTX log (CSV) or a raw INAV / Betaflight blackbox log to see it as an interactive <b>3D map</b> with terrain and attitude. It runs entirely in your browser — <b>nothing is uploaded or stored</b>.</p></div>
+      <div class="sh-card"><h3>📡 Channels</h3><p><b>Twitch</b> is where the flights run live; <b>YouTube</b> has flights to rewatch. Both are linked under Channels.</p></div>
       <div class="sh-legend"><span class="t">Value colors</span>
         <span class="sh-chip"><i style="background:linear-gradient(90deg,#3FA9FF,#33D68A,#FFC24B,#FF4D57)"></i>performance — cool to hot as the value climbs</span>
         <span class="sh-chip"><i style="background:#33D68A"></i>good</span>
@@ -533,25 +534,25 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
 </div>
 
 <section>
-  <h2>Channels</h2>
+  <h2>📡 Channels</h2>
   <div class="links">
     <a href="https://www.twitch.tv/tommtee" target="_blank" rel="noopener noreferrer">
-      <b>Twitch</b><span>tommtee — live flights here</span></a>
+      <b>🟣 Twitch</b><span>tommtee — live flights here</span></a>
     <a href="https://www.youtube.com/@tiefseetaucherr" target="_blank" rel="noopener noreferrer">
-      <b>YouTube</b><span>@tiefseetaucherr — flights to rewatch</span></a>
+      <b>▶️ YouTube</b><span>@tiefseetaucherr — flights to rewatch</span></a>
   </div>
 </section>
 
 <section>
-  <h2>Tools</h2>
+  <h2>🛠️ Tools</h2>
   <div class="links">
-    <a href="/flugpfad.html"><b>Flight Path Viewer</b></a>
-    <a href="/maps.html"><b>Map Downloader</b></a>
+    <a href="/flugpfad.html"><b>✈️ Flight Path Viewer</b></a>
+    <a href="/maps.html"><b>🗺️ Map Downloader</b></a>
   </div>
 </section>
 
 <section class="gallery">
-  <h2>Gallery</h2>
+  <h2>📸 Gallery</h2>
   <div class="show" id="show">
     <div class="show-track" id="showTrack"></div>
     <button class="show-arw show-prev" id="showPrev" aria-label="Previous">
@@ -1395,8 +1396,8 @@ requestAnimationFrame(frame);
 <script>
 (function(){
   var o=document.getElementById("siteHelp"), b=document.getElementById("siteHelpBtn"), c=document.getElementById("shClose");
-  function open(){ if(o) o.classList.add("open"); }
-  function close(){ if(o) o.classList.remove("open"); }
+  function open(){ if(o){ o.classList.add("open"); document.body.style.overflow="hidden"; } }
+  function close(){ if(o){ o.classList.remove("open"); document.body.style.overflow=""; } }
   if(b) b.addEventListener("click", open);
   if(c) c.addEventListener("click", close);
   if(o) o.addEventListener("click", function(e){ if(e.target===o) close(); });
