@@ -7,6 +7,8 @@
 <meta name="theme-color" content="#3FA9FF">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A1A2F'/%3E%3Cpath d='M16 4.5 L25.5 27.5 L16 21.5 L6.5 27.5 Z' fill='%233FA9FF'/%3E%3Cpath d='M16 4.5 L16 21.5 L6.5 27.5 Z' fill='%2378C8FF'/%3E%3C/svg%3E">
 <title>Map Downloader · Tango Kilo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 :root{
   --accent:#3FA9FF; --white:#EAF2FA; --ash:#8A97A6; --ash-dim:#55606C;
@@ -49,12 +51,16 @@ input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 10px rgba(63,169,255,.5)}
 input[type=range]::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:50%;background:var(--accent);cursor:pointer}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{position:relative;border:1px solid var(--edge);background:var(--void-2);color:var(--ash);border-radius:8px;
-  padding:9px 6px 22px;min-width:56px;text-align:center;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;transition:.12s}
-.chip small{position:absolute;left:0;right:0;bottom:5px;font-size:9px;font-weight:600;color:var(--ash-dim);letter-spacing:.04em}
-.chip.on{background:var(--accent);border-color:var(--accent);color:var(--void)}
-.chip.on small{color:rgba(6,18,31,.7)}
-.chip.off{opacity:.35;cursor:not-allowed}
+.chip{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;
+  border:1px solid var(--edge);background:var(--void-2);color:var(--ash);border-radius:9px;
+  padding:6px 6px 7px;width:64px;cursor:pointer;font-family:inherit;font-weight:700;transition:.12s}
+.chip .zthumb{width:50px;height:50px;border-radius:6px;border:1px solid var(--edge);
+  background:#0A121C center/cover no-repeat}
+.chip .zt{font-size:13px}
+.chip small{font-size:9px;font-weight:600;color:var(--ash-dim);letter-spacing:.02em}
+.chip.on{border-color:var(--accent);color:var(--white);box-shadow:0 0 0 2px rgba(63,169,255,.4)}
+.chip.on .zt::after{content:" ✓";color:var(--accent)}
+.chip.off{opacity:.32;cursor:not-allowed}
 .seg{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
 .seg button{background:var(--void-2);color:var(--ash);border:0;padding:8px 16px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px}
 .seg button.on{background:var(--accent);color:var(--void)}
@@ -90,6 +96,21 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 .modal .body{padding:14px 24px 20px;overflow:auto;font-family:Consolas,"DejaVu Sans Mono",monospace;font-size:12.5px;line-height:1.6;color:var(--ash);white-space:pre-wrap}
 .modal .x{margin:0 24px 20px;align-self:flex-start}
 .footnote{margin-top:22px;font-size:12px;color:var(--ash-dim);line-height:1.6;max-width:110ch}
+/* interactive map */
+.searchrow{display:flex;gap:8px;margin-bottom:10px}
+#search{flex:1}
+#map{width:100%;height:clamp(380px,64vh,680px);border-radius:14px;border:1px solid var(--edge);overflow:hidden;background:var(--void-2)}
+.maptools{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
+.chk{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ash);cursor:pointer;user-select:none;white-space:nowrap}
+.chk input{width:16px;height:16px;accent-color:var(--accent)}
+#airKey{width:200px;padding:8px 11px;font-size:12px;display:none}
+#airKey.show{display:inline-block}
+.leaflet-container{background:#0A121C;font-family:var(--face)}
+.leaflet-control-attribution{background:rgba(10,18,28,.72)!important;color:var(--ash-dim)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--ash)!important}
+.leaflet-bar a{background:var(--deck)!important;color:var(--white)!important;border-color:var(--edge)!important}
+.leaflet-bar a:hover{background:var(--accent)!important;color:var(--void)!important}
+.leaflet-control-geosearch,.leaflet-touch .leaflet-bar a{color:var(--white)}
 </style>
 </head>
 <body>
@@ -103,7 +124,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 </header>
 
 <div class="page">
-  <h1>Map Downloader</h1>
+  <h1>🗺️ Map Downloader</h1>
   <p class="lead">Download offline map tiles for the <b>SatMap</b> widget on your EdgeTX colour radio (TX16S and similar), and generate the matching <b>main.lua</b> — all here in your browser. Pick a centre, a radius and the zoom levels, then write the <b>MAPS</b> and <b>WIDGETS</b> folders straight onto your SD card (Chrome / Edge) or download them as a ZIP.</p>
 
   <div class="grid">
@@ -163,13 +184,21 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
       </div>
     </div>
 
-    <!-- ---------------- preview + info ---------------- -->
+    <!-- ---------------- interactive map ---------------- -->
     <div>
-      <canvas id="preview" width="520" height="520"></canvas>
-      <div class="pvnote" id="pvnote">Enter coordinates to see a preview.</div>
+      <div class="searchrow">
+        <input class="field" id="search" placeholder="🔍 Search a place (town, address, landmark)…" autocomplete="off">
+        <button class="btn ghost" id="searchGo" style="width:auto;padding:0 20px">Search</button>
+      </div>
+      <div id="map"></div>
+      <div class="maptools">
+        <label class="chk" title="Show aeronautical airspaces (CTR, restricted, danger zones …) for orientation"><input type="checkbox" id="airspace"> ⚠️ Airspace overlay</label>
+        <input class="field" id="airKey" placeholder="OpenAIP API key (free)" autocomplete="off">
+      </div>
+      <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue circle is what gets downloaded.</div>
 
       <div style="margin-top:24px">
-        <h3 class="sec">How it works</h3>
+        <h3 class="sec">ℹ️ How it works</h3>
         <p class="msg">The tool fetches map tiles for the area and zoom levels you choose, cuts them to the tile size the widget expects, and lays them out as <b style="color:var(--white)">MAPS/&lt;zoom&gt;/&lt;x&gt;/&lt;y&gt;.png</b>. It also writes <b style="color:var(--white)">WIDGETS/SatMap/main.lua</b>, already matched to your tile size and zoom range.</p>
         <p class="msg" style="margin-top:10px">On Chrome or Edge you can point it at your SD card (or any folder) and it writes the files there directly — existing tiles are skipped, so you can extend an area later. On other browsers it hands you a single ZIP to unzip onto the card.</p>
         <p class="msg" style="margin-top:10px">Copy the <b style="color:var(--white)">MAPS</b> and <b style="color:var(--white)">WIDGETS</b> folders to the <b style="color:var(--white)">root</b> of the SD card, reboot the radio, then add the SatMap widget to a full-screen layout. The setup guide has the full steps.</p>
@@ -869,6 +898,7 @@ var state = {
   radius: 3.0,
   tile: 128,
   zoom: {},     // z -> bool
+  center: null, // {lat,lon} set by map click / search / manual entry
   running: false,
   cancel: false
 };
@@ -884,7 +914,7 @@ function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(
     var o = document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
   });
   sel.value = state.source;
-  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); debouncePreview(); });
+  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); setBaseLayer(); scheduleThumbs(); });
 })();
 
 (function initChips(){
@@ -892,7 +922,7 @@ function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(
   Object.keys(ZOOMS).map(Number).sort(function(a,b){return a-b;}).forEach(function(z){
     var b = document.createElement("button");
     b.className = "chip"; b.dataset.z = z;
-    b.innerHTML = "Z"+z+"<small>"+ZOOMS[z]+"</small>";
+    b.innerHTML = '<span class="zthumb"></span><span class="zt">Z'+z+'</span><small>'+ZOOMS[z]+'</small>';
     b.addEventListener("click", function(){
       if (z > src().maxz) return;
       state.zoom[z] = !state.zoom[z]; paintChips(); estimate();
@@ -915,21 +945,24 @@ function paintChips(){
 $("radius").addEventListener("input", function(){
   state.radius = parseFloat(this.value);
   $("radiusVal").textContent = state.radius.toFixed(1)+" km";
-  estimate(); debouncePreview();
+  updateCircle(); estimate();
 });
+$("radius").addEventListener("change", function(){ fitArea(); });
 Array.prototype.forEach.call($("tileSeg").children, function(b){
   b.addEventListener("click", function(){
     Array.prototype.forEach.call($("tileSeg").children, function(x){ x.classList.remove("on"); });
     b.classList.add("on"); state.tile = Number(b.dataset.t); estimate();
   });
 });
-$("coords").addEventListener("input", function(){ estimate(); debouncePreview(); });
+$("coords").addEventListener("change", function(){
+  try { var c = parseCoords($("coords").value); setCenter(c[0], c[1], false); }
+  catch(e){ if ($("coords").value.trim()) setStatus(e.message); }
+});
 
 /* ---------------- estimate ---------------- */
 function estimate(){
-  var lat, lon;
-  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
-  catch(e){ $("stFiles").textContent="–"; $("stSize").textContent="–"; $("stTime").textContent="–"; return; }
+  if (!state.center){ $("stFiles").textContent="–"; $("stSize").textContent="–"; $("stTime").textContent="–"; return; }
+  var lat=state.center.lat, lon=state.center.lon;
   var zs = selectedZooms();
   if (!zs.length){ $("stFiles").textContent="0"; $("stSize").textContent="0 MB"; $("stTime").textContent="–"; return; }
   var s = src(), F = 256/state.tile, srcTiles = 0;
@@ -937,23 +970,15 @@ function estimate(){
   var pngs = srcTiles*F*F;
   var kb = s.kb/(state.tile===256?1:3.4);
   var mb = pngs*kb/1024;
-  var secs = srcTiles*((s.pause||0.05)+0.45*s.reqs);
+  var conc = s.pause ? 2 : 8;               // parallel downloads (gentle for OpenTopoMap)
+  var secs = srcTiles*(0.45*s.reqs + (s.pause||0))/conc;
   var col = mb<150 ? "var(--white)" : (mb<500 ? "var(--warn)" : "var(--crit)");
   $("stFiles").textContent = pngs.toLocaleString("de-DE");
   $("stSize").textContent = Math.round(mb)+" MB"; $("stSize").style.color = col;
   $("stTime").textContent = secs>=60 ? Math.round(secs/60)+" min" : "<1 min"; $("stTime").style.color = col;
 }
 
-/* ---------------- preview ---------------- */
-var pvTimer = null;
-function debouncePreview(){ if (pvTimer) clearTimeout(pvTimer); pvTimer = setTimeout(preview, 900); }
-
-function pickPreviewZoom(lat, lon, r){
-  var b = bbox(lat, lon, r), span = b[3]-b[1];
-  if (span <= 0) return 12;
-  var z = Math.floor(Math.log2(560/256*360/span));
-  return Math.max(3, Math.min(src().maxz, z));
-}
+/* ---------------- tile helpers (also used by the downloader) ---------------- */
 function loadImg(url){
   return new Promise(function(res){
     var im = new Image(); im.crossOrigin = "anonymous";
@@ -963,48 +988,92 @@ function loadImg(url){
 }
 function tileUrl(s, z, x, y){ return s.url.replace("{z}",z).replace("{x}",x).replace("{y}",y); }
 
-function preview(){
-  var lat, lon;
-  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
-  catch(e){ placeholder("Enter coordinates to see a preview."); return; }
-  $("pvnote").textContent = "Loading preview…";
-  var s = src(), pz = pickPreviewZoom(lat, lon, state.radius);
-  var cx = deg2num(lat, lon, pz), gx0 = Math.floor(cx[0])-1, gy0 = Math.floor(cx[1])-1;
-  var cv = $("preview"), ctx = cv.getContext("2d");
-  var mosaic = document.createElement("canvas"); mosaic.width=768; mosaic.height=768;
-  var mctx = mosaic.getContext("2d");
-  mctx.fillStyle = "#161a20"; mctx.fillRect(0,0,768,768);
-  var jobs = [];
-  for (var a=0;a<3;a++) for (var b=0;b<3;b++) (function(a,b){
-    jobs.push(loadImg(tileUrl(s, pz, gx0+a, gy0+b)).then(function(im){
-      if (im){ try { mctx.drawImage(im, a*256, b*256, 256, 256); } catch(e){} }
-      if (im && s.overlay){ return loadImg(tileUrl({url:s.overlay}, pz, gx0+a, gy0+b)).then(function(ov){
-        if (ov){ try { mctx.drawImage(ov, a*256, b*256, 256, 256); } catch(e){} } }); }
-    }));
-  })(a,b);
-  Promise.all(jobs).then(function(){
-    ctx.clearRect(0,0,PV,PV);
-    ctx.drawImage(mosaic, 0,0,768,768, 0,0,PV,PV);
-    var sc = PV/768;
-    function toPx(la,lo){ var t = deg2num(la,lo,pz); return [ (t[0]-gx0)*256*sc, (t[1]-gy0)*256*sc ]; }
-    var bb = bbox(lat, lon, state.radius);
-    var pa = toPx(bb[2], bb[1]), pb = toPx(bb[0], bb[3]);
-    ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;
-    ctx.strokeRect(pa[0]+1, pa[1]+1, pb[0]-pa[0], pb[1]-pa[1]);
-    ctx.strokeStyle = "#3FA9FF"; ctx.lineWidth = 2;
-    ctx.strokeRect(pa[0], pa[1], pb[0]-pa[0], pb[1]-pa[1]);
-    var m = toPx(lat, lon);
-    ctx.beginPath(); ctx.moveTo(m[0]-10,m[1]); ctx.lineTo(m[0]+10,m[1]); ctx.moveTo(m[0],m[1]-10); ctx.lineTo(m[0],m[1]+10); ctx.stroke();
-    $("pvnote").textContent = "Z"+pz+" overview — the frame is the download area.";
+/* ---------------- interactive map (Leaflet) ---------------- */
+var map, baseLayer=null, airLayer=null, marker=null, circle=null;
+var AIR_KEY = "";
+try { AIR_KEY = localStorage.getItem("openaip_key") || ""; } catch(e){}
+
+function makeBase(name){
+  var s = SOURCES[name];
+  var layers = [ L.tileLayer(s.url, { maxZoom:19, maxNativeZoom:s.maxz, crossOrigin:true, attribution:s.attr }) ];
+  if (s.overlay) layers.push(L.tileLayer(s.overlay, { maxZoom:19, maxNativeZoom:s.maxz, crossOrigin:true }));
+  return L.layerGroup(layers);
+}
+function setBaseLayer(){
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseLayer = makeBase(state.source); baseLayer.addTo(map);
+}
+function setAirspace(on){
+  if (airLayer){ map.removeLayer(airLayer); airLayer = null; }
+  if (!on || !AIR_KEY) return;
+  airLayer = L.tileLayer("https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey="+encodeURIComponent(AIR_KEY),
+    { maxZoom:14, opacity:0.85, crossOrigin:true, attribution:"Airspaces © OpenAIP" });
+  airLayer.addTo(map);
+}
+function fitArea(){ if (circle) map.fitBounds(circle.getBounds(), { padding:[26,26], maxZoom:16, animate:true }); }
+function updateCircle(){
+  if (!state.center) return;
+  var c = [state.center.lat, state.center.lon], rM = state.radius*1000;
+  if (!circle){ circle = L.circle(c, { radius:rM, color:"#3FA9FF", weight:2, fillColor:"#3FA9FF", fillOpacity:0.10 }).addTo(map); }
+  else { circle.setLatLng(c); circle.setRadius(rM); }
+}
+function setCenter(lat, lon, keepView){
+  state.center = { lat:lat, lon:lon };
+  if (!marker){
+    marker = L.marker([lat,lon], { draggable:true }).addTo(map);
+    marker.on("dragend", function(){ var p = marker.getLatLng(); state.center={lat:p.lat,lon:p.lng}; updateCircle(); estimate(); scheduleThumbs(); });
+  } else marker.setLatLng([lat,lon]);
+  updateCircle(); estimate(); scheduleThumbs();
+  if (!keepView) fitArea();
+}
+
+(function initMap(){
+  map = L.map("map", { zoomControl:true, worldCopyJump:true }).setView([48.5, 9.5], 6);
+  setBaseLayer();
+  map.on("click", function(e){ setCenter(e.latlng.lat, e.latlng.lng, true); });
+  $("airKey").value = AIR_KEY;
+  $("airspace").addEventListener("change", function(){
+    var on = this.checked; $("airKey").classList.toggle("show", on);
+    if (on && !AIR_KEY) setStatus("Airspace: enter a free OpenAIP API key (openaip.net) to show airspaces.");
+    setAirspace(on);
+  });
+  $("airKey").addEventListener("change", function(){
+    AIR_KEY = this.value.trim();
+    try { localStorage.setItem("openaip_key", AIR_KEY); } catch(e){}
+    if ($("airspace").checked) setAirspace(true);
+  });
+})();
+
+/* ---------------- location search (OpenStreetMap Nominatim) ---------------- */
+function doSearch(){
+  var q = $("search").value.trim(); if (!q) return;
+  setStatus("Searching “"+q+"” …");
+  fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q), { headers:{ "Accept":"application/json" } })
+    .then(function(r){ return r.json(); })
+    .then(function(a){
+      if (!a || !a.length){ setStatus("No place found for “"+q+"”."); return; }
+      var lat = parseFloat(a[0].lat), lon = parseFloat(a[0].lon);
+      map.setView([lat,lon], 13); setCenter(lat, lon, false);
+      setStatus("Centre set — "+String(a[0].display_name||q).split(",").slice(0,2).join(","));
+    })
+    .catch(function(){ setStatus("Search failed — check your connection."); });
+}
+$("searchGo").addEventListener("click", doSearch);
+$("search").addEventListener("keydown", function(e){ if (e.key==="Enter"){ e.preventDefault(); doSearch(); } });
+
+/* ---------------- zoom-level previews (live thumbnail per zoom) ---------------- */
+var thumbTimer = null;
+function scheduleThumbs(){ if (thumbTimer) clearTimeout(thumbTimer); thumbTimer = setTimeout(updateZoomThumbs, 300); }
+function updateZoomThumbs(){
+  if (!state.center) return;
+  var s = src();
+  Array.prototype.forEach.call($("chips").children, function(b){
+    var z = Number(b.dataset.z), th = b.querySelector(".zthumb"); if (!th) return;
+    if (z > s.maxz){ th.style.backgroundImage = ""; return; }
+    var t = deg2num(state.center.lat, state.center.lon, z);
+    th.style.backgroundImage = "url(\""+tileUrl(s, z, Math.floor(t[0]), Math.floor(t[1]))+"\")";
   });
 }
-function placeholder(txt){
-  var cv = $("preview"), ctx = cv.getContext("2d");
-  ctx.fillStyle = "#0A121C"; ctx.fillRect(0,0,PV,PV);
-  ctx.fillStyle = "#55606C"; ctx.font = "14px 'Segoe UI',sans-serif"; ctx.textAlign="center";
-  ctx.fillText(txt, PV/2, PV/2);
-}
-placeholder("Enter coordinates to see a preview.");
 
 /* ---------------- helpers: errors, log, progress ---------------- */
 function showErr(m){ var e=$("err"); e.textContent=m||""; e.classList.toggle("show", !!m); }
@@ -1034,7 +1103,7 @@ $("btnWidget").addEventListener("click", function(){
   var zs = selectedZooms();
   if (!zs.length){ showErr("Select at least one zoom level."); return; }
   var lat=0, lon=0;
-  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; } catch(e){}
+  if (state.center){ lat=state.center.lat; lon=state.center.lon; }
   var lua = buildLua(state.tile, zs, lat, lon);
   download("main.lua", new Blob([lua], {type:"text/plain"}));
   setStatus("widget generated — put it in WIDGETS/SatMap/main.lua on the SD card");
@@ -1042,9 +1111,11 @@ $("btnWidget").addEventListener("click", function(){
 
 /* ---------------- guide modal ---------------- */
 $("guideBody").textContent = GUIDE;
-$("btnGuide").addEventListener("click", function(){ $("guideModal").classList.add("open"); });
-$("guideClose").addEventListener("click", function(){ $("guideModal").classList.remove("open"); });
-$("guideModal").addEventListener("click", function(e){ if (e.target === this) this.classList.remove("open"); });
+function openGuide(on){ $("guideModal").classList.toggle("open", on); document.body.style.overflow = on ? "hidden" : ""; }
+$("btnGuide").addEventListener("click", function(){ openGuide(true); });
+$("guideClose").addEventListener("click", function(){ openGuide(false); });
+$("guideModal").addEventListener("click", function(e){ if (e.target === this) openGuide(false); });
+document.addEventListener("keydown", function(e){ if (e.key==="Escape") openGuide(false); });
 
 /* ---------------- tile fetch + crop ---------------- */
 function fetchComposited(s, z, x, y){
@@ -1122,9 +1193,8 @@ $("btnDownload").addEventListener("click", function(){ if (!state.running) start
 
 function startDownload(){
   showErr("");
-  var lat, lon;
-  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
-  catch(e){ showErr(e.message); return; }
+  if (!state.center){ showErr("Set a centre first — click the map or search a place."); return; }
+  var lat=state.center.lat, lon=state.center.lon;
   var zs = selectedZooms();
   if (!zs.length){ showErr("Select at least one zoom level."); return; }
   var s = src(), tile = state.tile, F = 256/tile;
@@ -1159,51 +1229,62 @@ function pickSink(s){
 function runJobs(sink, s, tile, F, zs, lat, lon, jobs, total){
   state.running = true; state.cancel = false;
   $("btnDownload").textContent = "Stop";
-  setBar(0); logLine("Start — "+total+" source tiles, "+(total*F*F)+" PNG files");
-  var i = 0, written = 0, skipped = 0, failed = 0, t0 = Date.now();
-  var pause = Math.round(((s.pause||0.05))*1000);
+  setBar(0);
+  var CONC = s.pause ? 2 : 8;                 // parallel workers (gentle for OpenTopoMap, fast for Esri)
+  var pauseMs = Math.round((s.pause||0)*1000);
+  logLine("Start — "+total+" source tiles, "+(total*F*F)+" PNG files, "+CONC+" in parallel");
+  var next = 0, doneN = 0, written = 0, skipped = 0, failed = 0, t0 = Date.now(), finished = false;
 
-  function step(){
-    if (state.cancel){ done("Cancelled. Starting again will resume."); return; }
-    if (i >= jobs.length){ done(null); return; }
-    var job = jobs[i++]; var z=job[0], x=job[1], y=job[2];
-    setBar(i/total); setStatus(i+" of "+total+" source tiles");
-
+  function processOne(job){
+    var z=job[0], x=job[1], y=job[2];
     // resume: skip a source tile whose first sub-tile already exists
-    sink.exists(z, x*F, y*F).then(function(ex){
-      if (ex){ skipped++; return schedule(); }
+    return sink.exists(z, x*F, y*F).then(function(ex){
+      if (ex){ skipped++; return; }
       return fetchComposited(s, z, x, y).then(function(cv){
-        if (!cv){ failed++; logLine("failed  "+z+"/"+x+"/"+y); return schedule(); }
+        if (!cv){ failed++; logLine("failed  "+z+"/"+x+"/"+y); return; }
         var subs = [];
         for (var a=0;a<F;a++) for (var b=0;b<F;b++) (function(a,b){
           subs.push(subBlob(cv, tile, a, b).then(function(bl){
             if (bl) return sink.put(z, x*F+a, y*F+b, bl).then(function(){ written++; });
           }));
         })(a,b);
-        return Promise.all(subs).then(function(){ return schedule(); });
+        return Promise.all(subs);
       });
-    }).catch(function(e){ failed++; logLine("error  "+z+"/"+x+"/"+y+"  "+e.message); schedule(); });
+    }).catch(function(e){ failed++; logLine("error  "+z+"/"+x+"/"+y+"  "+((e&&e.message)||e)); });
   }
-  function schedule(){ if (pause>0) setTimeout(step, pause); else Promise.resolve().then(step); }
 
-  function done(msg){
+  function worker(){
+    if (state.cancel || next >= jobs.length) return Promise.resolve();
+    var job = jobs[next++];
+    return processOne(job).then(function(){
+      doneN++; setBar(doneN/total); setStatus(doneN+" of "+total+" source tiles");
+      if (pauseMs) return sleep(pauseMs).then(worker);
+      return worker();
+    });
+  }
+
+  function finish(){
+    if (finished) return; finished = true;
+    var msg = state.cancel ? "Cancelled. Starting again will resume." : null;
     sink.widget(buildLua(tile, zs, lat, lon)).then(function(){ return sink.finish(); }).then(function(){
       var secs = Math.round((Date.now()-t0)/1000);
-      var line = (msg||("Done in "+Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0")))+
-                 "  —  "+written+" PNGs written, "+skipped+" source tiles skipped, "+failed+" failed";
-      logLine(line); setStatus(msg ? "cancelled" : "done"); setBar(1);
+      logLine((msg||("Done in "+Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0")))+
+              "  —  "+written+" PNGs written, "+skipped+" source tiles skipped, "+failed+" failed");
+      setStatus(msg ? "cancelled" : "done"); setBar(1);
       state.running = false; $("btnDownload").textContent = "Download tiles";
       if (failed>0 && written===0) showErr("No tiles could be downloaded. The map source may be blocking cross-site requests in this browser — try an Esri layer, or use Chrome/Edge.");
     });
   }
 
-  step();
+  var chains = [];
+  for (var k=0;k<CONC;k++) chains.push(worker());
+  Promise.all(chains).then(finish);
 }
 
 /* stop button reuses the download button while running */
 $("btnDownload").addEventListener("click", function(){ if (state.running) state.cancel = true; });
 
-$("foot").textContent = "Personal, offline use. Imagery © the respective map providers (shown on the preview). "+
+$("foot").textContent = "Personal, offline use. Imagery © the respective map providers. "+
   "OpenStreetMap's own tile servers are intentionally not offered here because their policy forbids bulk offline downloading.";
 
 estimate();
