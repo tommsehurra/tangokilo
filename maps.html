@@ -1166,8 +1166,8 @@ local function drawADIPage()
   lcd.drawLine(0, hyH, W, hyH, SOLID, C_ORNG)
 
   -- ================= artificial horizon =================
-  local ax, ay = 0, hyH + 3
-  local aw, ah = 284, 148
+  local ax, ay = 0, 21
+  local aw, ah = 284, 154
   local htH    = 13
   local spW    = 26
   local alW    = 30
@@ -1241,7 +1241,7 @@ local function drawADIPage()
   lcd.drawRectangle(ax, cy - 8, spW, 16, C_W)
   lcd.drawText(ax + 2, cy - 5, string.format("%.0f", spd), SMLSIZE + C_W)
 
-  -- altitude tape (right) -- floor at -5 m (nothing below)
+  -- altitude tape (right) -- floor at -5 m
   lcd.drawFilledRectangle(axr, ay, alW, ah, C_HUD)
   lcd.drawLine(axr, ay, axr, ay + ah, SOLID, C_GRID)
   lcd.drawText(axr + 3, ay + 2, "ALT", SMLSIZE + C_CY)
@@ -1280,26 +1280,26 @@ local function drawADIPage()
   lcd.drawFilledRectangle(cx - 16, ay, 32, htH, C_B)
   lcd.drawRectangle(cx - 16, ay, 32, htH, C_W)
   lcd.drawText(cx, ay + 1, string.format("%03d", math.floor(hdg)), SMLSIZE + C_W + CENTER)
-  lcd.drawRectangle(ax, ay, aw, ah, C_ORNG)      -- ADI frame
+  lcd.drawRectangle(ax, ay, aw, ah, C_ORNG)
 
-  -- ================= right column =================
+  -- ================= right column: compass + position =================
   local rx = ax + aw + 2
   local rw = W - rx
 
-  -- compass rose
-  local chH = 72
+  -- compass rose (comfortable margins so N/E/S/W never clip)
+  local chH = 87
   tileFrame(rx, ay, rw, chH, "COMPASS")
-  local ccx, ccy, R = rx + rw / 2, ay + 40, 24
+  local ccx, ccy, R = rx + rw / 2, ay + 46, 20
   for d = 0, 330, 30 do
     local a = math.rad(d)
     local s1, c1 = math.sin(a), math.cos(a)
-    local r2 = (d % 90 == 0) and R - 7 or R - 4
+    local r2 = (d % 90 == 0) and R - 6 or R - 3
     lcd.drawLine(ccx + s1 * R, ccy - c1 * R, ccx + s1 * r2, ccy - c1 * r2, SOLID, C_LBL)
   end
-  lcd.drawText(ccx, ccy - R - 9, "N", SMLSIZE + C_W + CENTER)
-  lcd.drawText(ccx + R + 4, ccy - 4, "E", SMLSIZE + C_W)
-  lcd.drawText(ccx, ccy + R + 1, "S", SMLSIZE + C_W + CENTER)
-  lcd.drawText(ccx - R - 8, ccy - 4, "W", SMLSIZE + C_W)
+  lcd.drawText(ccx,        ccy - R - 9, "N", SMLSIZE + C_W + CENTER)
+  lcd.drawText(ccx + R + 5, ccy - 4,    "E", SMLSIZE + C_W)
+  lcd.drawText(ccx,        ccy + R + 2, "S", SMLSIZE + C_W + CENTER)
+  lcd.drawText(ccx - R - 9, ccy - 4,    "W", SMLSIZE + C_W)
   if home and gps.ok then
     local _, brg = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     local ba = math.rad(brg)
@@ -1317,50 +1317,50 @@ local function drawADIPage()
   end
   lcd.drawFilledRectangle(ccx - 1, ccy - 1, 3, 3, C_W)
 
-  -- position tile (coordinates)
+  -- position tile (bigger, below compass)
   local py = ay + chH + 2
-  local pyH = 34
+  local pyH = (ay + ah) - py
   tileFrame(rx, py, rw, pyH, "POSITION")
   if gps.ok then
-    lcd.drawText(rx + 6, py + 12, string.format("%.6f", gps.lat), SMLSIZE + C_W)
-    lcd.drawText(rx + 6, py + 23, string.format("%.6f", gps.lon), SMLSIZE + C_W)
+    lcd.drawText(rx + rw / 2, py + 16, string.format("%.6f", gps.lat), F_M + C_W + CENTER)
+    lcd.drawText(rx + rw / 2, py + 38, string.format("%.6f", gps.lon), F_M + C_W + CENTER)
   else
-    lcd.drawText(rx + 6, py + 16, "no GPS fix", SMLSIZE + C_LBL)
+    lcd.drawText(rx + rw / 2, py + 26, "no GPS fix", SMLSIZE + C_LBL + CENTER)
   end
 
-  -- link tile (sat centred, rssi + tx power)
-  local ly = py + pyH + 2
-  local lyH = (ay + ah) - ly
-  tileFrame(rx, ly, rw, lyH, "LINK")
-  lcd.drawText(rx + rw / 2, ly + 11, "SAT", SMLSIZE + C_LBL + CENTER)
-  lcd.drawText(rx + rw / 2, ly + 18, tostring(tele.sats), F_M + (tele.sats >= 10 and C_PINK or C_R) + CENTER)
+  -- ================= bottom tiles (2 rows x 4) =================
+  -- units live in the LABEL, so the big value never needs width guessing
+  local by0 = ay + ah + 3
+  local bandH = H - by0
+  local rowH = math.floor(bandH / 2)
+  local cw = math.floor(W / 4)
+  local function tile(col, row, label, value, col2)
+    local tx = (col - 1) * cw
+    local w  = (col == 4) and (W - tx) or cw
+    local ty = by0 + (row - 1) * rowH
+    local h  = (row == 2) and (H - ty) or rowH
+    tileFrame(tx, ty, w, h, label)
+    lcd.drawText(tx + w / 2, ty + 16, value, F_M + (col2 or C_W) + CENTER)
+    return tx, ty, w, h
+  end
+  local lq   = gv("RQly")
   local rssi = gv("1RSS") or gv("2RSS") or gv("RSSI")
   local tpwr = gv("TPWR")
-  lcd.drawText(rx + 6, ly + lyH - 10, (rssi and (math.floor(rssi) .. "dBm") or "--"), SMLSIZE + C_W)
-  lcd.drawText(rx + rw - 6, ly + lyH - 10, (tpwr and (math.floor(tpwr) .. "mW") or "--"), SMLSIZE + C_W + RIGHT)
-
-  -- ================= bottom hero tiles =================
-  local by = ay + ah + 3
-  local bh = H - by
-  local tw = math.floor(W / 5)
-  local lq = gv("RQly")
-  local function hero(i, label, num, unit, col)
-    local tx = (i - 1) * tw
-    local w = (i == 5) and (W - tx) or tw
-    tileFrame(tx, by, w, bh, label)
-    bigVal(tx + 6, by + 20, num, unit, col)
-    return tx, w
-  end
-  hero(1, "BATTERY", string.format("%.1f", tele.volt), "V", C_Y)
-  hero(2, "CURRENT", string.format("%.1f", tele.curr), "A", C_W)
-  do
-    local tx = hero(3, "LINK Q", lq and tostring(math.floor(lq)) or "--", "%", C_G)
-    if lq then bar(tx + 6, by + bh - 12, tw - 14, 7, lq / 100, C_G) end
-  end
   local dist = 0
   if home and gps.ok then dist = select(1, distBrg(home.lat, home.lon, gps.lat, gps.lon)) end
-  hero(4, "DISTANCE", tostring(math.floor(dist)), "m", C_W)
-  hero(5, "SPEED", string.format("%.0f", tele.spd), "kmh", C_W)
+
+  tile(1, 1, "BATTERY V", string.format("%.1f", tele.volt), C_Y)
+  tile(2, 1, "CURRENT A", string.format("%.1f", tele.curr), C_W)
+  tile(3, 1, "DIST m",    tostring(math.floor(dist)), C_W)
+  tile(4, 1, "SPEED kmh", string.format("%.0f", tele.spd), C_W)
+
+  tile(1, 2, "SATS",      tostring(tele.sats), (tele.sats >= 10 and C_PINK or C_R))
+  do
+    local tx, ty, w, h = tile(2, 2, "LINK %", lq and tostring(math.floor(lq)) or "--", C_G)
+    if lq then bar(tx + 6, ty + h - 9, w - 14, 6, lq / 100, C_G) end
+  end
+  tile(3, 2, "RSSI dBm",  rssi and tostring(math.floor(rssi)) or "--", C_W)
+  tile(4, 2, "TX PWR mW", tpwr and tostring(math.floor(tpwr)) or "--", C_W)
 end
 
 -- ---------------------------------------------------------------- input
