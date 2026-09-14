@@ -539,7 +539,7 @@ function loadBlackbox(bytes, sourceName, maxPoints){
 
     var alt=gv(row,"GPS_altitude");            fl.alt.push(alt!==null?r1(alt,1):null);
     var spd=gv(row,"GPS_speed");               fl.spd.push(spd!==null?r1(spd*0.036,1):null);
-    var vv=gv(row,"navVel[2]");                fl.vspd.push(vv!==null?r1(-vv/100,1):null);
+    var vv=gv(row,"navVel[2]");                fl.vspd.push(vv!==null?r1(vv/100,1):null); // INAV navVel[2] is climb-positive (up)
     var course=gv(row,"GPS_ground_course");    fl.hdg.push(course!==null?((Math.round(course/10)%360)+360)%360:null);
     fl.dist.push(null);
     var sat=gv(row,"GPS_numSat");              fl.sats.push(sat!==null?Math.round(sat):null);
