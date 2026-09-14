@@ -103,8 +103,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 .maptools{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
 .chk{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ash);cursor:pointer;user-select:none;white-space:nowrap}
 .chk input{width:16px;height:16px;accent-color:var(--accent)}
-#airKey{width:200px;padding:8px 11px;font-size:12px;display:none}
-#airKey.show{display:inline-block}
+#airKey{margin-top:6px}
 .leaflet-container{background:#0A121C;font-family:var(--face)}
 .leaflet-control-attribution{background:rgba(10,18,28,.72)!important;color:var(--ash-dim)!important;font-size:10px}
 .leaflet-control-attribution a{color:var(--ash)!important}
@@ -133,6 +132,10 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
       <div class="card">
         <span class="lbl">Map source</span>
         <select class="field" id="source"></select>
+        <div id="airBox" style="display:none;margin-top:12px">
+          <span class="lbl">⚠️ OpenAIP key — <a href="https://www.openaip.net" target="_blank" rel="noopener" style="color:var(--accent);text-transform:none;letter-spacing:0;font-weight:600">get one free ↗</a></span>
+          <input class="field" id="airKey" placeholder="Paste your OpenAIP API key here" autocomplete="off">
+        </div>
 
         <div class="sep"></div>
 
@@ -200,10 +203,6 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
         <button class="btn ghost" id="searchGo" style="width:auto;padding:0 20px">Search</button>
       </div>
       <div id="map"></div>
-      <div class="maptools" id="airBox" style="display:none">
-        <span class="lbl" style="margin:0">⚠️ OpenAIP key</span>
-        <input class="field" id="airKey" placeholder="free key from openaip.net — for airspaces" autocomplete="off" style="width:280px">
-      </div>
       <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue area (circle or square) is what gets downloaded. Pick <b>OpenTopoMap + Airspace</b> in the dropdown to show and bake in the airspaces (needs a free OpenAIP key).</div>
 
       <div style="margin-top:24px">
@@ -1047,7 +1046,7 @@ function setBaseLayer(){
 }
 function updateAirKeyUI(){
   var air = !!src().air;
-  $("airBox").style.display = air ? "flex" : "none";
+  $("airBox").style.display = air ? "block" : "none";
   if (air && !AIR_KEY) setStatus("Enter a free OpenAIP API key (openaip.net) to see and download airspaces.");
 }
 function fitArea(){ if (area) map.fitBounds(area.getBounds(), { padding:[26,26], maxZoom:16, animate:true }); }
