@@ -346,8 +346,8 @@ local CH = {
   { id="volt", label="Volt", unit="V", dec=1, get=function() return gv("RxBt") or gv("Vbat") or gv("Batt") or gv("A1") end },
   { id="sig",  label="Sig",  unit="",  dec=0, get=function() return gv("RQly") or gv("1RSS") or gv("RSSI") or gv("RSS") end },
   { id="alt",  label="Alt",  unit="m", dec=0, get=function() return gv("GAlt") or gv("Alt") end },
-  { id="vspd", label="VSpd", unit="",  dec=1, get=function() return gv("VSpd") or gv("Vspd") or gv("VVel") end },
-  { id="spd",  label="Spd",  unit="",  dec=0, get=function() return gv("GSpd") or gv("GPS Speed") end },
+  { id="vspd", label="VSpd", unit="m/s", dec=1, get=function() return gv("VSpd") or gv("Vspd") or gv("VVel") end },
+  { id="spd",  label="Spd",  unit="km/h", dec=0, get=function() return gv("GSpd") or gv("GPS Speed") end },
   { id="curr", label="Curr", unit="A", dec=1, get=function() return gv("Curr") or gv("Current") end },
 }
 local WINS   = {30, 60, 120, 300, 600}
@@ -358,8 +358,10 @@ local hist   = {}                    -- ring buffer: hist[i] = {t=seconds, v={..
 local lastSample = 0
 
 local graphDirty = true              -- rebuild the cached graph model on the next draw
-local gModel     = {}                -- cached: { {pts={x,y,...}, col=, legend=}, ... }
+local gModel     = {}                -- cached: { entries..., geom = {...} }
 local gX, gY, gW, gH = -1, -1, -1, -1
+local gLo, gHi   = {}, {}            -- persistent per-slot y-bounds (kills vertical jitter)
+local gScaleKey  = ""                -- reset bounds only when window/channels change
 
 -- ---------------------------------------------------------------- helpers
 
@@ -847,8 +849,8 @@ local function drawHud()
   lcd.drawText(VX + 4,   VY + 3, string.format("SAT %d", tele.sats),
                SMLSIZE + (gps.ok and C_G or C_R))
   lcd.drawText(VX + 70,  VY + 3, string.format("ALT %dm", math.floor(tele.alt)), SMLSIZE + C_W)
-  lcd.drawText(VX + 160, VY + 3, string.format("SPD %.0f", tele.spd), SMLSIZE + C_W)
-  lcd.drawText(VX + 240, VY + 3, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
+  lcd.drawText(VX + 158, VY + 3, string.format("SPD %.0fkm/h", tele.spd), SMLSIZE + C_W)
+  lcd.drawText(VX + 250, VY + 3, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
 
   -- top-right buttons (nice, tappable)
   addBtn("map",  x2 - 56,  VY + 2, 52, 16, "MAP",  true)
@@ -892,6 +894,23 @@ local function fmtVal(v, ch)
   return string.format("%d%s", math.floor(v + 0.5), ch.unit)
 end
 
+-- number without unit (for the y-scale readout)
+local function fmtNum(v, ch)
+  if ch.dec and ch.dec > 0 then return string.format("%." .. ch.dec .. "f", v) end
+  return string.format("%d", math.floor(v + 0.5))
+end
+
+-- a "nice" axis step (1/2/5 x 10^k) so the y-scale lands on round numbers and stays put
+local function niceStep(range)
+  if range <= 0 then return 1 end
+  local raw = range / 4
+  local mag = 10 ^ math.floor(math.log(raw) / math.log(10))
+  local nn  = raw / mag
+  local s
+  if nn < 1.5 then s = 1 elseif nn < 3 then s = 2 elseif nn < 7 then s = 5 else s = 10 end
+  return s * mag
+end
+
 local function drawMiniStatus()
   local y2 = VY + VH
   lcd.drawFilledRectangle(VX, y2 - 14, VW, 14, C_B)
@@ -911,12 +930,12 @@ local function drawTelem(tx, ty, tw, th)
   local r0, dr = ty + 22, 15
   lcd.drawText(colL, r0,        string.format("SAT  %d", tele.sats), SMLSIZE + (gps.ok and C_G or C_R))
   lcd.drawText(colL, r0 + dr,   string.format("ALT  %dm", math.floor(tele.alt)), SMLSIZE + C_W)
-  lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0f", tele.spd), SMLSIZE + C_W)
+  lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0fkm/h", tele.spd), SMLSIZE + C_W)
   lcd.drawText(colL, r0 + 3*dr, string.format("HDG  %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
 
   lcd.drawText(colR, r0,        string.format("VLT  %.1fV", tele.volt), SMLSIZE + C_W)
   lcd.drawText(colR, r0 + dr,   string.format("SIG  %d", math.floor(tele.sig)), SMLSIZE + C_W)
-  lcd.drawText(colR, r0 + 2*dr, string.format("VSP  %.1f", tele.vspd), SMLSIZE + C_W)
+  lcd.drawText(colR, r0 + 2*dr, string.format("VSP  %.1fm/s", tele.vspd), SMLSIZE + C_W)
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     lcd.drawText(colR, r0 + 3*dr, string.format("DST  %dm", math.floor(d)), SMLSIZE + C_W)
@@ -925,65 +944,88 @@ local function drawTelem(tx, ty, tw, th)
   end
 end
 
--- rebuild the cached graph geometry (done at most once per new sample / setting change)
--- Rebuild the cached graph geometry. Cost is O(MAXPTS) per channel, INDEPENDENT of
--- the time window: with ~1 sample/s the window is just the last `win` samples, so we
--- never scan the whole ring. This is what keeps the radio's per-frame CPU budget safe.
+-- Rebuild the cached graph model. Two things make it SMOOTH (no jitter / no retroactive
+-- shape changes) and cheap:
+--   * fixed-fraction sampling: NB points at k/(NB-1) of the window. With ~1 sample/s the
+--     source indices all shift by exactly +1 per new sample, so the trace scrolls left
+--     uniformly instead of re-aliasing to different samples each rebuild.
+--   * persistent, nice-rounded y-bounds per channel (gLo/gHi): the scale only changes when
+--     data leaves the band or sits far inside it, so the curve does not jump every second.
+-- Cost is O(NB) per channel, independent of the time window.
 local function buildGraphModel(gx, gy, gw, gh)
   gModel = {}
   local win = WINS[winSel]
-  local now = getTime() / 100
-  local t0  = now - win
-  local px, py, pw, ph = gx + 2, gy + 2, gw - 4, gh - 12
+
+  -- reset the persistent y-bounds only when the window or channel selection changes
+  local skey = win .. ":" .. gSlot[1] .. "," .. gSlot[2] .. "," .. gSlot[3]
+  if skey ~= gScaleKey then gLo, gHi, gScaleKey = {}, {}, skey end
+
+  -- layout: header (value readout) on top, time axis at the bottom, plot in between
+  local nAct = 0
+  for s = 1, #gSlot do if gSlot[s] and gSlot[s] ~= 0 then nAct = nAct + 1 end end
+  local headH = nAct * 10 + 3
+  local footH = 11
+  local px    = gx + 3
+  local pw    = gw - 6
+  local pyTop = gy + headH
+  local ph    = gh - headH - footH
+  if ph < 8 then ph = 8 end
+  gModel.geom = {px = px, pw = pw, pyTop = pyTop, ph = ph, headH = headH, footH = footH, win = win}
 
   local n = #hist
   if n == 0 then return end
-  local first = n - win + 1              -- ~1 sample/s => window ≈ last `win` samples (O(1))
+  local first = n - win + 1               -- ~1 sample/s => window ≈ last `win` samples (O(1))
   if first < 1 then first = 1 end
   local cnt = n - first + 1
-  local stride = math.floor(cnt / MAXPTS)
-  if stride < 1 then stride = 1 end
+  local NB  = math.floor(pw)
+  if NB > 60 then NB = 60 end
+  if NB < 2 then NB = 2 end
 
   for slot = 1, #gSlot do
     local ci = gSlot[slot]
     if ci and ci ~= 0 then
-      local m = {col = G_COL[slot], pts = {}, legend = CH[ci].label .. " --"}
-      local p = m.pts
-      local mn, mx, cur
-      -- single decimated pass: collect raw (t,v) and min/max together (<= ~MAXPTS steps)
-      for i = first, n, stride do
-        local r = hist[i]
-        if r.t >= t0 then
-          local v = r.v[ci]
+      local ch = CH[ci]
+      local m  = {slot = slot, col = G_COL[slot], ch = ch, label = ch.label, pts = {}}
+      local raw, dmin, dmax, cur = {}, nil, nil, nil
+      for k = 0, NB - 1 do
+        local frac = (NB == 1) and 0 or (k / (NB - 1))
+        local idx  = first + math.floor(frac * (cnt - 1) + 0.5)
+        if idx < first then idx = first elseif idx > n then idx = n end
+        local v = hist[idx].v[ci]
+        raw[k] = v
+        if v then
+          if not dmin or v < dmin then dmin = v end
+          if not dmax or v > dmax then dmax = v end
+        end
+      end
+      cur = hist[n].v[ci]
+
+      if dmin then
+        -- stable, nice-rounded y-bounds with hysteresis
+        local lo, hi = gLo[slot], gHi[slot]
+        local out    = (not lo) or dmin < lo or dmax > hi
+        local inside = lo and (hi > lo) and (dmax - dmin) < (hi - lo) * 0.45
+        if out or inside then
+          local range = dmax - dmin
+          if range <= 0 then range = math.abs(dmax) * 0.1 + 1 end
+          local step = niceStep(range)
+          lo = math.floor((dmin - range * 0.06) / step) * step
+          hi = math.ceil((dmax + range * 0.06) / step) * step
+          if hi <= lo then hi = lo + step end
+          gLo[slot], gHi[slot] = lo, hi
+        end
+        m.lo, m.hi, m.cur = lo, hi, cur
+        local span = hi - lo
+        if span == 0 then span = 1 end
+        local p = m.pts
+        for k = 0, NB - 1 do
+          local v = raw[k]
           if v then
-            if not mn or v < mn then mn = v end
-            if not mx or v > mx then mx = v end
-            cur = v
-            p[#p + 1] = r.t
-            p[#p + 1] = v
+            local frac = (NB == 1) and 0 or (k / (NB - 1))
+            p[#p + 1] = px + frac * pw
+            p[#p + 1] = pyTop + ph - (v - lo) / span * ph
           end
         end
-      end
-      -- always pin the newest sample as the right edge
-      local lr = hist[n]
-      if lr and lr.v[ci] then
-        local v = lr.v[ci]
-        if not mn or v < mn then mn = v end
-        if not mx or v > mx then mx = v end
-        cur = v
-        p[#p + 1] = lr.t
-        p[#p + 1] = v
-      end
-      if mn then
-        local span = mx - mn
-        if span == 0 then span = 1 end
-        for j = 1, #p, 2 do              -- convert stored (t,v) -> screen (x,y) in place
-          p[j]     = px + (p[j] - t0) / win * pw
-          p[j + 1] = py + ph - (p[j + 1] - mn) / span * ph
-        end
-        if cur then m.legend = CH[ci].label .. " " .. fmtVal(cur, CH[ci]) end
-      else
-        m.pts = {}
       end
       gModel[#gModel + 1] = m
     end
@@ -998,14 +1040,33 @@ local function drawGraph(gx, gy, gw, gh)
   end
 
   lcd.drawFilledRectangle(gx, gy, gw, gh, C_GBG)
-  lcd.drawRectangle(gx, gy, gw, gh, C_GRID)
-  local py, ph = gy + 2, gh - 12
-  for q = 1, 3 do
-    local yy = py + ph * q / 4
-    lcd.drawLine(gx + 2, yy, gx + gw - 2, yy, DOTTED, C_GRID)
+  local g = gModel.geom
+  if not g then lcd.drawRectangle(gx, gy, gw, gh, C_GRID); return end
+
+  -- header strip: readable value readout on solid black (never over the plot lines)
+  lcd.drawFilledRectangle(gx, gy, gw, g.headH, C_B)
+  local ly = gy + 2
+  for _, m in ipairs(gModel) do
+    lcd.drawFilledRectangle(gx + 3, ly + 1, 7, 7, m.col)
+    local cur = m.cur and fmtVal(m.cur, m.ch) or "--"
+    lcd.drawText(gx + 14, ly, m.label .. " " .. cur, SMLSIZE + m.col)
+    if m.lo then
+      lcd.drawText(gx + gw - 3, ly, fmtNum(m.lo, m.ch) .. ".." .. fmtNum(m.hi, m.ch),
+                   SMLSIZE + C_GRID + RIGHT)
+    end
+    ly = ly + 10
   end
 
-  local legendY = gy + 3
+  -- plot frame + faint horizontal / mid-vertical grid
+  local px, pw, pyTop, ph = g.px, g.pw, g.pyTop, g.ph
+  lcd.drawRectangle(gx + 1, pyTop, gw - 2, ph, C_GRID)
+  for q = 1, 3 do
+    local yy = pyTop + ph * q / 4
+    lcd.drawLine(gx + 2, yy, gx + gw - 2, yy, DOTTED, C_GRID)
+  end
+  lcd.drawLine(px + pw / 2, pyTop, px + pw / 2, pyTop + ph, DOTTED, C_GRID)
+
+  -- traces + a marker on the newest value
   for _, m in ipairs(gModel) do
     local p = m.pts
     local i = 1
@@ -1013,12 +1074,15 @@ local function drawGraph(gx, gy, gw, gh)
       lcd.drawLine(p[i], p[i + 1], p[i + 2], p[i + 3], SOLID, m.col)
       i = i + 2
     end
-    lcd.drawText(gx + 4, legendY, m.legend, SMLSIZE + m.col)
-    legendY = legendY + 11
+    if #p >= 2 then lcd.drawFilledRectangle(p[#p - 1] - 1, p[#p] - 1, 3, 3, m.col) end
   end
 
-  lcd.drawText(gx + 3, gy + gh - 10, "-" .. WINS[winSel] .. "s", SMLSIZE + C_GRID)
-  lcd.drawText(gx + gw - 3, gy + gh - 10, "now", SMLSIZE + C_GRID + RIGHT)
+  -- time axis strip: readable values on solid black
+  local fy = gy + gh - g.footH
+  lcd.drawFilledRectangle(gx, fy, gw, g.footH, C_B)
+  lcd.drawText(gx + 3,        fy + 1, "-" .. g.win .. "s", SMLSIZE + C_W)
+  lcd.drawText(gx + gw / 2,   fy + 1, "-" .. math.floor(g.win / 2) .. "s", SMLSIZE + C_GRID + CENTER)
+  lcd.drawText(gx + gw - 3,   fy + 1, "now", SMLSIZE + C_W + RIGHT)
 end
 
 -- ---------------------------------------------------------------- input
