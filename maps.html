@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Download offline map tiles for the SatMap EdgeTX widget — Tango Kilo">
+<meta name="theme-color" content="#3FA9FF">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A1A2F'/%3E%3Cpath d='M16 4.5 L25.5 27.5 L16 21.5 L6.5 27.5 Z' fill='%233FA9FF'/%3E%3Cpath d='M16 4.5 L16 21.5 L6.5 27.5 Z' fill='%2378C8FF'/%3E%3C/svg%3E">
+<title>Map Downloader · Tango Kilo</title>
+<style>
+:root{
+  --accent:#3FA9FF; --white:#EAF2FA; --ash:#8A97A6; --ash-dim:#55606C;
+  --void:#070B11; --void-2:#0A121C; --deck:#0D1622; --deck-2:#101C2B;
+  --edge:#1B2A3A; --good:#33D68A; --warn:#F0A400; --crit:#FF4D57;
+  --face:"Bahnschrift","DIN Alternate","Oswald","Segoe UI Variable","Segoe UI",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--void)}
+body{background:radial-gradient(140% 90% at 50% -20%,#10243B 0%,rgba(16,36,59,0) 52%),var(--void);
+  background-attachment:fixed;color:var(--white);font-family:var(--face);-webkit-font-smoothing:antialiased;
+  margin:0;padding:0 0 56px;min-height:100vh}
+header{border-bottom:1px solid var(--edge);
+  background:linear-gradient(180deg,rgba(13,22,34,.75) 0%,rgba(10,18,28,.28) 70%,transparent 100%)}
+.hwrap{padding:20px clamp(20px,4.5vw,64px) 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-size:24px;font-weight:700;font-stretch:75%;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--white);position:relative;padding-bottom:2px;text-decoration:none}
+.brand::after{content:"";position:absolute;left:0;bottom:-4px;width:44px;height:3px;background:var(--accent);box-shadow:0 0 12px rgba(63,169,255,.5)}
+.nav{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.nav a{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ash);text-decoration:none;padding:8px 14px;border:1px solid var(--edge);border-radius:6px;transition:.15s}
+.nav a:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
+.page{padding:0 clamp(20px,4.5vw,64px)}
+h1{font-size:clamp(30px,5vw,52px);font-weight:700;font-stretch:87.5%;line-height:1;letter-spacing:-.01em;
+  text-transform:uppercase;border-top:3px solid var(--accent);padding-top:20px;margin-top:6px}
+.lead{margin-top:14px;font-size:16px;font-weight:600;color:var(--ash);max-width:100ch;line-height:1.55}
+.lead b{color:var(--white)}
+.grid{margin-top:28px;display:grid;grid-template-columns:minmax(320px,420px) 1fr;gap:34px;align-items:start}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--deck),var(--void-2));border:1px solid var(--edge);border-radius:14px;padding:22px 22px 24px}
+.lbl{font-size:11px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--ash-dim);display:block;margin-bottom:10px}
+.field{width:100%;background:var(--void-2);border:1px solid var(--edge);border-radius:8px;color:var(--white);
+  font-family:inherit;font-size:15px;padding:11px 13px;outline:none;transition:.15s}
+.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(63,169,255,.15)}
+select.field{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A97A6' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.sep{height:1px;background:var(--edge);margin:20px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.val{font-size:15px;font-weight:700}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:var(--edge);outline:none;margin-top:12px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 10px rgba(63,169,255,.5)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:50%;background:var(--accent);cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{position:relative;border:1px solid var(--edge);background:var(--void-2);color:var(--ash);border-radius:8px;
+  padding:9px 6px 22px;min-width:56px;text-align:center;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;transition:.12s}
+.chip small{position:absolute;left:0;right:0;bottom:5px;font-size:9px;font-weight:600;color:var(--ash-dim);letter-spacing:.04em}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--void)}
+.chip.on small{color:rgba(6,18,31,.7)}
+.chip.off{opacity:.35;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+.seg button{background:var(--void-2);color:var(--ash);border:0;padding:8px 16px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px}
+.seg button.on{background:var(--accent);color:var(--void)}
+.stats{display:flex;gap:8px}
+.stat{flex:1;background:var(--void-2);border:1px solid var(--edge);border-radius:10px;padding:12px 14px}
+.stat .n{font-size:22px;font-weight:700}
+.stat .k{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ash-dim);margin-top:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:9px;border:1px solid var(--edge);
+  background:var(--deck);color:var(--white);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;
+  font-stretch:87.5%;letter-spacing:.06em;text-transform:uppercase;transition:.15s;width:100%}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--void);border-color:var(--accent)}
+.btn.primary:hover{background:var(--white);border-color:var(--white)}
+.btn:disabled{opacity:.5;cursor:default;border-color:var(--edge);background:var(--deck)}
+.btnrow{display:flex;gap:10px;margin-top:10px}
+.ghost{background:transparent}
+#preview{width:100%;aspect-ratio:1/1;max-width:520px;border-radius:14px;background:var(--void-2);border:1px solid var(--edge);display:block}
+.pvnote{margin-top:10px;font-size:12px;color:var(--ash-dim)}
+.err{margin-top:14px;color:var(--crit);font-size:14px;font-weight:600;display:none;white-space:pre-line;
+  background:rgba(255,77,87,.08);border:1px solid rgba(255,77,87,.4);border-radius:8px;padding:12px 14px}
+.err.show{display:block}
+.msg{margin-top:12px;font-size:13px;color:var(--ash);line-height:1.55}
+.bar{height:4px;border-radius:3px;background:var(--edge);overflow:hidden;margin-top:16px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.status{margin-top:10px;font-size:13px;color:var(--ash);min-height:18px}
+#logBox{margin-top:12px;max-height:170px;overflow:auto;background:var(--void-2);border:1px solid var(--edge);border-radius:8px;
+  padding:10px 12px;font-family:Consolas,"DejaVu Sans Mono",monospace;font-size:12px;color:var(--ash);white-space:pre-wrap;display:none}
+h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.modal{position:fixed;inset:0;background:rgba(4,8,13,.72);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:5vh 16px}
+.modal.open{display:flex}
+.modal .inner{background:var(--deck);border:1px solid var(--edge);border-radius:14px;max-width:720px;width:100%;max-height:90vh;display:flex;flex-direction:column}
+.modal h2{font-size:20px;font-weight:700;font-stretch:87.5%;text-transform:uppercase;padding:20px 24px 0}
+.modal .body{padding:14px 24px 20px;overflow:auto;font-family:Consolas,"DejaVu Sans Mono",monospace;font-size:12.5px;line-height:1.6;color:var(--ash);white-space:pre-wrap}
+.modal .x{margin:0 24px 20px;align-self:flex-start}
+.footnote{margin-top:22px;font-size:12px;color:var(--ash-dim);line-height:1.6;max-width:110ch}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <a class="brand" href="/">TANGO KILO</a>
+    <nav class="nav">
+      <a href="/flugpfad.html">Flight path</a>
+      <a href="/">← Back to live</a>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <h1>Map Downloader</h1>
+  <p class="lead">Download offline map tiles for the <b>SatMap</b> widget on your EdgeTX colour radio (TX16S and similar), and generate the matching <b>main.lua</b> — all here in your browser. Pick a centre, a radius and the zoom levels, then write the <b>MAPS</b> and <b>WIDGETS</b> folders straight onto your SD card (Chrome / Edge) or download them as a ZIP.</p>
+
+  <div class="grid">
+    <!-- ---------------- controls ---------------- -->
+    <div>
+      <div class="card">
+        <span class="lbl">Map source</span>
+        <select class="field" id="source"></select>
+
+        <div class="sep"></div>
+
+        <span class="lbl">Centre (lat, lon)</span>
+        <input class="field" id="coords" placeholder="50.795612, 7.206893" autocomplete="off">
+
+        <div class="row" style="margin-top:18px">
+          <span class="lbl" style="margin:0">Radius</span>
+          <span class="val" id="radiusVal">3.0 km</span>
+        </div>
+        <input type="range" id="radius" min="0.5" max="20" step="0.5" value="3">
+
+        <div class="sep"></div>
+
+        <span class="lbl">Zoom levels</span>
+        <div class="chips" id="chips"></div>
+
+        <div class="sep"></div>
+
+        <div class="row">
+          <span class="lbl" style="margin:0">Tile size</span>
+          <div class="seg" id="tileSeg">
+            <button data-t="128" class="on">128</button>
+            <button data-t="256">256</button>
+          </div>
+        </div>
+        <p class="msg" style="margin-top:8px">128 px is easier on the radio's memory and recommended for the TX16S.</p>
+
+        <div class="sep"></div>
+
+        <div class="stats">
+          <div class="stat"><div class="n" id="stFiles">–</div><div class="k">Files</div></div>
+          <div class="stat"><div class="n" id="stSize">–</div><div class="k">Size</div></div>
+          <div class="stat"><div class="n" id="stTime">–</div><div class="k">Time</div></div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button class="btn primary" id="btnDownload">Download tiles</button>
+          <div class="btnrow">
+            <button class="btn ghost" id="btnWidget">Generate widget only</button>
+            <button class="btn ghost" id="btnGuide">Setup guide</button>
+          </div>
+        </div>
+
+        <div class="bar"><i id="pbar"></i></div>
+        <div class="status" id="status">ready</div>
+        <div class="err" id="err"></div>
+        <div id="logBox"></div>
+      </div>
+    </div>
+
+    <!-- ---------------- preview + info ---------------- -->
+    <div>
+      <canvas id="preview" width="520" height="520"></canvas>
+      <div class="pvnote" id="pvnote">Enter coordinates to see a preview.</div>
+
+      <div style="margin-top:24px">
+        <h3 class="sec">How it works</h3>
+        <p class="msg">The tool fetches map tiles for the area and zoom levels you choose, cuts them to the tile size the widget expects, and lays them out as <b style="color:var(--white)">MAPS/&lt;zoom&gt;/&lt;x&gt;/&lt;y&gt;.png</b>. It also writes <b style="color:var(--white)">WIDGETS/SatMap/main.lua</b>, already matched to your tile size and zoom range.</p>
+        <p class="msg" style="margin-top:10px">On Chrome or Edge you can point it at your SD card (or any folder) and it writes the files there directly — existing tiles are skipped, so you can extend an area later. On other browsers it hands you a single ZIP to unzip onto the card.</p>
+        <p class="msg" style="margin-top:10px">Copy the <b style="color:var(--white)">MAPS</b> and <b style="color:var(--white)">WIDGETS</b> folders to the <b style="color:var(--white)">root</b> of the SD card, reboot the radio, then add the SatMap widget to a full-screen layout. The setup guide has the full steps.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote" id="foot"></p>
+</div>
+
+<!-- setup guide modal -->
+<div class="modal" id="guideModal">
+  <div class="inner">
+    <h2>Setup guide</h2>
+    <div class="body" id="guideBody"></div>
+    <button class="btn x" id="guideClose" style="width:auto;padding:10px 24px">Close</button>
+  </div>
+</div>
+
+<!-- Lua widget template (verbatim; placeholders replaced at generation time) -->
+<script type="text/x-lua" id="luaTpl">
+-- /WIDGETS/SatMap/main.lua
+-- Offline map widget for EdgeTX 2.10.x, colour radios (TX16S and similar)
+-- Tiles: /MAPS/<z>/<gx>/<gy>.png
+--
+-- Generated by the Tango Kilo Map Downloader. Tile size and zoom range below match
+-- the tiles that were downloaded, do not change them by hand.
+--
+-- Fullscreen:  rotary = zoom | ENTER long = menu
+--              tap on map    = show/hide HUD
+--              HUD visible, bottom third: left zoom out, centre mode, right zoom in
+--              FIX mode: drag the map with your finger
+
+local CFG = {
+  dir       = "/MAPS",
+  tile      = __TILE__,
+  zoomMin   = __ZMIN__,
+  zoomMax   = __ZMAX__,
+  cacheMax  = __CACHE__,
+  trailMax  = 150,
+  trailMinM = 5,
+  homeLat   = __HLAT__,
+  homeLon   = __HLON__,
+  minMapW   = 200,
+  minMapH   = 100,
+}
+
+-- ---------------------------------------------------------------- constants
+
+local C_W    = WHITE  or lcd.RGB(255,255,255)
+local C_B    = BLACK  or lcd.RGB(0,0,0)
+local C_R    = RED    or lcd.RGB(255,0,0)
+local C_G    = GREEN  or lcd.RGB(0,224,0)
+local C_Y    = YELLOW or lcd.RGB(255,220,0)
+local C_BG   = lcd.RGB(24,24,28)
+local C_GRID = lcd.RGB(60,60,66)
+local C_MISS = lcd.RGB(70,30,30)     -- tile missing on the SD card
+local C_WAIT = lcd.RGB(30,40,70)     -- tile being loaded
+local C_MENU = lcd.RGB(16,16,20)
+local C_SEL  = lcd.RGB(0,90,160)
+local atan2  = math.atan2 or math.atan
+
+local MENU_W, MENU_ROW = 250, 22
+
+-- ---------------------------------------------------------------- state
+
+local F         = 256 / CFG.tile
+local zoom      = CFG.zoomMin
+local follow    = true
+local useTrail  = true
+local hudOn     = true
+local menuOpen  = false
+local menuSel   = 1
+
+local VX, VY, VW, VH = 0, 0, LCD_W, LCD_H
+local CX, CY         = LCD_W/2, LCD_H/2
+
+local cache     = {}
+local cacheN    = 0
+local absent    = {}
+local failCnt   = {}
+local wanted    = {}
+local cacheFull = false
+local tickCnt   = 0
+
+local gps       = {lat = nil, lon = nil, ok = false}
+local tele      = {sats = 0, alt = 0, spd = 0, hdg = 0}
+local center    = nil
+local home      = nil
+local trail     = {}
+local panned    = false
+local lastHdgLat, lastHdgLon
+
+-- ---------------------------------------------------------------- helpers
+
+local function gv(name)
+  local v = getValue(name)
+  if type(v) == "number" then return v end
+  return nil
+end
+
+local function clipOn(x, y, w, h)
+  if lcd.setClipping then lcd.setClipping(x, y, w, h) end
+end
+
+local function clipOff()
+  if lcd.setClipping then lcd.setClipping(0, 0, LCD_W, LCD_H) end
+end
+
+local function tileXY(lat, lon, z)
+  local n  = 2 ^ z
+  local lr = math.rad(lat)
+  local x  = (lon + 180) / 360 * n
+  local y  = (1 - math.log(math.tan(lr) + 1 / math.cos(lr)) / math.pi) / 2 * n
+  return x, y
+end
+
+-- linearised around center: avoids float precision loss on the radio
+local function toScreen(lat, lon)
+  local s  = 2 ^ zoom * 256 / 360
+  local sy = s / math.cos(math.rad(center.lat))
+  return CX + (lon - center.lon) * s, CY - (lat - center.lat) * sy
+end
+
+local function distBrg(lat1, lon1, lat2, lon2)
+  local dx = math.rad(lon2 - lon1) * math.cos(math.rad((lat1 + lat2) / 2)) * 6371000
+  local dy = math.rad(lat2 - lat1) * 6371000
+  local b  = math.deg(atan2(dx, dy))
+  if b < 0 then b = b + 360 end
+  return math.sqrt(dx * dx + dy * dy), b
+end
+
+local function key(z, x, y) return z .. "/" .. x .. "/" .. y end
+
+local function flushCache()
+  cache, cacheN = {}, 0
+  absent, failCnt, wanted = {}, {}, {}
+  collectgarbage()
+end
+
+-- ---------------------------------------------------------------- tiles
+
+local function loadTile(z, gx, gy)
+  local k = key(z, gx, gy)
+  if cache[k] or absent[k] then return end
+  local path = CFG.dir .. "/" .. z .. "/" .. gx .. "/" .. gy .. ".png"
+
+  -- check existence separately: tells "file missing" from "load failed"
+  if io and io.open then
+    local f = io.open(path, "r")
+    if not f then absent[k] = true; return end
+    io.close(f)
+  end
+
+  if cacheN >= CFG.cacheMax then
+    -- never evict a tile drawn in the current or previous frame
+    local oldK, oldU = nil, 1e12
+    for kk, vv in pairs(cache) do
+      if vv.used < tickCnt - 1 and vv.used < oldU then oldU, oldK = vv.used, kk end
+    end
+    if not oldK then cacheFull = true; return end
+    cache[oldK] = nil
+    cacheN = cacheN - 1
+    collectgarbage()
+  end
+
+  local b = Bitmap.open(path)
+  local w = Bitmap.getSize(b)
+  if not w or w == 0 then
+    failCnt[k] = (failCnt[k] or 0) + 1
+    if failCnt[k] >= 3 then absent[k] = true end
+    return
+  end
+  failCnt[k] = nil
+  cache[k] = {bmp = b, used = tickCnt}
+  cacheN = cacheN + 1
+end
+
+local function setZoom(dz)
+  local nz = zoom + dz
+  if nz < CFG.zoomMin or nz > CFG.zoomMax then return end
+  zoom = nz
+  flushCache()
+end
+
+-- ---------------------------------------------------------------- telemetry
+
+local function readTelemetry()
+  local g = getValue("GPS")
+  if type(g) == "table" and g.lat and g.lon and (g.lat ~= 0 or g.lon ~= 0) then
+    gps.lat, gps.lon, gps.ok = g.lat, g.lon, true
+  else
+    gps.ok = false
+  end
+
+  tele.sats = gv("Sats") or gv("Sat") or 0
+  tele.alt  = gv("GAlt") or gv("Alt") or 0
+  tele.spd  = gv("GSpd") or gv("GPS Speed") or 0
+
+  local h = gv("Hdg") or gv("Yaw")
+  if h then
+    tele.hdg = h % 360
+  elseif gps.ok and lastHdgLat then
+    local d, b = distBrg(lastHdgLat, lastHdgLon, gps.lat, gps.lon)
+    if d > 3 then
+      tele.hdg = b
+      lastHdgLat, lastHdgLon = gps.lat, gps.lon
+    end
+  end
+  if gps.ok and not lastHdgLat then lastHdgLat, lastHdgLon = gps.lat, gps.lon end
+
+  if gps.ok then
+    if not home and tele.sats >= 6 then home = {lat = gps.lat, lon = gps.lon} end
+    if useTrail then
+      local n = #trail
+      if n == 0 then
+        trail[1] = {gps.lat, gps.lon}
+      else
+        local d = distBrg(trail[n][1], trail[n][2], gps.lat, gps.lon)
+        if d >= CFG.trailMinM then
+          trail[n + 1] = {gps.lat, gps.lon}
+          if #trail > CFG.trailMax then table.remove(trail, 1) end
+        end
+      end
+    end
+  end
+end
+
+local function updateCenter()
+  if not center then
+    if gps.ok then center = {lat = gps.lat, lon = gps.lon}
+    else center = {lat = CFG.homeLat, lon = CFG.homeLon} end
+    return
+  end
+  if not gps.ok then return end
+
+  if follow then
+    panned = false
+    center.lat, center.lon = gps.lat, gps.lon
+  elseif not panned then
+    local x, y = toScreen(gps.lat, gps.lon)
+    if x < VX + VW * 0.15 or x > VX + VW * 0.85
+    or y < VY + VH * 0.15 or y > VY + VH * 0.85 then
+      center.lat, center.lon = gps.lat, gps.lon
+    end
+  end
+end
+
+-- ---------------------------------------------------------------- menu
+
+local function recenter()
+  if gps.ok and center then
+    center.lat, center.lon = gps.lat, gps.lon
+    panned = false
+  end
+end
+
+local MENU = {
+  { l = function() return "Zoom:   Z" .. zoom end,
+    a = function()
+          local nz = zoom + 1
+          if nz > CFG.zoomMax then nz = CFG.zoomMin end
+          if nz ~= zoom then zoom = nz; flushCache() end
+        end },
+  { l = function() return "Mode:   " .. (follow and "FOLLOW" or "FIX") end,
+    a = function() follow = not follow; panned = false; if follow then recenter() end end },
+  { l = function() return "HUD:    " .. (hudOn and "on" or "off") end,
+    a = function() hudOn = not hudOn end },
+  { l = function() return "Trail:  " .. (useTrail and "on" or "off") end,
+    a = function() useTrail = not useTrail; if not useTrail then trail = {} end end },
+  { l = function() return "Centre on model" end,
+    a = recenter },
+  { l = function() return "Set home here" end,
+    a = function() if gps.ok then home = {lat = gps.lat, lon = gps.lon} end end },
+  { l = function() return "Clear trail" end,
+    a = function() trail = {} end },
+  { l = function() return "Clear tile cache" end,
+    a = flushCache },
+  { l = function() return "Close" end,
+    a = function() menuOpen = false end },
+}
+
+local function menuGeom()
+  local h = #MENU * MENU_ROW + 30
+  local x = VX + (VW - MENU_W) / 2
+  local y = VY + (VH - h) / 2
+  return math.floor(x), math.floor(y), MENU_W, h
+end
+
+local function drawMenu()
+  local x, y, w, h = menuGeom()
+  lcd.drawFilledRectangle(x, y, w, h, C_MENU)
+  lcd.drawRectangle(x, y, w, h, C_W)
+  lcd.drawText(x + 8, y + 5, "Settings", SMLSIZE + C_Y)
+  lcd.drawLine(x + 1, y + 22, x + w - 2, y + 22, SOLID, C_GRID)
+  for i, m in ipairs(MENU) do
+    local ry = y + 26 + (i - 1) * MENU_ROW
+    if i == menuSel then
+      lcd.drawFilledRectangle(x + 2, ry - 2, w - 4, MENU_ROW, C_SEL)
+    end
+    lcd.drawText(x + 10, ry, m.l(), SMLSIZE + C_W)
+  end
+end
+
+-- ---------------------------------------------------------------- drawing
+
+local function drawMap()
+  local tcx, tcy = tileXY(center.lat, center.lon, zoom)
+  local gxf, gyf = tcx * F, tcy * F
+  local gx0, gy0 = math.floor(gxf), math.floor(gyf)
+  local ox = CX - (gxf - gx0) * CFG.tile
+  local oy = CY - (gyf - gy0) * CFG.tile
+  local rx = math.ceil(VW / CFG.tile / 2) + 1
+  local ry = math.ceil(VH / CFG.tile / 2) + 1
+  local x2, y2 = VX + VW, VY + VH
+  wanted = {}
+
+  for dy = -ry, ry do
+    for dx = -rx, rx do
+      local sx = math.floor(ox + dx * CFG.tile)
+      local sy = math.floor(oy + dy * CFG.tile)
+      if sx + CFG.tile > VX and sx < x2 and sy + CFG.tile > VY and sy < y2 then
+        local gx, gy = gx0 + dx, gy0 + dy
+        local k = key(zoom, gx, gy)
+        local e = cache[k]
+        if e then
+          e.used = tickCnt
+          lcd.drawBitmap(e.bmp, sx, sy)
+        elseif absent[k] then
+          lcd.drawFilledRectangle(sx, sy, CFG.tile, CFG.tile, C_MISS)
+          lcd.drawRectangle(sx, sy, CFG.tile, CFG.tile, C_GRID)
+        else
+          lcd.drawFilledRectangle(sx, sy, CFG.tile, CFG.tile, C_WAIT)
+          wanted[#wanted + 1] = {zoom, gx, gy}
+        end
+      end
+    end
+  end
+end
+
+local function drawTrail()
+  if not useTrail or #trail < 2 then return end
+  local px, py = toScreen(trail[1][1], trail[1][2])
+  for i = 2, #trail do
+    local x, y = toScreen(trail[i][1], trail[i][2])
+    lcd.drawLine(px, py, x, y, SOLID, C_Y)
+    px, py = x, y
+  end
+end
+
+local function drawHome()
+  if not home then return end
+  local x, y = toScreen(home.lat, home.lon)
+  if x < VX - 10 or x > VX + VW + 10 then return end
+  if y < VY - 10 or y > VY + VH + 10 then return end
+  lcd.drawFilledRectangle(x - 4, y - 4, 9, 9, C_W)
+  lcd.drawFilledRectangle(x - 2, y - 2, 5, 5, C_R)
+end
+
+local function drawArrow(x, y, deg)
+  local a = math.rad(deg)
+  local ca, sa = math.cos(a), math.sin(a)
+  local function P(vx, vy) return x + vx * ca - vy * sa, y + vx * sa + vy * ca end
+  local x1, y1 = P( 0, -12)
+  local x2, y2 = P(-8,   9)
+  local x3, y3 = P( 0,   4)
+  local x4, y4 = P( 8,   9)
+  if lcd.drawFilledTriangle then
+    lcd.drawFilledTriangle(x1, y1, x2, y2, x3, y3, C_R)
+    lcd.drawFilledTriangle(x1, y1, x3, y3, x4, y4, C_R)
+  end
+  lcd.drawLine(x1, y1, x2, y2, SOLID, C_W)
+  lcd.drawLine(x2, y2, x3, y3, SOLID, C_W)
+  lcd.drawLine(x3, y3, x4, y4, SOLID, C_W)
+  lcd.drawLine(x4, y4, x1, y1, SOLID, C_W)
+end
+
+local function drawPlane()
+  if not gps.ok then return end
+  local x, y = toScreen(gps.lat, gps.lon)
+  drawArrow(x, y, tele.hdg)
+end
+
+local function drawHud()
+  local x2, y2 = VX + VW, VY + VH
+  lcd.drawFilledRectangle(VX, VY, VW, 18, C_B)
+  lcd.drawFilledRectangle(VX, y2 - 18, VW, 18, C_B)
+
+  lcd.drawText(VX + 4,   VY + 1, string.format("SAT %d", tele.sats),
+               SMLSIZE + (gps.ok and C_G or C_R))
+  lcd.drawText(VX + 70,  VY + 1, string.format("ALT %dm", math.floor(tele.alt)), SMLSIZE + C_W)
+  lcd.drawText(VX + 160, VY + 1, string.format("SPD %.0f", tele.spd), SMLSIZE + C_W)
+  lcd.drawText(VX + 240, VY + 1, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
+  if home and gps.ok then
+    local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
+    lcd.drawText(VX + 330, VY + 1, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W)
+  end
+
+  lcd.drawText(VX + 4,   y2 - 17, "Z" .. zoom, SMLSIZE + C_W)
+  lcd.drawText(VX + 44,  y2 - 17, follow and "FOLLOW" or "FIX", SMLSIZE + C_W)
+  lcd.drawText(VX + 120, y2 - 17, string.format("cache %d/%d", cacheN, CFG.cacheMax),
+               SMLSIZE + (cacheFull and C_R or C_GRID))
+  if panned then lcd.drawText(VX + 215, y2 - 17, "PAN", SMLSIZE + C_Y) end
+  lcd.drawText(x2 - 4, y2 - 17, "[ENT long] menu", SMLSIZE + C_GRID + RIGHT)
+end
+
+-- compact view for small widget zones, no map rendering
+local function drawSmall(zone)
+  lcd.drawFilledRectangle(zone.x, zone.y, zone.w, zone.h, C_BG)
+  local x, y = zone.x + 3, zone.y + 2
+  lcd.drawText(x, y, string.format("SAT %d", tele.sats),
+               SMLSIZE + (gps.ok and C_G or C_R))
+  if zone.h >= 32 then
+    y = y + 14
+    if home and gps.ok then
+      local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
+      lcd.drawText(x, y, string.format("%dm  %03d", math.floor(d), math.floor(tele.hdg)),
+                   SMLSIZE + C_W)
+    else
+      lcd.drawText(x, y, "no fix", SMLSIZE + C_GRID)
+    end
+  end
+  if zone.h >= 60 then
+    lcd.drawText(x, zone.y + zone.h - 14, "long press for map", SMLSIZE + C_GRID)
+  end
+end
+
+-- ---------------------------------------------------------------- input
+
+local function handleMenu(event, touchState)
+  if event == EVT_VIRTUAL_NEXT or event == EVT_VIRTUAL_INC then
+    menuSel = menuSel % #MENU + 1
+  elseif event == EVT_VIRTUAL_PREV or event == EVT_VIRTUAL_DEC then
+    menuSel = (menuSel - 2) % #MENU + 1
+  elseif event == EVT_VIRTUAL_ENTER then
+    MENU[menuSel].a()
+  elseif event == EVT_VIRTUAL_ENTER_LONG or event == EVT_VIRTUAL_EXIT then
+    menuOpen = false
+  elseif touchState and EVT_TOUCH_TAP and event == EVT_TOUCH_TAP then
+    local mx, my, mw, mh = menuGeom()
+    local tx, ty = touchState.x, touchState.y
+    if tx < mx or tx > mx + mw or ty < my or ty > my + mh then
+      menuOpen = false
+    else
+      local i = math.floor((ty - (my + 24)) / MENU_ROW) + 1
+      if i >= 1 and i <= #MENU then
+        menuSel = i
+        MENU[i].a()
+      end
+    end
+  end
+end
+
+local function handleEvent(event, touchState)
+  if event == nil or event == 0 then return end
+
+  if menuOpen then
+    handleMenu(event, touchState)
+    return
+  end
+
+  if event == EVT_VIRTUAL_ENTER_LONG then
+    menuOpen = true
+    menuSel = 1
+
+  elseif event == EVT_VIRTUAL_NEXT or event == EVT_VIRTUAL_INC then
+    setZoom(1)
+
+  elseif event == EVT_VIRTUAL_PREV or event == EVT_VIRTUAL_DEC then
+    setZoom(-1)
+
+  elseif event == EVT_VIRTUAL_ENTER then
+    follow = not follow
+    panned = false
+    if follow then recenter() end
+
+  elseif touchState and EVT_TOUCH_SLIDE and event == EVT_TOUCH_SLIDE and center then
+    if not follow then
+      local dx = touchState.slideX or 0
+      local dy = touchState.slideY or 0
+      if dx ~= 0 or dy ~= 0 then
+        local s  = 2 ^ zoom * 256 / 360
+        local sy = s / math.cos(math.rad(center.lat))
+        center.lon = center.lon - dx / s
+        center.lat = center.lat + dy / sy
+        panned = true
+      end
+    end
+
+  elseif touchState and EVT_TOUCH_TAP and event == EVT_TOUCH_TAP then
+    local tx, ty = touchState.x, touchState.y
+    if not hudOn then
+      hudOn = true                        -- HUD hidden: a tap brings it back
+    elseif ty > VY + VH - 55 then
+      if tx < VX + VW / 3 then setZoom(-1)
+      elseif tx > VX + 2 * VW / 3 then setZoom(1)
+      else follow = not follow; panned = false; if follow then recenter() end end
+    else
+      hudOn = false                       -- tap on the map hides the HUD
+    end
+  end
+end
+
+-- ---------------------------------------------------------------- widget API
+
+local options = {
+  { "Zoom",   VALUE, __ZMIN__, __ZMIN__, __ZMAX__ },
+  { "Follow", BOOL,  1 },
+  { "Trail",  BOOL,  1 },
+}
+
+local function applyOptions(opt)
+  if opt then
+    local z = math.floor(opt.Zoom or zoom)
+    if z >= CFG.zoomMin and z <= CFG.zoomMax and z ~= zoom then
+      zoom = z
+      flushCache()
+    end
+    follow   = (opt.Follow ~= 0)
+    useTrail = (opt.Trail  ~= 0)
+  end
+end
+
+local function create(zone, opt)
+  F = 256 / CFG.tile
+  applyOptions(opt)
+  flushCache()
+  return {zone = zone, options = opt}
+end
+
+local function update(widget, opt)
+  widget.options = opt
+  applyOptions(opt)
+end
+
+local function background(widget)
+  readTelemetry()
+end
+
+local function refresh(widget, event, touchState)
+  tickCnt = tickCnt + 1
+  cacheFull = false
+
+  local fullscreen = (event ~= nil)
+  local zone = widget.zone
+
+  if fullscreen then
+    VX, VY, VW, VH = 0, 0, LCD_W, LCD_H
+  else
+    VX, VY, VW, VH = zone.x, zone.y, zone.w, zone.h
+    menuOpen = false
+  end
+  CX, CY = VX + VW / 2, VY + VH / 2
+
+  readTelemetry()
+
+  -- zone too small: info only, do not hold any tile memory
+  if VW < CFG.minMapW or VH < CFG.minMapH then
+    if cacheN > 0 then flushCache() end
+    drawSmall(zone)
+    return
+  end
+
+  handleEvent(event, touchState)
+  updateCenter()
+
+  clipOn(VX, VY, VW, VH)
+  lcd.drawFilledRectangle(VX, VY, VW, VH, C_BG)
+  drawMap()
+  drawTrail()
+  drawHome()
+  drawPlane()
+  if hudOn then drawHud() end
+  if menuOpen then drawMenu() end
+  clipOff()
+
+  -- load at most 2 tiles per frame: no stutter, no script timeout
+  for i = 1, math.min(2, #wanted) do
+    loadTile(wanted[i][1], wanted[i][2], wanted[i][3])
+  end
+end
+
+return {
+  name       = "SatMap",
+  options    = options,
+  create     = create,
+  update     = update,
+  refresh    = refresh,
+  background = background,
+}
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+function $(id){ return document.getElementById(id); }
+
+var ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/{svc}/MapServer/tile/{z}/{y}/{x}";
+function esri(svc){ return ESRI.replace("{svc}", svc); }
+
+var SOURCES = {
+  "Satellite":            { url:esri("World_Imagery"), maxz:18, kb:20, reqs:1, attr:"Esri, Maxar, Earthstar Geographics" },
+  "Satellite + labels":   { url:esri("World_Imagery"), overlay:esri("Reference/World_Boundaries_and_Places"), maxz:18, kb:22, reqs:2, attr:"Esri, Maxar, Earthstar Geographics" },
+  "Topographic":          { url:esri("World_Topo_Map"), maxz:18, kb:11, reqs:1, attr:"Esri, HERE, Garmin, USGS, NGA" },
+  "Street map":           { url:esri("World_Street_Map"), maxz:18, kb:9, reqs:1, attr:"Esri, HERE, Garmin, USGS" },
+  "OpenTopoMap":          { url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" }
+};
+var ZOOMS = { 13:"12 m", 14:"6 m", 15:"3 m", 16:"1.5 m", 17:"0.75 m", 18:"0.4 m" };
+var PV = 520;
+
+var GUIDE =
+"SETUP ON THE RADIO\n\n"+
+"1  Copy the MAPS folder to the ROOT of the SD card.\n"+
+"   The result must look like  E:\\MAPS\\16\\68723\\44510.png\n"+
+"   Not inside IMAGES, not inside SCRIPTS.\n\n"+
+"2  Copy the WIDGETS folder to the ROOT of the SD card.\n"+
+"   If WIDGETS already exists, merge it. The result must be\n"+
+"   E:\\WIDGETS\\SatMap\\main.lua\n\n"+
+"3  Power cycle the radio. A reboot is required, EdgeTX only\n"+
+"   scans the widget folder at startup.\n\n"+
+"4  On the main screen, long press an empty area, then open\n"+
+"   Screens (Model settings -> Screens on some versions).\n\n"+
+"5  Add a new screen with the + button and pick the\n"+
+"   Full screen / 1 zone layout.\n\n"+
+"6  Tap the zone and choose the SatMap widget.\n\n"+
+"7  Open the widget options and set Zoom to the level you\n"+
+"   downloaded. Follow and Trail can stay on.\n\n"+
+"8  Press PAGE to reach the new screen. Long press the map to\n"+
+"   enter fullscreen. Only in fullscreen does the widget receive\n"+
+"   buttons and touch input.\n\n"+
+"CONTROLS IN FULLSCREEN\n\n"+
+"   Rotary            zoom in / out\n"+
+"   ENTER short       toggle FOLLOW and FIX\n"+
+"   ENTER long        open the settings menu\n"+
+"   Tap on the map    hide the HUD, tap again to bring it back\n"+
+"   Bottom third      left zoom out, centre mode, right zoom in\n"+
+"   Drag in FIX mode  pan the map with your finger\n\n"+
+"READING THE COLOURS\n\n"+
+"   Reddish tile   the PNG is not on the SD card. Either outside\n"+
+"                  the area you downloaded, or that zoom level\n"+
+"                  was never fetched.\n"+
+"   Bluish tile    the tile is loading. It should disappear within\n"+
+"                  a frame or two. If it stays and the cache\n"+
+"                  counter turns red, the radio is out of bitmap\n"+
+"                  memory.\n\n"+
+"COLOUR SCREENS ONLY\n\n"+
+"This widget does not work on monochrome radios such as the\n"+
+"Taranis X9D, QX7, TX12, Boxer, Zorro, T-Lite or Radiomaster\n"+
+"Pocket. The widget framework and the Bitmap / lcd.drawBitmap\n"+
+"calls it relies on only exist on colour radios, and a 128x64\n"+
+"one-bit screen cannot show aerial imagery anyway.\n\n"+
+"NOTES\n\n"+
+"Tile size and zoom range in the generated main.lua match what\n"+
+"you downloaded. If you download a different area later with\n"+
+"other settings, generate the widget again.\n\n"+
+"Tiles never expire. To extend your coverage, run the download\n"+
+"again with a different centre or a larger radius. Existing\n"+
+"files are skipped, only the new ones are fetched.\n\n"+
+"OpenTopoMap is run by volunteers and its tile usage policy asks\n"+
+"you not to bulk download. Keep those areas small, or use one of\n"+
+"the Esri layers for large regions. Some browsers may also block\n"+
+"OpenTopoMap tiles for a cross-site download; the Esri layers\n"+
+"always work here.";
+
+/* ---------------- geo math (ported from tiles_gui.py) ---------------- */
+function deg2num(lat, lon, z){
+  var n = Math.pow(2, z), lr = lat*Math.PI/180;
+  return [ (lon+180)/360*n, (1 - Math.log(Math.tan(lr)+1/Math.cos(lr))/Math.PI)/2*n ];
+}
+function bbox(lat, lon, r){
+  var dlat = r/111.32, dlon = r/(111.32*Math.cos(lat*Math.PI/180));
+  return [lat-dlat, lon-dlon, lat+dlat, lon+dlon];
+}
+function tileRanges(lat, lon, r, z){
+  var b = bbox(lat, lon, r);
+  var a0 = deg2num(b[0], b[1], z), a1 = deg2num(b[2], b[3], z);
+  var x0 = Math.floor(a0[0]), x1 = Math.floor(a1[0]);
+  var y0 = Math.floor(a1[1]), y1 = Math.floor(a0[1]);
+  var xs = [], ys = [];
+  for (var x=x0; x<=x1; x++) xs.push(x);
+  for (var y=y0; y<=y1; y++) ys.push(y);
+  return [xs, ys];
+}
+function parseCoords(text){
+  var parts = String(text).replace(/;/g,",").trim().split(",").filter(function(p){ return p.trim(); });
+  if (parts.length !== 2) throw new Error("Expected format:  50.795612, 7.206893");
+  var lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
+  if (isNaN(lat) || isNaN(lon)) throw new Error("Coordinates are not numbers.");
+  if (!(lat>-85 && lat<85) || !(lon>=-180 && lon<=180)) throw new Error("Coordinates out of range.");
+  return [lat, lon];
+}
+
+/* ---------------- state ---------------- */
+var state = {
+  source: "Satellite",
+  radius: 3.0,
+  tile: 128,
+  zoom: {},     // z -> bool
+  running: false,
+  cancel: false
+};
+Object.keys(ZOOMS).forEach(function(z){ state.zoom[z] = (z=="15"||z=="16"); });
+
+function src(){ return SOURCES[state.source]; }
+function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(z){ return state.zoom[z]; }).sort(function(a,b){return a-b;}); }
+
+/* ---------------- UI build ---------------- */
+(function initSource(){
+  var sel = $("source");
+  Object.keys(SOURCES).forEach(function(name){
+    var o = document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
+  });
+  sel.value = state.source;
+  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); debouncePreview(); });
+})();
+
+(function initChips(){
+  var box = $("chips");
+  Object.keys(ZOOMS).map(Number).sort(function(a,b){return a-b;}).forEach(function(z){
+    var b = document.createElement("button");
+    b.className = "chip"; b.dataset.z = z;
+    b.innerHTML = "Z"+z+"<small>"+ZOOMS[z]+"</small>";
+    b.addEventListener("click", function(){
+      if (z > src().maxz) return;
+      state.zoom[z] = !state.zoom[z]; paintChips(); estimate();
+    });
+    box.appendChild(b);
+  });
+  paintChips();
+})();
+
+function paintChips(){
+  var maxz = src().maxz;
+  Array.prototype.forEach.call($("chips").children, function(b){
+    var z = Number(b.dataset.z);
+    b.classList.remove("on","off");
+    if (z > maxz){ state.zoom[z] = false; b.classList.add("off"); }
+    else if (state.zoom[z]) b.classList.add("on");
+  });
+}
+
+$("radius").addEventListener("input", function(){
+  state.radius = parseFloat(this.value);
+  $("radiusVal").textContent = state.radius.toFixed(1)+" km";
+  estimate(); debouncePreview();
+});
+Array.prototype.forEach.call($("tileSeg").children, function(b){
+  b.addEventListener("click", function(){
+    Array.prototype.forEach.call($("tileSeg").children, function(x){ x.classList.remove("on"); });
+    b.classList.add("on"); state.tile = Number(b.dataset.t); estimate();
+  });
+});
+$("coords").addEventListener("input", function(){ estimate(); debouncePreview(); });
+
+/* ---------------- estimate ---------------- */
+function estimate(){
+  var lat, lon;
+  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
+  catch(e){ $("stFiles").textContent="–"; $("stSize").textContent="–"; $("stTime").textContent="–"; return; }
+  var zs = selectedZooms();
+  if (!zs.length){ $("stFiles").textContent="0"; $("stSize").textContent="0 MB"; $("stTime").textContent="–"; return; }
+  var s = src(), F = 256/state.tile, srcTiles = 0;
+  zs.forEach(function(z){ var r = tileRanges(lat, lon, state.radius, z); srcTiles += r[0].length*r[1].length; });
+  var pngs = srcTiles*F*F;
+  var kb = s.kb/(state.tile===256?1:3.4);
+  var mb = pngs*kb/1024;
+  var secs = srcTiles*((s.pause||0.05)+0.45*s.reqs);
+  var col = mb<150 ? "var(--white)" : (mb<500 ? "var(--warn)" : "var(--crit)");
+  $("stFiles").textContent = pngs.toLocaleString("de-DE");
+  $("stSize").textContent = Math.round(mb)+" MB"; $("stSize").style.color = col;
+  $("stTime").textContent = secs>=60 ? Math.round(secs/60)+" min" : "<1 min"; $("stTime").style.color = col;
+}
+
+/* ---------------- preview ---------------- */
+var pvTimer = null;
+function debouncePreview(){ if (pvTimer) clearTimeout(pvTimer); pvTimer = setTimeout(preview, 900); }
+
+function pickPreviewZoom(lat, lon, r){
+  var b = bbox(lat, lon, r), span = b[3]-b[1];
+  if (span <= 0) return 12;
+  var z = Math.floor(Math.log2(560/256*360/span));
+  return Math.max(3, Math.min(src().maxz, z));
+}
+function loadImg(url){
+  return new Promise(function(res){
+    var im = new Image(); im.crossOrigin = "anonymous";
+    im.onload = function(){ res(im); }; im.onerror = function(){ res(null); };
+    im.src = url;
+  });
+}
+function tileUrl(s, z, x, y){ return s.url.replace("{z}",z).replace("{x}",x).replace("{y}",y); }
+
+function preview(){
+  var lat, lon;
+  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
+  catch(e){ placeholder("Enter coordinates to see a preview."); return; }
+  $("pvnote").textContent = "Loading preview…";
+  var s = src(), pz = pickPreviewZoom(lat, lon, state.radius);
+  var cx = deg2num(lat, lon, pz), gx0 = Math.floor(cx[0])-1, gy0 = Math.floor(cx[1])-1;
+  var cv = $("preview"), ctx = cv.getContext("2d");
+  var mosaic = document.createElement("canvas"); mosaic.width=768; mosaic.height=768;
+  var mctx = mosaic.getContext("2d");
+  mctx.fillStyle = "#161a20"; mctx.fillRect(0,0,768,768);
+  var jobs = [];
+  for (var a=0;a<3;a++) for (var b=0;b<3;b++) (function(a,b){
+    jobs.push(loadImg(tileUrl(s, pz, gx0+a, gy0+b)).then(function(im){
+      if (im){ try { mctx.drawImage(im, a*256, b*256, 256, 256); } catch(e){} }
+      if (im && s.overlay){ return loadImg(tileUrl({url:s.overlay}, pz, gx0+a, gy0+b)).then(function(ov){
+        if (ov){ try { mctx.drawImage(ov, a*256, b*256, 256, 256); } catch(e){} } }); }
+    }));
+  })(a,b);
+  Promise.all(jobs).then(function(){
+    ctx.clearRect(0,0,PV,PV);
+    ctx.drawImage(mosaic, 0,0,768,768, 0,0,PV,PV);
+    var sc = PV/768;
+    function toPx(la,lo){ var t = deg2num(la,lo,pz); return [ (t[0]-gx0)*256*sc, (t[1]-gy0)*256*sc ]; }
+    var bb = bbox(lat, lon, state.radius);
+    var pa = toPx(bb[2], bb[1]), pb = toPx(bb[0], bb[3]);
+    ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;
+    ctx.strokeRect(pa[0]+1, pa[1]+1, pb[0]-pa[0], pb[1]-pa[1]);
+    ctx.strokeStyle = "#3FA9FF"; ctx.lineWidth = 2;
+    ctx.strokeRect(pa[0], pa[1], pb[0]-pa[0], pb[1]-pa[1]);
+    var m = toPx(lat, lon);
+    ctx.beginPath(); ctx.moveTo(m[0]-10,m[1]); ctx.lineTo(m[0]+10,m[1]); ctx.moveTo(m[0],m[1]-10); ctx.lineTo(m[0],m[1]+10); ctx.stroke();
+    $("pvnote").textContent = "Z"+pz+" overview — the frame is the download area.";
+  });
+}
+function placeholder(txt){
+  var cv = $("preview"), ctx = cv.getContext("2d");
+  ctx.fillStyle = "#0A121C"; ctx.fillRect(0,0,PV,PV);
+  ctx.fillStyle = "#55606C"; ctx.font = "14px 'Segoe UI',sans-serif"; ctx.textAlign="center";
+  ctx.fillText(txt, PV/2, PV/2);
+}
+placeholder("Enter coordinates to see a preview.");
+
+/* ---------------- helpers: errors, log, progress ---------------- */
+function showErr(m){ var e=$("err"); e.textContent=m||""; e.classList.toggle("show", !!m); }
+function setStatus(m){ $("status").textContent = m; }
+function logLine(m){ var b=$("logBox"); b.style.display="block"; b.textContent += m+"\n"; b.scrollTop = b.scrollHeight; }
+function setBar(f){ $("pbar").style.width = Math.round(f*100)+"%"; }
+
+/* ---------------- widget generation ---------------- */
+function buildLua(tile, zs, lat, lon){
+  var cache = tile===128 ? "24" : "8";
+  return $("luaTpl").textContent.replace(/^\s+/, "")
+    .split("__TILE__").join(String(tile))
+    .split("__ZMIN__").join(String(Math.min.apply(null,zs)))
+    .split("__ZMAX__").join(String(Math.max.apply(null,zs)))
+    .split("__CACHE__").join(cache)
+    .split("__HLAT__").join(lat.toFixed(6))
+    .split("__HLON__").join(lon.toFixed(6));
+}
+function download(name, blob){
+  var a = document.createElement("a"), url = URL.createObjectURL(blob);
+  a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+$("btnWidget").addEventListener("click", function(){
+  showErr("");
+  var zs = selectedZooms();
+  if (!zs.length){ showErr("Select at least one zoom level."); return; }
+  var lat=0, lon=0;
+  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; } catch(e){}
+  var lua = buildLua(state.tile, zs, lat, lon);
+  download("main.lua", new Blob([lua], {type:"text/plain"}));
+  setStatus("widget generated — put it in WIDGETS/SatMap/main.lua on the SD card");
+});
+
+/* ---------------- guide modal ---------------- */
+$("guideBody").textContent = GUIDE;
+$("btnGuide").addEventListener("click", function(){ $("guideModal").classList.add("open"); });
+$("guideClose").addEventListener("click", function(){ $("guideModal").classList.remove("open"); });
+$("guideModal").addEventListener("click", function(e){ if (e.target === this) this.classList.remove("open"); });
+
+/* ---------------- tile fetch + crop ---------------- */
+function fetchComposited(s, z, x, y){
+  // returns a 256x256 canvas (base + optional overlay), or null
+  return loadImg(tileUrl(s, z, x, y)).then(function(base){
+    if (!base) return null;
+    var cv = document.createElement("canvas"); cv.width=256; cv.height=256;
+    var ctx = cv.getContext("2d");
+    try { ctx.drawImage(base, 0,0,256,256); } catch(e){ return null; }
+    if (!s.overlay) return cv;
+    return loadImg(tileUrl({url:s.overlay}, z, x, y)).then(function(ov){
+      if (ov){ try { ctx.drawImage(ov, 0,0,256,256); } catch(e){} }
+      return cv;
+    });
+  });
+}
+function subBlob(canvas256, tile, a, b){
+  return new Promise(function(res){
+    if (tile === 256){ canvas256.toBlob(function(bl){ res(bl); }, "image/png"); return; }
+    var c = document.createElement("canvas"); c.width=tile; c.height=tile;
+    c.getContext("2d").drawImage(canvas256, a*tile, b*tile, tile, tile, 0,0, tile, tile);
+    c.toBlob(function(bl){ res(bl); }, "image/png");
+  });
+}
+
+/* ---------------- output sinks: folder (File System Access) or ZIP ---------------- */
+function folderSink(root){
+  var dirCache = {}; // "z/gx" -> dir handle
+  function subdir(z, gx){
+    var k = z+"/"+gx;
+    if (dirCache[k]) return Promise.resolve(dirCache[k]);
+    return root.getDirectoryHandle("MAPS",{create:true})
+      .then(function(m){ return m.getDirectoryHandle(String(z),{create:true}); })
+      .then(function(zd){ return zd.getDirectoryHandle(String(gx),{create:true}); })
+      .then(function(d){ dirCache[k]=d; return d; });
+  }
+  return {
+    exists: function(z, gx, gy){
+      return subdir(z, gx).then(function(d){ return d.getFileHandle(gy+".png").then(function(){return true;}, function(){return false;}); }, function(){ return false; });
+    },
+    put: function(z, gx, gy, blob){
+      return subdir(z, gx).then(function(d){ return d.getFileHandle(gy+".png",{create:true}); })
+        .then(function(fh){ return fh.createWritable(); })
+        .then(function(w){ return w.write(blob).then(function(){ return w.close(); }); });
+    },
+    widget: function(lua){
+      return root.getDirectoryHandle("WIDGETS",{create:true})
+        .then(function(w){ return w.getDirectoryHandle("SatMap",{create:true}); })
+        .then(function(sd){ return sd.getFileHandle("main.lua",{create:true}); })
+        .then(function(fh){ return fh.createWritable(); })
+        .then(function(w){ return w.write(new Blob([lua],{type:"text/plain"})).then(function(){ return w.close(); }); });
+    },
+    finish: function(){ return Promise.resolve(); }
+  };
+}
+function zipSink(){
+  var zip = new JSZip();
+  return {
+    exists: function(){ return Promise.resolve(false); },
+    put: function(z, gx, gy, blob){ zip.file("MAPS/"+z+"/"+gx+"/"+gy+".png", blob); return Promise.resolve(); },
+    widget: function(lua){ zip.file("WIDGETS/SatMap/main.lua", lua); return Promise.resolve(); },
+    finish: function(){
+      setStatus("packing ZIP…");
+      return zip.generateAsync({type:"blob", compression:"STORE"}).then(function(blob){
+        download("edgetx-maps.zip", blob);
+      });
+    }
+  };
+}
+
+/* ---------------- the download run ---------------- */
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+$("btnDownload").addEventListener("click", function(){ if (!state.running) startDownload(); });
+
+function startDownload(){
+  showErr("");
+  var lat, lon;
+  try { var c = parseCoords($("coords").value); lat=c[0]; lon=c[1]; }
+  catch(e){ showErr(e.message); return; }
+  var zs = selectedZooms();
+  if (!zs.length){ showErr("Select at least one zoom level."); return; }
+  var s = src(), tile = state.tile, F = 256/tile;
+
+  // build job list
+  var jobs = [];
+  zs.forEach(function(z){
+    var r = tileRanges(lat, lon, state.radius, z);
+    r[0].forEach(function(x){ r[1].forEach(function(y){ jobs.push([z,x,y]); }); });
+  });
+  var total = jobs.length;
+  if (!total){ showErr("Nothing to download for this area."); return; }
+
+  pickSink(s).then(function(sink){
+    if (!sink) return; // user cancelled picker
+    runJobs(sink, s, tile, F, zs, lat, lon, jobs, total);
+  });
+}
+
+function pickSink(s){
+  // Prefer writing straight to a folder (Chrome/Edge). Fall back to a ZIP.
+  if (window.showDirectoryPicker){
+    return window.showDirectoryPicker({ mode:"readwrite", id:"edgetx-maps" }).then(function(root){
+      logLine("Writing into the folder you picked. Existing tiles are skipped.");
+      return folderSink(root);
+    }, function(){ return null; }); // cancelled
+  }
+  logLine("This browser can't write to a folder — building a ZIP instead (use Chrome or Edge to write straight to the SD card).");
+  return Promise.resolve(zipSink());
+}
+
+function runJobs(sink, s, tile, F, zs, lat, lon, jobs, total){
+  state.running = true; state.cancel = false;
+  $("btnDownload").textContent = "Stop";
+  setBar(0); logLine("Start — "+total+" source tiles, "+(total*F*F)+" PNG files");
+  var i = 0, written = 0, skipped = 0, failed = 0, t0 = Date.now();
+  var pause = Math.round(((s.pause||0.05))*1000);
+
+  function step(){
+    if (state.cancel){ done("Cancelled. Starting again will resume."); return; }
+    if (i >= jobs.length){ done(null); return; }
+    var job = jobs[i++]; var z=job[0], x=job[1], y=job[2];
+    setBar(i/total); setStatus(i+" of "+total+" source tiles");
+
+    // resume: skip a source tile whose first sub-tile already exists
+    sink.exists(z, x*F, y*F).then(function(ex){
+      if (ex){ skipped++; return schedule(); }
+      return fetchComposited(s, z, x, y).then(function(cv){
+        if (!cv){ failed++; logLine("failed  "+z+"/"+x+"/"+y); return schedule(); }
+        var subs = [];
+        for (var a=0;a<F;a++) for (var b=0;b<F;b++) (function(a,b){
+          subs.push(subBlob(cv, tile, a, b).then(function(bl){
+            if (bl) return sink.put(z, x*F+a, y*F+b, bl).then(function(){ written++; });
+          }));
+        })(a,b);
+        return Promise.all(subs).then(function(){ return schedule(); });
+      });
+    }).catch(function(e){ failed++; logLine("error  "+z+"/"+x+"/"+y+"  "+e.message); schedule(); });
+  }
+  function schedule(){ if (pause>0) setTimeout(step, pause); else Promise.resolve().then(step); }
+
+  function done(msg){
+    sink.widget(buildLua(tile, zs, lat, lon)).then(function(){ return sink.finish(); }).then(function(){
+      var secs = Math.round((Date.now()-t0)/1000);
+      var line = (msg||("Done in "+Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0")))+
+                 "  —  "+written+" PNGs written, "+skipped+" source tiles skipped, "+failed+" failed";
+      logLine(line); setStatus(msg ? "cancelled" : "done"); setBar(1);
+      state.running = false; $("btnDownload").textContent = "Download tiles";
+      if (failed>0 && written===0) showErr("No tiles could be downloaded. The map source may be blocking cross-site requests in this browser — try an Esri layer, or use Chrome/Edge.");
+    });
+  }
+
+  step();
+}
+
+/* stop button reuses the download button while running */
+$("btnDownload").addEventListener("click", function(){ if (state.running) state.cancel = true; });
+
+$("foot").textContent = "Personal, offline use. Imagery © the respective map providers (shown on the preview). "+
+  "OpenStreetMap's own tile servers are intentionally not offered here because their policy forbids bulk offline downloading.";
+
+estimate();
+})();
+</script>
+</body>
+</html>
