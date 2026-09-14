@@ -295,7 +295,7 @@ local C_BTN2 = lcd.RGB(0,120,210)    -- accent button
 local atan2  = math.atan2 or math.atan
 
 local MENU_W, MENU_ROW, MENU_VIS = 260, 22, 10
-local MAXPTS = 64                    -- graph: max plotted points per channel
+local MAXPTS = 40                    -- graph: max plotted points per channel (keeps rebuild cheap)
 
 -- ---------------------------------------------------------------- state
 
@@ -374,11 +374,18 @@ local function tileXY(lat, lon, z)
   return x, y
 end
 
+-- scale factors cached once per frame (updateScale) so the trail/plane loops don't
+-- recompute 2^zoom and cos() for every point
+local scaleS, scaleSY = 1, 1
+local function updateScale()
+  if not center then return end
+  scaleS  = 2 ^ zoom * 256 / 360
+  scaleSY = scaleS / math.cos(math.rad(center.lat))
+end
+
 -- linearised around center: avoids float precision loss on the radio
 local function toScreen(lat, lon)
-  local s  = 2 ^ zoom * 256 / 360
-  local sy = s / math.cos(math.rad(center.lat))
-  return CX + (lon - center.lon) * s, CY - (lat - center.lat) * sy
+  return CX + (lon - center.lon) * scaleS, CY - (lat - center.lat) * scaleSY
 end
 
 local function distBrg(lat1, lon1, lat2, lon2)
@@ -563,10 +570,8 @@ local function readTelemetry()
   tele.sats = gv("Sats") or gv("Sat") or 0
   tele.alt  = gv("GAlt") or gv("Alt") or 0
   tele.spd  = gv("GSpd") or gv("GPS Speed") or 0
-  tele.volt = gv("RxBt") or gv("Vbat") or gv("Batt") or 0
-  tele.sig  = gv("RQly") or gv("1RSS") or gv("RSSI") or gv("RSS") or 0
-  tele.vspd = gv("VSpd") or gv("Vspd") or gv("VVel") or 0
-  tele.curr = gv("Curr") or gv("Current") or 0
+  -- volt/sig/vspd/curr are read once per second in pushSample (they feed the graph
+  -- and the page-2 panel; no need to poll them every frame)
 
   local h = gv("Hdg") or gv("Yaw")
   if h then
@@ -603,6 +608,10 @@ local function pushSample()
   lastSample = t
   local v = {}
   for i = 1, #CH do v[i] = CH[i].get() end
+  tele.volt = v[1] or 0
+  tele.sig  = v[2] or 0
+  tele.vspd = v[4] or 0
+  tele.curr = v[6] or 0
   local rec = {t = t / 100, v = v}
   local n = #hist
   if n < CFG.histMax then
@@ -735,7 +744,7 @@ local function addBtn(id, x, y, w, h, label, accent)
   btns[#btns + 1] = {id = id, x = x, y = y, w = w, h = h}
   lcd.drawFilledRectangle(x, y, w, h, accent and C_BTN2 or C_BTN)
   lcd.drawRectangle(x, y, w, h, C_CY)
-  lcd.drawText(x + w / 2, y + (h - 8) / 2, label, SMLSIZE + C_W + CENTER)
+  lcd.drawText(x + w / 2, y + math.floor((h - 12) / 2), label, SMLSIZE + C_W + CENTER)
 end
 
 -- ---------------------------------------------------------------- drawing: map
@@ -825,6 +834,11 @@ end
 
 -- ---------------------------------------------------------------- drawing: HUD
 
+local function shortLabel(s, n)
+  if #s > n then return string.sub(s, 1, n) end
+  return s
+end
+
 local function drawHud()
   local x2, y2 = VX + VW, VY + VH
   lcd.drawFilledRectangle(VX, VY, VW, 20, C_B)
@@ -840,15 +854,14 @@ local function drawHud()
   addBtn("map",  x2 - 56,  VY + 2, 52, 16, "MAP",  true)
   addBtn("page", x2 - 112, VY + 2, 52, 16, "PG2",  false)
 
-  lcd.drawText(VX + 4,   y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
-  lcd.drawText(VX + 40,  y2 - 16, follow and "FOLLOW" or "FIX", SMLSIZE + C_W)
-  lcd.drawText(VX + 110, y2 - 16, sets[curSet].label, SMLSIZE + C_CY)
+  local mode = follow and "FOLLOW" or (panned and "FIX*" or "FIX")
+  lcd.drawText(VX + 4,  y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
+  lcd.drawText(VX + 36, y2 - 16, mode, SMLSIZE + C_W)
+  lcd.drawText(VX + 92, y2 - 16, shortLabel(sets[curSet].label, 24), SMLSIZE + C_CY)
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
-    lcd.drawText(VX + 230, y2 - 16, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W)
+    lcd.drawText(x2 - 4, y2 - 16, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W + RIGHT)
   end
-  if panned then lcd.drawText(VX + 320, y2 - 16, "PAN", SMLSIZE + C_Y) end
-  lcd.drawText(x2 - 4, y2 - 16, "[ENT-L] menu", SMLSIZE + C_GRID + RIGHT)
 end
 
 -- compact view for small widget zones, no map rendering
@@ -884,7 +897,7 @@ local function drawMiniStatus()
   lcd.drawFilledRectangle(VX, y2 - 14, VW, 14, C_B)
   lcd.drawText(VX + 3,  y2 - 13, "Z" .. zoom, SMLSIZE + C_W)
   lcd.drawText(VX + 34, y2 - 13, follow and "FOL" or "FIX", SMLSIZE + C_W)
-  lcd.drawText(VX + VW - 3, y2 - 13, sets[curSet].label, SMLSIZE + C_CY + RIGHT)
+  lcd.drawText(VX + VW - 3, y2 - 13, shortLabel(sets[curSet].label, 14), SMLSIZE + C_CY + RIGHT)
 end
 
 local function drawTelem(tx, ty, tw, th)
@@ -913,6 +926,9 @@ local function drawTelem(tx, ty, tw, th)
 end
 
 -- rebuild the cached graph geometry (done at most once per new sample / setting change)
+-- Rebuild the cached graph geometry. Cost is O(MAXPTS) per channel, INDEPENDENT of
+-- the time window: with ~1 sample/s the window is just the last `win` samples, so we
+-- never scan the whole ring. This is what keeps the radio's per-frame CPU budget safe.
 local function buildGraphModel(gx, gy, gw, gh)
   gModel = {}
   local win = WINS[winSel]
@@ -920,44 +936,54 @@ local function buildGraphModel(gx, gy, gw, gh)
   local t0  = now - win
   local px, py, pw, ph = gx + 2, gy + 2, gw - 4, gh - 12
 
+  local n = #hist
+  if n == 0 then return end
+  local first = n - win + 1              -- ~1 sample/s => window ≈ last `win` samples (O(1))
+  if first < 1 then first = 1 end
+  local cnt = n - first + 1
+  local stride = math.floor(cnt / MAXPTS)
+  if stride < 1 then stride = 1 end
+
   for slot = 1, #gSlot do
     local ci = gSlot[slot]
     if ci and ci ~= 0 then
       local m = {col = G_COL[slot], pts = {}, legend = CH[ci].label .. " --"}
-      -- first in-window index
-      local first
-      for i = 1, #hist do if hist[i].t >= t0 then first = i; break end end
-      if first then
-        local mn, mx, cur
-        for i = first, #hist do
-          local v = hist[i].v[ci]
+      local p = m.pts
+      local mn, mx, cur
+      -- single decimated pass: collect raw (t,v) and min/max together (<= ~MAXPTS steps)
+      for i = first, n, stride do
+        local r = hist[i]
+        if r.t >= t0 then
+          local v = r.v[ci]
           if v then
             if not mn or v < mn then mn = v end
             if not mx or v > mx then mx = v end
             cur = v
+            p[#p + 1] = r.t
+            p[#p + 1] = v
           end
         end
-        if mn then
-          local span = mx - mn
-          if span == 0 then span = 1 end
-          local cnt = #hist - first + 1
-          local stride = math.floor(cnt / MAXPTS)
-          if stride < 1 then stride = 1 end
-          local p = m.pts
-          for i = first, #hist, stride do
-            local v = hist[i].v[ci]
-            if v then
-              p[#p + 1] = px + (hist[i].t - t0) / win * pw
-              p[#p + 1] = py + ph - (v - mn) / span * ph
-            end
-          end
-          local lr = hist[#hist]
-          if lr.v[ci] then
-            p[#p + 1] = px + (lr.t - t0) / win * pw
-            p[#p + 1] = py + ph - (lr.v[ci] - mn) / span * ph
-          end
-          if cur then m.legend = CH[ci].label .. " " .. fmtVal(cur, CH[ci]) end
+      end
+      -- always pin the newest sample as the right edge
+      local lr = hist[n]
+      if lr and lr.v[ci] then
+        local v = lr.v[ci]
+        if not mn or v < mn then mn = v end
+        if not mx or v > mx then mx = v end
+        cur = v
+        p[#p + 1] = lr.t
+        p[#p + 1] = v
+      end
+      if mn then
+        local span = mx - mn
+        if span == 0 then span = 1 end
+        for j = 1, #p, 2 do              -- convert stored (t,v) -> screen (x,y) in place
+          p[j]     = px + (p[j] - t0) / win * pw
+          p[j + 1] = py + ph - (p[j + 1] - mn) / span * ph
         end
+        if cur then m.legend = CH[ci].label .. " " .. fmtVal(cur, CH[ci]) end
+      else
+        m.pts = {}
       end
       gModel[#gModel + 1] = m
     end
@@ -1168,6 +1194,7 @@ local function refresh(widget, event, touchState)
     VX, VY, VW, VH = 0, 0, mapW, LCD_H
     CX, CY = VX + VW / 2, VY + VH / 2
     updateCenter()
+    updateScale()
 
     clipOn(VX, VY, VW, VH)
     lcd.drawFilledRectangle(VX, VY, VW, VH, C_BG)
@@ -1187,6 +1214,7 @@ local function refresh(widget, event, touchState)
     if fullscreen then VX, VY, VW, VH = 0, 0, LCD_W, LCD_H end
     CX, CY = VX + VW / 2, VY + VH / 2
     updateCenter()
+    updateScale()
 
     clipOn(VX, VY, VW, VH)
     lcd.drawFilledRectangle(VX, VY, VW, VH, C_BG)
