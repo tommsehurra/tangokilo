@@ -200,11 +200,11 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
         <button class="btn ghost" id="searchGo" style="width:auto;padding:0 20px">Search</button>
       </div>
       <div id="map"></div>
-      <div class="maptools">
-        <label class="chk" title="Show aeronautical airspaces (CTR, restricted, danger zones …) for orientation"><input type="checkbox" id="airspace"> ⚠️ Airspace overlay</label>
-        <input class="field" id="airKey" placeholder="OpenAIP API key (free)" autocomplete="off">
+      <div class="maptools" id="airBox" style="display:none">
+        <span class="lbl" style="margin:0">⚠️ OpenAIP key</span>
+        <input class="field" id="airKey" placeholder="free key from openaip.net — for airspaces" autocomplete="off" style="width:280px">
       </div>
-      <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue area (circle or square) is what gets downloaded. With <b>Airspace</b> on and an OpenAIP key, the airspaces are baked into the tiles too.</div>
+      <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue area (circle or square) is what gets downloaded. Pick <b>OpenTopoMap + Airspace</b> in the dropdown to show and bake in the airspaces (needs a free OpenAIP key).</div>
 
       <div style="margin-top:24px">
         <h3 class="sec">ℹ️ How it works</h3>
@@ -814,7 +814,8 @@ var SOURCES = {
   "Satellite + labels":   { url:esri("World_Imagery"), overlay:esri("Reference/World_Boundaries_and_Places"), maxz:18, kb:22, reqs:2, attr:"Esri, Maxar, Earthstar Geographics" },
   "Topographic":          { url:esri("World_Topo_Map"), maxz:18, kb:11, reqs:1, attr:"Esri, HERE, Garmin, USGS, NGA" },
   "Street map":           { url:esri("World_Street_Map"), maxz:18, kb:9, reqs:1, attr:"Esri, HERE, Garmin, USGS" },
-  "OpenTopoMap":          { url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" }
+  "OpenTopoMap":          { url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" },
+  "OpenTopoMap + Airspace":{ url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", air:true, maxz:17, kb:16, reqs:2, pause:0.4, attr:"OpenTopoMap + OpenAIP airspaces" }
 };
 var ZOOMS = { 13:"12 m", 14:"6 m", 15:"3 m", 16:"1.5 m", 17:"0.75 m", 18:"0.4 m" };
 var PV = 520;
@@ -931,7 +932,6 @@ var state = {
   zoom: {},     // z -> bool
   center: null, // {lat,lon} set by map click / search / manual entry
   shape: "circle", // "circle" | "square"
-  airspace: false, // bake the OpenAIP airspace overlay into the downloaded tiles
   running: false,
   cancel: false
 };
@@ -947,7 +947,7 @@ function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(
     var o = document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
   });
   sel.value = state.source;
-  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); setBaseLayer(); scheduleThumbs(); });
+  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); setBaseLayer(); scheduleThumbs(); updateAirKeyUI(); });
 })();
 
 (function initChips(){
@@ -1028,26 +1028,27 @@ function loadImg(url){
 function tileUrl(s, z, x, y){ return s.url.replace("{z}",z).replace("{x}",x).replace("{y}",y); }
 
 /* ---------------- interactive map (Leaflet) ---------------- */
-var map, baseLayer=null, airLayer=null, marker=null, area=null;
+var map, baseLayer=null, marker=null, area=null;
 var AIR_KEY = "";
 try { AIR_KEY = localStorage.getItem("openaip_key") || ""; } catch(e){}
 
+function airTemplate(){ return "https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey="+encodeURIComponent(AIR_KEY); }
 function makeBase(name){
   var s = SOURCES[name];
   var layers = [ L.tileLayer(s.url, { maxZoom:19, maxNativeZoom:s.maxz, attribution:s.attr }) ];
   if (s.overlay) layers.push(L.tileLayer(s.overlay, { maxZoom:19, maxNativeZoom:s.maxz }));
+  // airspace baked into the source: always drawn on top, so it never disappears on zoom/change
+  if (s.air && AIR_KEY) layers.push(L.tileLayer(airTemplate(), { maxZoom:19, maxNativeZoom:14, opacity:0.9, attribution:"OpenAIP" }));
   return L.layerGroup(layers);
 }
 function setBaseLayer(){
   if (baseLayer) map.removeLayer(baseLayer);
   baseLayer = makeBase(state.source); baseLayer.addTo(map);
 }
-function setAirspace(on){
-  if (airLayer){ map.removeLayer(airLayer); airLayer = null; }
-  if (!on || !AIR_KEY) return;
-  airLayer = L.tileLayer("https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey="+encodeURIComponent(AIR_KEY),
-    { maxZoom:19, maxNativeZoom:14, opacity:0.85, attribution:"Airspaces © OpenAIP" });
-  airLayer.addTo(map);
+function updateAirKeyUI(){
+  var air = !!src().air;
+  $("airBox").style.display = air ? "flex" : "none";
+  if (air && !AIR_KEY) setStatus("Enter a free OpenAIP API key (openaip.net) to see and download airspaces.");
 }
 function fitArea(){ if (area) map.fitBounds(area.getBounds(), { padding:[26,26], maxZoom:16, animate:true }); }
 function updateArea(){
@@ -1078,15 +1079,11 @@ function setCenter(lat, lon, keepView){
   setBaseLayer();
   map.on("click", function(e){ setCenter(e.latlng.lat, e.latlng.lng, true); });
   $("airKey").value = AIR_KEY;
-  $("airspace").addEventListener("change", function(){
-    var on = this.checked; state.airspace = on; $("airKey").classList.toggle("show", on);
-    if (on && !AIR_KEY) setStatus("Airspace: enter a free OpenAIP API key (openaip.net) to show and download airspaces.");
-    setAirspace(on);
-  });
+  updateAirKeyUI();
   $("airKey").addEventListener("change", function(){
     AIR_KEY = this.value.trim();
     try { localStorage.setItem("openaip_key", AIR_KEY); } catch(e){}
-    if ($("airspace").checked) setAirspace(true);
+    if (src().air){ setBaseLayer(); if (AIR_KEY) setStatus("Airspace key saved."); }
   });
 })();
 
@@ -1175,7 +1172,7 @@ function fetchComposited(s, z, x, y){
     var chain = Promise.resolve();
     if (s.overlay) chain = chain.then(function(){ return loadImg(tileUrl({url:s.overlay}, z, x, y)).then(function(ov){ if (ov){ try { ctx.drawImage(ov,0,0,256,256); } catch(e){} } }); });
     // bake the airspace overlay into the tile as well (needs CORS + an OpenAIP key; silently skipped if unavailable)
-    if (state.airspace && AIR_KEY) chain = chain.then(function(){ return loadImg(airUrl(z,x,y)).then(function(av){ if (av){ try { ctx.drawImage(av,0,0,256,256); } catch(e){} } }); });
+    if (s.air && AIR_KEY) chain = chain.then(function(){ return loadImg(airUrl(z,x,y)).then(function(av){ if (av){ try { ctx.drawImage(av,0,0,256,256); } catch(e){} } }); });
     return chain.then(function(){ return cv; });
   });
 }
@@ -1248,7 +1245,7 @@ function startDownload(){
   var jobs = jobsFor(lat, lon);
   var total = jobs.length;
   if (!total){ showErr("Nothing to download for this area."); return; }
-  if (state.airspace && !AIR_KEY) logLine("Airspace is on but no OpenAIP key is set — tiles will download without airspaces.");
+  if (s.air && !AIR_KEY) logLine("Airspace map selected but no OpenAIP key is set — tiles will download without airspaces.");
 
   pickSink(s).then(function(sink){
     if (!sink) return; // user cancelled picker
