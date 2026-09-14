@@ -71,16 +71,16 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 
 <div class="page">
   <h1>Flight Path Viewer</h1>
-  <p class="lead">Load an EdgeTX / OpenTX telemetry log (<b>.csv</b>) and see your flight as an interactive 3D map — with terrain, attitude display, metrics and a timeline. <b>Everything runs directly in your browser; the file is never uploaded or stored.</b></p>
+  <p class="lead">Load a flight log and see your flight as an interactive 3D map — with terrain, attitude display, metrics and a timeline. Works with an <b>EdgeTX / OpenTX telemetry log (.csv)</b> and with a <b>raw INAV / Betaflight blackbox log (.txt / .bbl / .bfl)</b>, which adds airspeed, wind, G-force, HDOP, baro temperature and more. <b>Everything runs directly in your browser; the file is never uploaded or stored.</b></p>
 
   <div class="drop" id="drop">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
-    <div class="big">Drop a CSV here or choose a file</div>
-    <div class="small">EdgeTX log with GPS telemetry (a "GPS" column with "lat lon", or separate lat/lon columns)</div>
+    <div class="big">Drop a log here or choose a file</div>
+    <div class="small">EdgeTX telemetry CSV, or a raw INAV / Betaflight blackbox log (.txt / .bbl / .bfl). GPS telemetry required.</div>
     <div class="btns">
       <button class="btn primary" id="pick">Choose file</button>
     </div>
-    <input type="file" id="file" accept=".csv,text/csv" hidden>
+    <input type="file" id="file" accept=".csv,.txt,.bbl,.bfl,.log,text/csv,text/plain" hidden>
     <div class="err" id="err"></div>
   </div>
 
@@ -101,7 +101,7 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 (function(){
 "use strict";
 function $(id){ return document.getElementById(id); }
-var TPL_URL = "/flugspur_report_tpl.html?v=8";
+var TPL_URL = "/flugspur_report_tpl.html?v=9";
 var tplCache = null;
 
 function showErr(msg){ var e=$("err"); e.textContent=msg||""; e.classList.toggle("show", !!msg); }
@@ -143,12 +143,12 @@ function render(payload){
   });
 }
 
-function process(text, fname){
+function process(data, fname){
   showErr("");
   busy(true, "Reading log …");
   setTimeout(function(){
     var payload;
-    try { payload = FlugspurParse.load(text, fname || "log.csv"); }
+    try { payload = FlugspurParse.load(data, fname || "log"); }
     catch(e){ busy(false); showErr(e && e.message ? e.message : "The file could not be read."); return; }
     render(payload);
   }, 30);
@@ -156,11 +156,12 @@ function process(text, fname){
 
 function readFile(file){
   if(!file) return;
-  if(file.size > 80*1024*1024){ showErr("That file is very large (>80 MB). Please pick a single flight log."); return; }
+  if(file.size > 120*1024*1024){ showErr("That file is very large (>120 MB). Please pick a single flight log."); return; }
+  // Read as bytes: blackbox logs are binary; the parser auto-detects blackbox vs CSV.
   var fr=new FileReader();
-  fr.onload=function(){ process(String(fr.result), file.name); };
+  fr.onload=function(){ process(new Uint8Array(fr.result), file.name); };
   fr.onerror=function(){ showErr("The file could not be read."); };
-  fr.readAsText(file);
+  fr.readAsArrayBuffer(file);
 }
 
 var drop=$("drop"), fileInput=$("file");
