@@ -110,6 +110,10 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 .leaflet-bar a{background:var(--deck)!important;color:var(--white)!important;border-color:var(--edge)!important}
 .leaflet-bar a:hover{background:var(--accent)!important;color:var(--void)!important}
 .leaflet-control-geosearch,.leaflet-touch .leaflet-bar a{color:var(--white)}
+.pills{display:flex;flex-wrap:wrap;gap:7px}
+.pill{border:1px solid var(--edge);background:var(--void-2);color:var(--ash);border-radius:8px;padding:8px 12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:.12s}
+.pill:hover{border-color:var(--accent)}
+.pill.on{background:var(--accent);color:var(--void);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -124,14 +128,14 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 
 <div class="page">
   <h1>🗺️ Map Downloader</h1>
-  <p class="lead">Download offline map tiles for the <b>SatMap</b> widget on your EdgeTX colour radio (TX16S and similar), and generate the matching <b>main.lua</b> — all here in your browser. Pick a centre, a radius and the zoom levels, then write the <b>MAPS</b> and <b>WIDGETS</b> folders straight onto your SD card (Chrome / Edge) or download them as a ZIP. Give each download a <b>map name</b> and it becomes its own set \u2014 download several places or Satellite vs OpenTopoMap and switch between them right on the radio.</p>
+  <p class="lead">Download offline map tiles for the <b>SatMap</b> widget on your EdgeTX colour radio (TX16S and similar), and generate the matching <b>main.lua</b> — all here in your browser. Pick a centre, a radius and the zoom levels, then write the <b>MAPS</b> and <b>WIDGETS</b> folders straight onto your SD card (Chrome / Edge) or download them as a ZIP. Tick several <b>map types</b> (Satellite, OpenTopoMap, Airspace…) and they download together for the same spot — each in its own folder you switch between on the radio.</p>
 
   <div class="grid">
     <!-- ---------------- controls ---------------- -->
     <div>
       <div class="card">
-        <span class="lbl">Map source</span>
-        <select class="field" id="source"></select>
+        <span class="lbl">Map types to download — pick one or more</span>
+        <div class="pills" id="srcChips"></div>
         <div id="airBox" style="display:none;margin-top:12px">
           <span class="lbl">⚠️ OpenAIP key — <a href="https://www.openaip.net" target="_blank" rel="noopener" style="color:var(--accent);text-transform:none;letter-spacing:0;font-weight:600">get one free ↗</a></span>
           <input class="field" id="airKey" placeholder="Paste your OpenAIP API key here" autocomplete="off">
@@ -141,18 +145,13 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 
         <span class="lbl">Centre (lat, lon)</span>
         <input class="field" id="coords" placeholder="" autocomplete="off">
-
-        <div style="margin-top:16px">
-          <span class="lbl">Map name — its own folder on the card</span>
-          <input class="field" id="mapName" placeholder="e.g. Sankt Augustin Sat" autocomplete="off">
-          <p class="msg" id="mapNameHint" style="margin-top:8px"></p>
-        </div>
+        <p class="msg" style="margin-top:8px">Pick a place, tick the map types you want, and every selected type downloads for this spot in one go — each into its own <b style="color:var(--white)">MAPS/&lt;type&gt;/</b> folder you can switch between on the radio.</p>
 
         <div class="row" style="margin-top:18px">
           <span class="lbl" style="margin:0">Radius</span>
           <span class="val" id="radiusVal">3.0 km</span>
         </div>
-        <input type="range" id="radius" min="0.5" max="100" step="0.5" value="3">
+        <input type="range" id="radius" min="0.5" max="20" step="0.5" value="3">
 
         <div class="sep"></div>
 
@@ -187,7 +186,8 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
           <div class="stat"><div class="n" id="stTime">–</div><div class="k">Time</div></div>
         </div>
 
-        <div style="margin-top:18px">
+        <label class="chk" style="margin-top:18px"><input type="checkbox" id="tilesOnly"> Tiles only — don't write the widget (main.lua)</label>
+        <div style="margin-top:12px">
           <button class="btn primary" id="btnDownload">Download tiles</button>
           <div class="btnrow">
             <button class="btn ghost" id="btnWidget">Generate widget only</button>
@@ -213,7 +213,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 
       <div style="margin-top:24px">
         <h3 class="sec">ℹ️ How it works</h3>
-        <p class="msg">The tool fetches map tiles for the area and zoom levels you choose, cuts them to the tile size the widget expects, and lays them out as <b style="color:var(--white)">MAPS/&lt;map name&gt;/&lt;zoom&gt;/&lt;x&gt;/&lt;y&gt;.png</b> \u2014 each named map in its own folder, listed in <b style="color:var(--white)">MAPS/sets.txt</b> so the widget can switch between them. It also writes <b style="color:var(--white)">WIDGETS/SatMap/main.lua</b>, already matched to your tile size and zoom range.</p>
+        <p class="msg">The tool fetches map tiles for the area and zoom levels you choose, cuts them to the tile size the widget expects, and lays them out as <b style="color:var(--white)">MAPS/&lt;type&gt;/&lt;zoom&gt;/&lt;x&gt;/&lt;y&gt;.png</b> — each map type in its own folder, listed in <b style="color:var(--white)">MAPS/sets.txt</b> so the widget can switch between them. It also writes <b style="color:var(--white)">WIDGETS/SatMap/main.lua</b>, already matched to your tile size and zoom range.</p>
         <p class="msg" style="margin-top:10px">On Chrome or Edge you can point it at your SD card (or any folder) and it writes the files there directly — existing tiles are skipped, so you can extend an area later. On other browsers it hands you a single ZIP to unzip onto the card.</p>
         <p class="msg" style="margin-top:10px">Copy the <b style="color:var(--white)">MAPS</b> and <b style="color:var(--white)">WIDGETS</b> folders to the <b style="color:var(--white)">root</b> of the SD card, reboot the radio, then add the SatMap widget to a full-screen layout. The setup guide has the full steps.</p>
       </div>
@@ -236,8 +236,8 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 <script type="text/x-lua" id="luaTpl">
 -- /WIDGETS/SatMap/main.lua
 -- Offline map widget for EdgeTX 2.10.x, colour radios (TX16S and similar)
--- Tiles: /MAPS/<name>/<z>/<gx>/<gy>.png   (map sets, see /MAPS/sets.txt)
---        /MAPS/<z>/<gx>/<gy>.png          (legacy flat layout = one unnamed set)
+-- Tiles: /MAPS/<type>/<z>/<gx>/<gy>.png   (map types, see /MAPS/sets.txt)
+--        /MAPS/<z>/<gx>/<gy>.png          (legacy flat layout = one unnamed type)
 --
 -- Generated by the Tango Kilo Map Downloader. The tile size and zoom range below
 -- match the tiles that were downloaded; do not change them by hand.
@@ -250,15 +250,15 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 --   Rotary            zoom in / out
 --   ENTER short       toggle FOLLOW / FIX
 --   ENTER long        open the settings menu (page, map, graph, ...)
---   Tap [PG] / [MAP]  switch page / cycle map set
+--   Tap [PG] / [MAP]  switch page / cycle map type
 --   Tap on the map    hide the HUD, tap again to bring it back
 --   Drag in FIX mode  pan the map with your finger
 --
--- MAP SETS
---   Several downloaded maps (different places or Satellite vs OpenTopoMap) live in
---   their own /MAPS/<name>/ folders. "Map" in the menu (or the [MAP] button) cycles
---   through them; a set with no tiles at the current position is skipped so it jumps
---   to the next map that actually covers where you are.
+-- MAP TYPES
+--   Each downloaded map type (Satellite, OpenTopoMap, Airspace, ...) lives in its own
+--   /MAPS/<type>/ folder. "Map" in the menu (or the [MAP] button) cycles through them;
+--   a type with no tiles at the current position is skipped, so it jumps straight to
+--   one that actually covers where you are.
 
 local CFG = {
   root      = "/MAPS",
@@ -290,10 +290,12 @@ local C_MENU = lcd.RGB(16,16,20)
 local C_SEL  = lcd.RGB(0,90,160)
 local C_PANEL= lcd.RGB(14,20,30)     -- telemetry panel background
 local C_GBG  = lcd.RGB(10,14,20)     -- graph background
-local C_BTN  = lcd.RGB(24,40,60)
+local C_BTN  = lcd.RGB(20,32,48)     -- idle button
+local C_BTN2 = lcd.RGB(0,120,210)    -- accent button
 local atan2  = math.atan2 or math.atan
 
 local MENU_W, MENU_ROW, MENU_VIS = 260, 22, 10
+local MAXPTS = 64                    -- graph: max plotted points per channel
 
 -- ---------------------------------------------------------------- state
 
@@ -331,7 +333,7 @@ local trail     = {}
 local panned    = false
 local lastHdgLat, lastHdgLon
 
-local btns      = {}                 -- touch buttons rebuilt every frame
+local btns      = {}                 -- touch buttons rebuilt every drawn frame
 
 -- graph channels (each reads whatever sensor exists, with fallbacks)
 local function gv(name)
@@ -354,6 +356,10 @@ local gSlot  = {1, 3, 0}             -- graph slots -> CH index (0 = off): Volt,
 local G_COL  = {C_G, C_CY, C_Y}
 local hist   = {}                    -- ring buffer: hist[i] = {t=seconds, v={...}}
 local lastSample = 0
+
+local graphDirty = true              -- rebuild the cached graph model on the next draw
+local gModel     = {}                -- cached: { {pts={x,y,...}, col=, legend=}, ... }
+local gX, gY, gW, gH = -1, -1, -1, -1
 
 -- ---------------------------------------------------------------- helpers
 
@@ -414,7 +420,7 @@ local function readAll(path)
   return s
 end
 
--- ---------------------------------------------------------------- map sets
+-- ---------------------------------------------------------------- map types
 
 local function splitFields(line)
   local a = {}
@@ -443,7 +449,7 @@ local function loadSets()
     end
   end
   if #sets == 0 then
-    -- legacy flat /MAPS layout: one unnamed set
+    -- legacy flat /MAPS layout: one unnamed type
     sets[1] = { dir = CFG.root, label = "MAP", tile = CFG.tile, zmin = CFG.zoomMin, zmax = CFG.zoomMax }
   end
   if curSet > #sets then curSet = 1 end
@@ -460,7 +466,7 @@ local function applySet(i)
   flushCache()
 end
 
--- does set i have a tile at the current map centre (any zoom in its range)?
+-- does type i have a tile at the current map centre (any zoom in its range)?
 local function setHasCoverage(i)
   if not center then return true end
   local s  = sets[i]
@@ -475,7 +481,7 @@ local function setHasCoverage(i)
   return false
 end
 
--- cycle to the next/previous set that actually covers the current position
+-- cycle to the next/previous type that actually covers the current position
 local function switchSet(step)
   if #sets <= 1 then return end
   local n = #sets
@@ -587,6 +593,7 @@ local function pushSample()
     table.remove(hist, 1)
     hist[#hist + 1] = rec
   end
+  graphDirty = true
 end
 
 local function recenter()
@@ -625,11 +632,12 @@ end
 
 local function cycleSlot(slot)
   gSlot[slot] = ((gSlot[slot] or 0) + 1) % (#CH + 1)
+  graphDirty = true
 end
 
 local MENU = {
   { l = function() return "Page:   " .. (page == 1 and "MAP" or "MAP + GRAPH") end,
-    a = function() page = (page == 1) and 2 or 1 end },
+    a = function() page = (page == 1) and 2 or 1; graphDirty = true end },
   { l = function() return "Map:    " .. sets[curSet].label .. "  (" .. curSet .. "/" .. #sets .. ")" end,
     a = function() switchSet(1) end },
   { l = function() return "Zoom:   Z" .. zoom end,
@@ -646,7 +654,7 @@ local MENU = {
   { l = function() return "Trail:  " .. (useTrail and "on" or "off") end,
     a = function() useTrail = not useTrail; if not useTrail then trail = {} end end },
   { l = function() return "Graph window: " .. WINS[winSel] .. "s" end,
-    a = function() winSel = winSel % #WINS + 1 end },
+    a = function() winSel = winSel % #WINS + 1; graphDirty = true end },
   { l = function() return "Graph 1: " .. slotLabel(1) end, a = function() cycleSlot(1) end },
   { l = function() return "Graph 2: " .. slotLabel(2) end, a = function() cycleSlot(2) end },
   { l = function() return "Graph 3: " .. slotLabel(3) end, a = function() cycleSlot(3) end },
@@ -696,6 +704,15 @@ local function drawMenu()
       lcd.drawText(x + 10, ry, MENU[i].l(), SMLSIZE + C_W)
     end
   end
+end
+
+-- ---------------------------------------------------------------- buttons
+
+local function addBtn(id, x, y, w, h, label, accent)
+  btns[#btns + 1] = {id = id, x = x, y = y, w = w, h = h}
+  lcd.drawFilledRectangle(x, y, w, h, accent and C_BTN2 or C_BTN)
+  lcd.drawRectangle(x, y, w, h, C_CY)
+  lcd.drawText(x + w / 2, y + (h - 8) / 2, label, SMLSIZE + C_W + CENTER)
 end
 
 -- ---------------------------------------------------------------- drawing: map
@@ -783,39 +800,32 @@ local function drawPlane()
   drawArrow(x, y, tele.hdg)
 end
 
--- ---------------------------------------------------------------- buttons
-
-local function addBtn(id, x, y, w, h, label, col)
-  btns[#btns + 1] = {id = id, x = x, y = y, w = w, h = h}
-  lcd.drawFilledRectangle(x, y, w, h, col or C_BTN)
-  lcd.drawRectangle(x, y, w, h, C_GRID)
-  lcd.drawText(x + w / 2, y + (h - 8) / 2, label, SMLSIZE + C_W + CENTER)
-end
-
 -- ---------------------------------------------------------------- drawing: HUD
 
 local function drawHud()
   local x2, y2 = VX + VW, VY + VH
-  lcd.drawFilledRectangle(VX, VY, VW, 18, C_B)
+  lcd.drawFilledRectangle(VX, VY, VW, 20, C_B)
   lcd.drawFilledRectangle(VX, y2 - 18, VW, 18, C_B)
 
-  lcd.drawText(VX + 4,   VY + 1, string.format("SAT %d", tele.sats),
+  lcd.drawText(VX + 4,   VY + 3, string.format("SAT %d", tele.sats),
                SMLSIZE + (gps.ok and C_G or C_R))
-  lcd.drawText(VX + 70,  VY + 1, string.format("ALT %dm", math.floor(tele.alt)), SMLSIZE + C_W)
-  lcd.drawText(VX + 160, VY + 1, string.format("SPD %.0f", tele.spd), SMLSIZE + C_W)
-  lcd.drawText(VX + 240, VY + 1, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
+  lcd.drawText(VX + 70,  VY + 3, string.format("ALT %dm", math.floor(tele.alt)), SMLSIZE + C_W)
+  lcd.drawText(VX + 160, VY + 3, string.format("SPD %.0f", tele.spd), SMLSIZE + C_W)
+  lcd.drawText(VX + 240, VY + 3, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
+
+  -- top-right buttons (nice, tappable)
+  addBtn("map",  x2 - 56,  VY + 2, 52, 16, "MAP",  true)
+  addBtn("page", x2 - 112, VY + 2, 52, 16, "PG2",  false)
+
+  lcd.drawText(VX + 4,   y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
+  lcd.drawText(VX + 40,  y2 - 16, follow and "FOLLOW" or "FIX", SMLSIZE + C_W)
+  lcd.drawText(VX + 110, y2 - 16, sets[curSet].label, SMLSIZE + C_CY)
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
-    lcd.drawText(VX + 330, VY + 1, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W)
+    lcd.drawText(VX + 230, y2 - 16, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W)
   end
-
-  lcd.drawText(VX + 4,   y2 - 17, "Z" .. zoom, SMLSIZE + C_W)
-  lcd.drawText(VX + 40,  y2 - 17, follow and "FOLLOW" or "FIX", SMLSIZE + C_W)
-  lcd.drawText(VX + 110, y2 - 17, sets[curSet].label, SMLSIZE + C_CY)
-  if panned then lcd.drawText(VX + 210, y2 - 17, "PAN", SMLSIZE + C_Y) end
-
-  addBtn("page", x2 - 96, VY, 44, 16, page == 1 and "PG2" or "PG1")
-  addBtn("map",  x2 - 48, VY, 44, 16, "MAP")
+  if panned then lcd.drawText(VX + 320, y2 - 16, "PAN", SMLSIZE + C_Y) end
+  lcd.drawText(x2 - 4, y2 - 16, "[ENT-L] menu", SMLSIZE + C_GRID + RIGHT)
 end
 
 -- compact view for small widget zones, no map rendering
@@ -857,12 +867,12 @@ end
 local function drawTelem(tx, ty, tw, th)
   lcd.drawFilledRectangle(tx, ty, tw, th, C_PANEL)
   lcd.drawRectangle(tx, ty, tw, th, C_GRID)
-  addBtn("page", tx + tw - 92, ty + 2, 42, 14, "PG1")
-  addBtn("map",  tx + tw - 46, ty + 2, 42, 14, "MAP")
-  lcd.drawText(tx + 4, ty + 3, "TELEMETRY", SMLSIZE + C_Y)
+  lcd.drawText(tx + 4, ty + 4, "TELEMETRY", SMLSIZE + C_Y)
+  addBtn("map",  tx + tw - 54, ty + 2, 50, 16, "MAP", true)
+  addBtn("page", tx + tw - 108, ty + 2, 50, 16, "PG1", false)
 
   local colL, colR = tx + 6, tx + tw / 2 + 4
-  local r0, dr = ty + 18, 15
+  local r0, dr = ty + 22, 15
   lcd.drawText(colL, r0,        string.format("SAT  %d", tele.sats), SMLSIZE + (gps.ok and C_G or C_R))
   lcd.drawText(colL, r0 + dr,   string.format("ALT  %dm", math.floor(tele.alt)), SMLSIZE + C_W)
   lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0f", tele.spd), SMLSIZE + C_W)
@@ -879,68 +889,86 @@ local function drawTelem(tx, ty, tw, th)
   end
 end
 
-local function drawGraph(gx, gy, gw, gh)
-  lcd.drawFilledRectangle(gx, gy, gw, gh, C_GBG)
-  lcd.drawRectangle(gx, gy, gw, gh, C_GRID)
-
+-- rebuild the cached graph geometry (done at most once per new sample / setting change)
+local function buildGraphModel(gx, gy, gw, gh)
+  gModel = {}
   local win = WINS[winSel]
   local now = getTime() / 100
   local t0  = now - win
   local px, py, pw, ph = gx + 2, gy + 2, gw - 4, gh - 12
-  local legendY = gy + 3
-
-  -- horizontal grid (quarters)
-  for q = 1, 3 do
-    local yy = py + ph * q / 4
-    lcd.drawLine(px, yy, px + pw, yy, DOTTED, C_GRID)
-  end
 
   for slot = 1, #gSlot do
     local ci = gSlot[slot]
     if ci and ci ~= 0 then
-      local col = G_COL[slot]
-      local mn, mx
-      for i = 1, #hist do
-        local r = hist[i]
-        if r.t >= t0 then
-          local val = r.v[ci]
-          if val then
-            if not mn or val < mn then mn = val end
-            if not mx or val > mx then mx = val end
+      local m = {col = G_COL[slot], pts = {}, legend = CH[ci].label .. " --"}
+      -- first in-window index
+      local first
+      for i = 1, #hist do if hist[i].t >= t0 then first = i; break end end
+      if first then
+        local mn, mx, cur
+        for i = first, #hist do
+          local v = hist[i].v[ci]
+          if v then
+            if not mn or v < mn then mn = v end
+            if not mx or v > mx then mx = v end
+            cur = v
           end
         end
-      end
-      if mn then
-        local span = mx - mn
-        if span == 0 then span = 1 end
-        local lastX, lastY, lastPx
-        for i = 1, #hist do
-          local r = hist[i]
-          if r.t >= t0 then
-            local val = r.v[ci]
-            if val then
-              local xx = math.floor(px + (r.t - t0) / win * pw)
-              local yy = py + ph - (val - mn) / span * ph
-              if lastX and xx ~= lastPx then
-                lcd.drawLine(lastX, lastY, xx, yy, SOLID, col)
-              end
-              if not lastX or xx ~= lastPx then lastX, lastY, lastPx = xx, yy, xx end
+        if mn then
+          local span = mx - mn
+          if span == 0 then span = 1 end
+          local cnt = #hist - first + 1
+          local stride = math.floor(cnt / MAXPTS)
+          if stride < 1 then stride = 1 end
+          local p = m.pts
+          for i = first, #hist, stride do
+            local v = hist[i].v[ci]
+            if v then
+              p[#p + 1] = px + (hist[i].t - t0) / win * pw
+              p[#p + 1] = py + ph - (v - mn) / span * ph
             end
           end
+          local lr = hist[#hist]
+          if lr.v[ci] then
+            p[#p + 1] = px + (lr.t - t0) / win * pw
+            p[#p + 1] = py + ph - (lr.v[ci] - mn) / span * ph
+          end
+          if cur then m.legend = CH[ci].label .. " " .. fmtVal(cur, CH[ci]) end
         end
-        local cur
-        for i = #hist, 1, -1 do if hist[i].v[ci] then cur = hist[i].v[ci]; break end end
-        local txt = CH[ci].label
-        if cur then txt = txt .. " " .. fmtVal(cur, CH[ci]) end
-        lcd.drawText(gx + 4, legendY, txt, SMLSIZE + col)
-      else
-        lcd.drawText(gx + 4, legendY, CH[ci].label .. " --", SMLSIZE + C_GRID)
       end
-      legendY = legendY + 11
+      gModel[#gModel + 1] = m
     end
   end
+end
 
-  lcd.drawText(gx + 3, gy + gh - 10, "-" .. win .. "s", SMLSIZE + C_GRID)
+local function drawGraph(gx, gy, gw, gh)
+  if graphDirty or gx ~= gX or gy ~= gY or gw ~= gW or gh ~= gH then
+    buildGraphModel(gx, gy, gw, gh)
+    graphDirty = false
+    gX, gY, gW, gH = gx, gy, gw, gh
+  end
+
+  lcd.drawFilledRectangle(gx, gy, gw, gh, C_GBG)
+  lcd.drawRectangle(gx, gy, gw, gh, C_GRID)
+  local py, ph = gy + 2, gh - 12
+  for q = 1, 3 do
+    local yy = py + ph * q / 4
+    lcd.drawLine(gx + 2, yy, gx + gw - 2, yy, DOTTED, C_GRID)
+  end
+
+  local legendY = gy + 3
+  for _, m in ipairs(gModel) do
+    local p = m.pts
+    local i = 1
+    while i <= #p - 3 do
+      lcd.drawLine(p[i], p[i + 1], p[i + 2], p[i + 3], SOLID, m.col)
+      i = i + 2
+    end
+    lcd.drawText(gx + 4, legendY, m.legend, SMLSIZE + m.col)
+    legendY = legendY + 11
+  end
+
+  lcd.drawText(gx + 3, gy + gh - 10, "-" .. WINS[winSel] .. "s", SMLSIZE + C_GRID)
   lcd.drawText(gx + gw - 3, gy + gh - 10, "now", SMLSIZE + C_GRID + RIGHT)
 end
 
@@ -954,7 +982,7 @@ local function hitBtn(tx, ty)
 end
 
 local function doBtn(id)
-  if id == "page" then page = (page == 1) and 2 or 1
+  if id == "page" then page = (page == 1) and 2 or 1; graphDirty = true
   elseif id == "map" then switchSet(1) end
 end
 
@@ -1017,7 +1045,7 @@ local function handleEvent(event, touchState)
     -- only react to map-area taps for HUD / zoom / mode
     if tx >= VX and tx <= VX + VW and ty >= VY and ty <= VY + VH then
       if page == 2 then
-        return                              -- map half on page 2: taps do nothing extra
+        return                              -- map half on page 2: no extra tap actions
       elseif not hudOn then
         hudOn = true
       elseif ty > VY + VH - 55 then
@@ -1086,7 +1114,6 @@ end
 local function refresh(widget, event, touchState)
   tickCnt   = tickCnt + 1
   cacheFull = false
-  btns      = {}
 
   local fullscreen = (event ~= nil)
   local zone = widget.zone
@@ -1106,8 +1133,10 @@ local function refresh(widget, event, touchState)
   end
 
   if fullscreen then
-    handleEvent(event, touchState)
+    handleEvent(event, touchState)   -- uses last frame's button rects (positions are stable)
   end
+
+  btns = {}                           -- rebuilt by the draw calls below
 
   if fullscreen and page == 2 then
     -- map on the left half; telemetry + graph on the right
@@ -1172,13 +1201,14 @@ function $(id){ return document.getElementById(id); }
 var ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/{svc}/MapServer/tile/{z}/{y}/{x}";
 function esri(svc){ return ESRI.replace("{svc}", svc); }
 
+// Each map type has its own folder on the card: MAPS/<folder>/<z>/<x>/<y>.png
 var SOURCES = {
-  "Satellite":            { url:esri("World_Imagery"), maxz:18, kb:20, reqs:1, attr:"Esri, Maxar, Earthstar Geographics" },
-  "Satellite + labels":   { url:esri("World_Imagery"), overlay:esri("Reference/World_Boundaries_and_Places"), maxz:18, kb:22, reqs:2, attr:"Esri, Maxar, Earthstar Geographics" },
-  "Topographic":          { url:esri("World_Topo_Map"), maxz:18, kb:11, reqs:1, attr:"Esri, HERE, Garmin, USGS, NGA" },
-  "Street map":           { url:esri("World_Street_Map"), maxz:18, kb:9, reqs:1, attr:"Esri, HERE, Garmin, USGS" },
-  "OpenTopoMap":          { url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" },
-  "OpenTopoMap + Airspace":{ url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", air:true, maxz:17, kb:16, reqs:2, pause:0.4, attr:"OpenTopoMap + OpenAIP airspaces" }
+  "Satellite":             { folder:"sat",     url:esri("World_Imagery"), maxz:18, kb:20, reqs:1, attr:"Esri, Maxar, Earthstar Geographics" },
+  "Satellite + labels":    { folder:"satlbl",  url:esri("World_Imagery"), overlay:esri("Reference/World_Boundaries_and_Places"), maxz:18, kb:22, reqs:2, attr:"Esri, Maxar, Earthstar Geographics" },
+  "Topographic":           { folder:"topo",    url:esri("World_Topo_Map"), maxz:18, kb:11, reqs:1, attr:"Esri, HERE, Garmin, USGS, NGA" },
+  "Street map":            { folder:"street",  url:esri("World_Street_Map"), maxz:18, kb:9, reqs:1, attr:"Esri, HERE, Garmin, USGS" },
+  "OpenTopoMap":           { folder:"otm",     url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" },
+  "OpenTopoMap + Airspace":{ folder:"airspace",url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", air:true, maxz:17, kb:16, reqs:2, pause:0.4, attr:"OpenTopoMap + OpenAIP airspaces" }
 };
 var ZOOMS = { 13:"12 m", 14:"6 m", 15:"3 m", 16:"1.5 m", 17:"0.75 m", 18:"0.4 m" };
 var PV = 520;
@@ -1186,7 +1216,7 @@ var PV = 520;
 var GUIDE =
 "SETUP ON THE RADIO\n\n"+
 "1  Copy the MAPS folder to the ROOT of the SD card.\n"+
-"   The result must look like  E:\\MAPS\\<zoom>\\<x>\\<y>.png\n"+
+"   The result must look like  E:\\MAPS\\<type>\\<zoom>\\<x>\\<y>.png\n"+
 "   Not inside IMAGES, not inside SCRIPTS.\n\n"+
 "2  Copy the WIDGETS folder to the ROOT of the SD card.\n"+
 "   If WIDGETS already exists, merge it. The result must be\n"+
@@ -1208,49 +1238,40 @@ var GUIDE =
 "   ENTER short       toggle FOLLOW and FIX\n"+
 "   ENTER long        open the settings menu\n"+
 "   Tap [PG]          switch between page 1 (map) and page 2\n"+
-"   Tap [MAP]         cycle to the next downloaded map\n"+
+"   Tap [MAP]         cycle to the next downloaded map type\n"+
 "   Tap on the map    hide the HUD, tap again to bring it back\n"+
 "   Bottom third      left zoom out, centre mode, right zoom in\n"+
 "   Drag in FIX mode  pan the map with your finger\n\n"+
-"PAGE 2 \u2014 MAP + TELEMETRY + GRAPH\n\n"+
+"PAGE 2 - MAP + TELEMETRY + GRAPH\n\n"+
 "Page 2 keeps the map on the left half. The right half shows the\n"+
 "live telemetry on top and a scrolling time graph below it. Open\n"+
 "the settings menu (ENTER long) to pick up to three graph channels\n"+
 "(Volt, Signal, Alt, VSpd, Speed, Curr) and the time window\n"+
 "(30 s to 10 min). Each channel auto-scales to its own range.\n\n"+
 "MULTIPLE MAPS\n\n"+
-"Every download you give a Map name to becomes its own folder\n"+
-"MAPS/<name>/ and a line in MAPS/sets.txt. In the widget, [MAP]\n"+
-"(or Map: in the menu) cycles through them. A map with no tiles\n"+
-"where you are is skipped, so it jumps straight to one that covers\n"+
-"your position. Download the same place as Satellite and as\n"+
-"OpenTopoMap, or several different places, and switch on the fly.\n\n"+
+"Tick several map types before downloading (Satellite, OpenTopoMap,\n"+
+"Airspace, ...) and they all download for the same spot in one run,\n"+
+"each into its own MAPS/<type>/ folder and a line in MAPS/sets.txt.\n"+
+"In the widget, [MAP] (or Map: in the menu) cycles through them. A\n"+
+"type with no tiles where you are is skipped, so it jumps straight\n"+
+"to one that covers your position. Download more places later the\n"+
+"same way - tiles for every place pile up in the same type folder.\n\n"+
+"TILES ONLY\n\n"+
+"Tick \"Tiles only\" to fetch just the map folders without writing\n"+
+"the widget (main.lua). Use it when the widget is already on the\n"+
+"card and you only want to add imagery.\n\n"+
 "READING THE COLOURS\n\n"+
-"   Reddish tile   the PNG is not on the SD card. Either outside\n"+
-"                  the area you downloaded, or that zoom level\n"+
-"                  was never fetched.\n"+
-"   Bluish tile    the tile is loading. It should disappear within\n"+
-"                  a frame or two. If it stays and the cache\n"+
+"   Reddish tile   the PNG is not on the SD card.\n"+
+"   Bluish tile    the tile is loading. If it stays and the cache\n"+
 "                  counter turns red, the radio is out of bitmap\n"+
 "                  memory.\n\n"+
 "COLOUR SCREENS ONLY\n\n"+
-"This widget does not work on monochrome radios such as the\n"+
-"Taranis X9D, QX7, TX12, Boxer, Zorro, T-Lite or Radiomaster\n"+
-"Pocket. The widget framework and the Bitmap / lcd.drawBitmap\n"+
-"calls it relies on only exist on colour radios, and a 128x64\n"+
-"one-bit screen cannot show aerial imagery anyway.\n\n"+
+"This widget needs a colour radio (TX16S and similar). It does not\n"+
+"work on monochrome radios.\n\n"+
 "NOTES\n\n"+
-"Tile size and zoom range in the generated main.lua match what\n"+
-"you downloaded. If you download a different area later with\n"+
-"other settings, generate the widget again.\n\n"+
-"Tiles never expire. To extend your coverage, run the download\n"+
-"again with a different centre or a larger radius. Existing\n"+
-"files are skipped, only the new ones are fetched.\n\n"+
-"OpenTopoMap is run by volunteers and its tile usage policy asks\n"+
-"you not to bulk download. Keep those areas small, or use one of\n"+
-"the Esri layers for large regions. Some browsers may also block\n"+
-"OpenTopoMap tiles for a cross-site download; the Esri layers\n"+
-"always work here.";
+"Tile size and zoom range in the generated main.lua match what you\n"+
+"downloaded. OpenTopoMap asks you not to bulk download - keep those\n"+
+"areas small, or use an Esri layer for large regions.";
 
 /* ---------------- geo math (ported from tiles_gui.py) ---------------- */
 function deg2num(lat, lon, z){
@@ -1267,22 +1288,6 @@ function havM(la1,lo1,la2,lo2){
   var a=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
   return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
 }
-/* All [z,x,y] source tiles for the current centre, honouring the circle/square shape. */
-function jobsFor(lat, lon){
-  var zs = selectedZooms(), jobs = [], rM = state.radius*1000;
-  zs.forEach(function(z){
-    var r = tileRanges(lat, lon, state.radius, z);
-    var tileM = 40075016.686*Math.cos(lat*Math.PI/180)/Math.pow(2,z);   // tile width in metres
-    r[0].forEach(function(x){ r[1].forEach(function(y){
-      if (state.shape === "circle"){
-        var c = num2deg(x+0.5, y+0.5, z);
-        if (havM(lat, lon, c[0], c[1]) > rM + tileM) return;            // tile outside the circle
-      }
-      jobs.push([z,x,y]);
-    }); });
-  });
-  return jobs;
-}
 function tileRanges(lat, lon, r, z){
   var b = bbox(lat, lon, r);
   var a0 = deg2num(b[0], b[1], z), a1 = deg2num(b[2], b[3], z);
@@ -1292,6 +1297,22 @@ function tileRanges(lat, lon, r, z){
   for (var x=x0; x<=x1; x++) xs.push(x);
   for (var y=y0; y<=y1; y++) ys.push(y);
   return [xs, ys];
+}
+/* All [z,x,y] source tiles for the current centre, honouring the circle/square shape. */
+function jobsFor(lat, lon, zoomList){
+  var zs = zoomList || selectedZooms(), jobs = [], rM = state.radius*1000;
+  zs.forEach(function(z){
+    var r = tileRanges(lat, lon, state.radius, z);
+    var tileM = 40075016.686*Math.cos(lat*Math.PI/180)/Math.pow(2,z);
+    r[0].forEach(function(x){ r[1].forEach(function(y){
+      if (state.shape === "circle"){
+        var c = num2deg(x+0.5, y+0.5, z);
+        if (havM(lat, lon, c[0], c[1]) > rM + tileM) return;
+      }
+      jobs.push([z,x,y]);
+    }); });
+  });
+  return jobs;
 }
 function parseCoords(text){
   var parts = String(text).replace(/;/g,",").trim().split(",").filter(function(p){ return p.trim(); });
@@ -1304,30 +1325,55 @@ function parseCoords(text){
 
 /* ---------------- state ---------------- */
 var state = {
-  source: "Satellite",
+  sources: { "Satellite": true },   // set of selected map types to download
+  lastPreview: "Satellite",         // which one the map/preview shows
   radius: 3.0,
   tile: 128,
-  mapName: "", autoName: true, lastPlace: "", setFolder: "", setLabel: "",
-  zoom: {},     // z -> bool
-  center: null, // {lat,lon} set by map click / search / manual entry
-  shape: "circle", // "circle" | "square"
+  zoom: {},
+  center: null,
+  shape: "circle",
+  tilesOnly: false,
   running: false,
   cancel: false
 };
 Object.keys(ZOOMS).forEach(function(z){ state.zoom[z] = (z=="15"||z=="16"); });
 
-function src(){ return SOURCES[state.source]; }
+function selectedSources(){ return Object.keys(SOURCES).filter(function(n){ return state.sources[n]; }); }
+function anySelected(){ return selectedSources().length > 0; }
+function previewName(){
+  var s = selectedSources();
+  if (s.indexOf(state.lastPreview) >= 0) return state.lastPreview;
+  return s.length ? s[0] : "Satellite";
+}
+function src(){ return SOURCES[previewName()]; }
+function maxSelZoom(){
+  var s = selectedSources();
+  if (!s.length) return 18;
+  return Math.max.apply(null, s.map(function(n){ return SOURCES[n].maxz; }));
+}
 function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(z){ return state.zoom[z]; }).sort(function(a,b){return a-b;}); }
 
-/* ---------------- UI build ---------------- */
-(function initSource(){
-  var sel = $("source");
+/* ---------------- UI build: source toggles ---------------- */
+(function initSources(){
+  var box = $("srcChips");
   Object.keys(SOURCES).forEach(function(name){
-    var o = document.createElement("option"); o.value=name; o.textContent=name; sel.appendChild(o);
+    var b = document.createElement("button");
+    b.className = "pill"; b.dataset.n = name; b.textContent = name;
+    b.addEventListener("click", function(){
+      state.sources[name] = !state.sources[name];
+      if (state.sources[name]) state.lastPreview = name;
+      else if (state.lastPreview === name){ var s = selectedSources(); state.lastPreview = s[0] || "Satellite"; }
+      paintSources(); paintChips(); estimate(); setBaseLayer(); scheduleThumbs(); updateAirKeyUI();
+    });
+    box.appendChild(b);
   });
-  sel.value = state.source;
-  sel.addEventListener("change", function(){ state.source = sel.value; paintChips(); estimate(); setBaseLayer(); scheduleThumbs(); updateAirKeyUI(); setAutoName(state.lastPlace); });
+  paintSources();
 })();
+function paintSources(){
+  Array.prototype.forEach.call($("srcChips").children, function(b){
+    b.classList.toggle("on", !!state.sources[b.dataset.n]);
+  });
+}
 
 (function initChips(){
   var box = $("chips");
@@ -1336,7 +1382,7 @@ function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(
     b.className = "chip"; b.dataset.z = z;
     b.innerHTML = '<span class="zthumb"></span><span class="zt">Z'+z+'</span><small>'+ZOOMS[z]+'</small>';
     b.addEventListener("click", function(){
-      if (z > src().maxz) return;
+      if (z > maxSelZoom()) return;
       state.zoom[z] = !state.zoom[z]; paintChips(); estimate();
     });
     box.appendChild(b);
@@ -1345,7 +1391,7 @@ function selectedZooms(){ return Object.keys(ZOOMS).map(Number).filter(function(
 })();
 
 function paintChips(){
-  var maxz = src().maxz;
+  var maxz = maxSelZoom();
   Array.prototype.forEach.call($("chips").children, function(b){
     var z = Number(b.dataset.z);
     b.classList.remove("on","off");
@@ -1377,28 +1423,33 @@ $("coords").addEventListener("change", function(){
   try { var c = parseCoords($("coords").value); setCenter(c[0], c[1], false); labelCentre(c[0], c[1]); }
   catch(e){ if ($("coords").value.trim()) setStatus(e.message); }
 });
-$("mapName").addEventListener("input", function(){ state.autoName = false; refreshMapNameHint(); });
-refreshMapNameHint();
+$("tilesOnly").addEventListener("change", function(){ state.tilesOnly = this.checked; });
 
 /* ---------------- estimate ---------------- */
 function estimate(){
-  if (!state.center){ $("stFiles").textContent="–"; $("stSize").textContent="–"; $("stTime").textContent="–"; return; }
+  if (!state.center || !anySelected()){ $("stFiles").textContent="–"; $("stSize").textContent="–"; $("stTime").textContent="–"; return; }
   var lat=state.center.lat, lon=state.center.lon;
   var zs = selectedZooms();
   if (!zs.length){ $("stFiles").textContent="0"; $("stSize").textContent="0 MB"; $("stTime").textContent="–"; return; }
-  var s = src(), F = 256/state.tile, srcTiles = jobsFor(lat, lon).length;
-  var pngs = srcTiles*F*F;
-  var kb = s.kb/(state.tile===256?1:3.4);
-  var mb = pngs*kb/1024;
-  var conc = s.pause ? 2 : 8;               // parallel downloads (gentle for OpenTopoMap)
-  var secs = srcTiles*(0.45*s.reqs + (s.pause||0))/conc;
+  var F = 256/state.tile, pngs = 0, mb = 0, secs = 0;
+  selectedSources().forEach(function(name){
+    var s = SOURCES[name];
+    var zz = zs.filter(function(z){ return z <= s.maxz; });
+    if (!zz.length) return;
+    var srcTiles = jobsFor(lat, lon, zz).length;
+    pngs += srcTiles*F*F;
+    var kb = s.kb/(state.tile===256?1:3.4);
+    mb += srcTiles*F*F*kb/1024;
+    var conc = s.pause ? 2 : 8;
+    secs += srcTiles*(0.45*s.reqs + (s.pause||0))/conc;
+  });
   var col = mb<150 ? "var(--white)" : (mb<500 ? "var(--warn)" : "var(--crit)");
-  $("stFiles").textContent = pngs.toLocaleString("de-DE");
+  $("stFiles").textContent = Math.round(pngs).toLocaleString("de-DE");
   $("stSize").textContent = Math.round(mb)+" MB"; $("stSize").style.color = col;
   $("stTime").textContent = secs>=60 ? Math.round(secs/60)+" min" : "<1 min"; $("stTime").style.color = col;
 }
 
-/* ---------------- tile helpers (also used by the downloader) ---------------- */
+/* ---------------- tile helpers ---------------- */
 function loadImg(url){
   return new Promise(function(res){
     var im = new Image(); im.crossOrigin = "anonymous";
@@ -1418,16 +1469,15 @@ function makeBase(name){
   var s = SOURCES[name];
   var layers = [ L.tileLayer(s.url, { maxZoom:19, maxNativeZoom:s.maxz, attribution:s.attr }) ];
   if (s.overlay) layers.push(L.tileLayer(s.overlay, { maxZoom:19, maxNativeZoom:s.maxz }));
-  // airspace baked into the source: always drawn on top, so it never disappears on zoom/change
   if (s.air && AIR_KEY) layers.push(L.tileLayer(airTemplate(), { maxZoom:19, maxNativeZoom:14, opacity:0.9, attribution:"OpenAIP" }));
   return L.layerGroup(layers);
 }
 function setBaseLayer(){
   if (baseLayer) map.removeLayer(baseLayer);
-  baseLayer = makeBase(state.source); baseLayer.addTo(map);
+  baseLayer = makeBase(previewName()); baseLayer.addTo(map);
 }
 function updateAirKeyUI(){
-  var air = !!src().air;
+  var air = selectedSources().some(function(n){ return SOURCES[n].air; });
   $("airBox").style.display = air ? "block" : "none";
   if (air && !AIR_KEY) setStatus("Enter a free OpenAIP API key (openaip.net) to see and download airspaces.");
 }
@@ -1455,8 +1505,7 @@ function setCenter(lat, lon, keepView){
   if (!keepView) fitArea();
 }
 
-/* Update the "Centre set — <place>" status from a picked point via reverse geocoding.
-   Shows the place NAME only — never coordinates. */
+/* Shows the place NAME only - never coordinates. */
 var _labelSeq = 0;
 function labelCentre(lat, lon){
   var seq = ++_labelSeq;
@@ -1464,11 +1513,11 @@ function labelCentre(lat, lon){
   fetch("https://nominatim.openstreetmap.org/reverse?format=json&zoom=12&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon), { headers:{ "Accept":"application/json" } })
     .then(function(r){ return r.json(); })
     .then(function(d){
-      if (seq !== _labelSeq) return;              // a newer pick superseded this one
+      if (seq !== _labelSeq) return;
       var name = d && d.display_name ? String(d.display_name).split(",").slice(0,2).join(",").trim() : "";
-      if (name){ setStatus("Centre set — "+name); state.lastPlace = name; setAutoName(name); }
+      if (name) setStatus("Centre set — "+name);
     })
-    .catch(function(){ /* keep the plain "Centre set" — never fall back to coordinates */ });
+    .catch(function(){});
 }
 
 (function initMap(){
@@ -1480,11 +1529,11 @@ function labelCentre(lat, lon){
   $("airKey").addEventListener("change", function(){
     AIR_KEY = this.value.trim();
     try { localStorage.setItem("openaip_key", AIR_KEY); } catch(e){}
-    if (src().air){ setBaseLayer(); if (AIR_KEY) setStatus("Airspace key saved."); }
+    setBaseLayer(); if (AIR_KEY) setStatus("Airspace key saved.");
   });
 })();
 
-/* ---------------- location search (OpenStreetMap Nominatim) ---------------- */
+/* ---------------- location search ---------------- */
 function doSearch(){
   var q = $("search").value.trim(); if (!q) return;
   setStatus("Searching “"+q+"” …");
@@ -1494,15 +1543,14 @@ function doSearch(){
       if (!a || !a.length){ setStatus("No place found for “"+q+"”."); return; }
       var lat = parseFloat(a[0].lat), lon = parseFloat(a[0].lon);
       map.setView([lat,lon], 13); setCenter(lat, lon, false);
-      var pn = String(a[0].display_name||q).split(",").slice(0,2).join(",");
-      setStatus("Centre set — "+pn); state.lastPlace = pn; setAutoName(pn);
+      setStatus("Centre set — "+String(a[0].display_name||q).split(",").slice(0,2).join(","));
     })
     .catch(function(){ setStatus("Search failed — check your connection."); });
 }
 $("searchGo").addEventListener("click", doSearch);
 $("search").addEventListener("keydown", function(e){ if (e.key==="Enter"){ e.preventDefault(); doSearch(); } });
 
-/* ---------------- zoom-level previews (live thumbnail per zoom) ---------------- */
+/* ---------------- zoom-level previews ---------------- */
 var thumbTimer = null;
 function scheduleThumbs(){ if (thumbTimer) clearTimeout(thumbTimer); thumbTimer = setTimeout(updateZoomThumbs, 300); }
 function updateZoomThumbs(){
@@ -1516,7 +1564,7 @@ function updateZoomThumbs(){
   });
 }
 
-/* ---------------- helpers: errors, log, progress ---------------- */
+/* ---------------- helpers ---------------- */
 function showErr(m){ var e=$("err"); e.textContent=m||""; e.classList.toggle("show", !!m); }
 function setStatus(m){ $("status").textContent = m; }
 function logLine(m){ var b=$("logBox"); b.style.display="block"; b.textContent += m+"\n"; b.scrollTop = b.scrollHeight; }
@@ -1531,31 +1579,6 @@ function buildLua(tile, zs){
     .split("__ZMAX__").join(String(Math.max.apply(null,zs)))
     .split("__CACHE__").join(cache);
 }
-
-/* place name -> short source tag -> safe folder slug */
-function srcShort(){
-  var n = state.source;
-  if (n.indexOf("Satellite")===0) return "Sat";
-  if (n.indexOf("OpenTopoMap")===0) return "OpenTopo";
-  if (n==="Topographic") return "Topo";
-  if (n==="Street map") return "Street";
-  return "Map";
-}
-function slugify(s){
-  return String(s||"").toLowerCase().normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"_")
-    .replace(/^_+|_+$/g,"").replace(/_+/g,"_");
-}
-function refreshMapNameHint(){
-  var f = slugify($("mapName").value) || "map";
-  $("mapNameHint").innerHTML = 'Folder on the card: <b style="color:var(--white)">MAPS/'+f+'/</b> \u2014 each named map is its own set you can switch between in the widget.';
-}
-function setAutoName(place){
-  if (!state.autoName) return;
-  var base = place ? String(place).split(",")[0].trim() : "";
-  $("mapName").value = (base ? base+" " : "") + srcShort();
-  refreshMapNameHint();
-}
 function download(name, blob){
   var a = document.createElement("a"), url = URL.createObjectURL(blob);
   a.href = url; a.download = name; document.body.appendChild(a); a.click();
@@ -1566,8 +1589,7 @@ $("btnWidget").addEventListener("click", function(){
   showErr("");
   var zs = selectedZooms();
   if (!zs.length){ showErr("Select at least one zoom level."); return; }
-  var lua = buildLua(state.tile, zs);
-  download("main.lua", new Blob([lua], {type:"text/plain"}));
+  download("main.lua", new Blob([buildLua(state.tile, zs)], {type:"text/plain"}));
   setStatus("widget generated — put it in WIDGETS/SatMap/main.lua on the SD card");
 });
 
@@ -1582,7 +1604,6 @@ document.addEventListener("keydown", function(e){ if (e.key==="Escape") openGuid
 /* ---------------- tile fetch + crop ---------------- */
 function airUrl(z, x, y){ return "https://api.tiles.openaip.net/api/data/openaip/"+z+"/"+x+"/"+y+".png?apiKey="+encodeURIComponent(AIR_KEY); }
 function fetchComposited(s, z, x, y){
-  // returns a 256x256 canvas (base + optional labels overlay + optional airspace), or null
   return loadImg(tileUrl(s, z, x, y)).then(function(base){
     if (!base) return null;
     var cv = document.createElement("canvas"); cv.width=256; cv.height=256;
@@ -1590,7 +1611,6 @@ function fetchComposited(s, z, x, y){
     try { ctx.drawImage(base, 0,0,256,256); } catch(e){ return null; }
     var chain = Promise.resolve();
     if (s.overlay) chain = chain.then(function(){ return loadImg(tileUrl({url:s.overlay}, z, x, y)).then(function(ov){ if (ov){ try { ctx.drawImage(ov,0,0,256,256); } catch(e){} } }); });
-    // bake the airspace overlay into the tile as well (needs CORS + an OpenAIP key; silently skipped if unavailable)
     if (s.air && AIR_KEY) chain = chain.then(function(){ return loadImg(airUrl(z,x,y)).then(function(av){ if (av){ try { ctx.drawImage(av,0,0,256,256); } catch(e){} } }); });
     return chain.then(function(){ return cv; });
   });
@@ -1604,12 +1624,13 @@ function subBlob(canvas256, tile, a, b){
   });
 }
 
-/* ---------------- output sinks: folder (File System Access) or ZIP ---------------- */
-function folderSink(root, folder){
-  var dirCache = {}; // "z/gx" -> dir handle
+/* ---------------- output sinks: folder (File System Access) or ZIP ----------------
+   Every call takes the map-type folder, so one run can fill several MAPS/<type>/ folders. */
+function folderSink(root){
+  var dirCache = {};
   function mapsDir(){ return root.getDirectoryHandle("MAPS",{create:true}); }
-  function subdir(z, gx){
-    var k = z+"/"+gx;
+  function subdir(folder, z, gx){
+    var k = folder+"/"+z+"/"+gx;
     if (dirCache[k]) return Promise.resolve(dirCache[k]);
     return mapsDir()
       .then(function(m){ return folder ? m.getDirectoryHandle(folder,{create:true}) : m; })
@@ -1618,11 +1639,11 @@ function folderSink(root, folder){
       .then(function(d){ dirCache[k]=d; return d; });
   }
   return {
-    exists: function(z, gx, gy){
-      return subdir(z, gx).then(function(d){ return d.getFileHandle(gy+".png").then(function(){return true;}, function(){return false;}); }, function(){ return false; });
+    exists: function(folder, z, gx, gy){
+      return subdir(folder, z, gx).then(function(d){ return d.getFileHandle(gy+".png").then(function(){return true;}, function(){return false;}); }, function(){ return false; });
     },
-    put: function(z, gx, gy, blob){
-      return subdir(z, gx).then(function(d){ return d.getFileHandle(gy+".png",{create:true}); })
+    put: function(folder, z, gx, gy, blob){
+      return subdir(folder, z, gx).then(function(d){ return d.getFileHandle(gy+".png",{create:true}); })
         .then(function(fh){ return fh.createWritable(); })
         .then(function(w){ return w.write(blob).then(function(){ return w.close(); }); });
     },
@@ -1634,144 +1655,135 @@ function folderSink(root, folder){
         .then(function(w){ return w.write(new Blob([lua],{type:"text/plain"})).then(function(){ return w.close(); }); });
     },
     manifest: function(line){
-      // merge this set into MAPS/sets.txt (replace a line with the same folder key, else append)
+      var key = line.split("|")[0];
       return mapsDir().then(function(m){
         return m.getFileHandle("sets.txt",{create:true}).then(function(fh){
           return fh.getFile()
             .then(function(file){ return file.text(); }, function(){ return ""; })
             .then(function(txt){
-              var key = line.split("|")[0];
               var lines = String(txt||"").split(/\r?\n/).filter(function(l){ return l.trim() && l.split("|")[0] !== key; });
               lines.push(line);
               return fh.createWritable().then(function(w){ return w.write(new Blob([lines.join("\n")+"\n"],{type:"text/plain"})).then(function(){ return w.close(); }); });
             });
         });
-      }).then(
-        function(){ logLine("Updated MAPS/sets.txt \u2014 map \""+line.split("|")[1]+"\" is now switchable in the widget."); },
-        function(){ logLine("Could not update MAPS/sets.txt automatically."); }
-      );
+      }).then(function(){ logLine("sets.txt updated — \""+line.split("|")[1]+"\" is switchable in the widget."); },
+              function(){ logLine("Could not update MAPS/sets.txt automatically."); });
     },
     finish: function(){ return Promise.resolve(); }
   };
 }
-function zipSink(folder){
-  var zip = new JSZip();
-  var base = "MAPS/" + (folder ? folder + "/" : "");
+function zipSink(){
+  var zip = new JSZip(), manifestLines = [];
   return {
     exists: function(){ return Promise.resolve(false); },
-    put: function(z, gx, gy, blob){ zip.file(base+z+"/"+gx+"/"+gy+".png", blob); return Promise.resolve(); },
+    put: function(folder, z, gx, gy, blob){ zip.file("MAPS/"+(folder?folder+"/":"")+z+"/"+gx+"/"+gy+".png", blob); return Promise.resolve(); },
     widget: function(lua){ zip.file("WIDGETS/SatMap/main.lua", lua); return Promise.resolve(); },
-    manifest: function(line){
-      zip.file("MAPS/sets.txt", line+"\n");
-      logLine("A MAPS/sets.txt with this map is in the ZIP. If the card already has one, merge the lines instead of overwriting it.");
-      return Promise.resolve();
-    },
+    manifest: function(line){ manifestLines.push(line); return Promise.resolve(); },
     finish: function(){
+      if (manifestLines.length){
+        zip.file("MAPS/sets.txt", manifestLines.join("\n")+"\n");
+        logLine("A MAPS/sets.txt is in the ZIP. If the card already has one, merge the lines instead of overwriting it.");
+      }
       setStatus("packing ZIP…");
-      return zip.generateAsync({type:"blob", compression:"STORE"}).then(function(blob){
-        download("edgetx-maps.zip", blob);
-      });
+      return zip.generateAsync({type:"blob", compression:"STORE"}).then(function(blob){ download("edgetx-maps.zip", blob); });
     }
   };
+}
+function pickSink(){
+  if (window.showDirectoryPicker){
+    return window.showDirectoryPicker({ mode:"readwrite", id:"edgetx-maps" }).then(function(root){
+      logLine("Writing into the folder you picked. Existing tiles are skipped.");
+      return folderSink(root);
+    }, function(){ return null; });
+  }
+  logLine("This browser can't write to a folder — building a ZIP instead (use Chrome or Edge to write straight to the SD card).");
+  return Promise.resolve(zipSink());
 }
 
 /* ---------------- the download run ---------------- */
 function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
-$("btnDownload").addEventListener("click", function(){ if (!state.running) startDownload(); });
+$("btnDownload").addEventListener("click", function(){
+  if (state.running){ state.cancel = true; return; }
+  startDownload();
+});
 
 function startDownload(){
   showErr("");
   if (!state.center){ showErr("Set a centre first — click the map or search a place."); return; }
-  var lat=state.center.lat, lon=state.center.lon;
+  if (!anySelected()){ showErr("Tick at least one map type to download."); return; }
   var zs = selectedZooms();
   if (!zs.length){ showErr("Select at least one zoom level."); return; }
-  var s = src(), tile = state.tile, F = 256/tile;
-  var jobs = jobsFor(lat, lon);
-  var total = jobs.length;
-  if (!total){ showErr("Nothing to download for this area."); return; }
-  if (s.air && !AIR_KEY) logLine("Airspace map selected but no OpenAIP key is set — tiles will download without airspaces.");
+  var needAir = selectedSources().some(function(n){ return SOURCES[n].air; });
+  if (needAir && !AIR_KEY) logLine("An airspace map is selected but no OpenAIP key is set — those tiles download without airspaces.");
+  pickSink().then(function(sink){ if (!sink) return; runAll(sink, zs); });
+}
 
-  state.setFolder = slugify(state.mapName);
-  state.setLabel  = (state.mapName||"").trim() || state.setFolder;
+function runAll(sink, zs){
+  state.running = true; state.cancel = false;
+  $("btnDownload").textContent = "Stop"; setBar(0);
+  var tile = state.tile, F = 256/tile, lat = state.center.lat, lon = state.center.lon;
 
-  pickSink(s, state.setFolder).then(function(sink){
-    if (!sink) return; // user cancelled picker
-    runJobs(sink, s, tile, F, zs, lat, lon, jobs, total);
+  var perSrc = selectedSources().map(function(name){
+    var s = SOURCES[name];
+    var zz = zs.filter(function(z){ return z <= s.maxz; });
+    return { name:name, s:s, folder:s.folder, zz:zz, jobs: zz.length ? jobsFor(lat, lon, zz) : [] };
+  });
+  var grand = perSrc.reduce(function(a,p){ return a + p.jobs.length; }, 0);
+  if (!grand){ showErr("Nothing to download for this area."); state.running=false; $("btnDownload").textContent="Download tiles"; return; }
+
+  var doneAll=0, written=0, skipped=0, failed=0, t0=Date.now(), lines=[];
+  logLine("Start — "+selectedSources().length+" map type(s), "+grand+" source tiles total, "+(grand*F*F)+" PNG files");
+
+  function runSource(idx){
+    if (idx >= perSrc.length || state.cancel) return Promise.resolve();
+    var p = perSrc[idx], s = p.s, jobs = p.jobs, folder = p.folder;
+    if (!jobs.length) return runSource(idx+1);
+    logLine("["+p.name+"] "+jobs.length+" source tiles -> MAPS/"+folder+"/");
+    lines.push(folder+"|"+p.name+"|"+tile+"|"+Math.min.apply(null,p.zz)+"|"+Math.max.apply(null,p.zz));
+    var CONC = s.pause ? 2 : 8, pauseMs = Math.round((s.pause||0)*1000), next = 0;
+
+    function processOne(job){
+      var z=job[0], x=job[1], y=job[2];
+      return sink.exists(folder, z, x*F, y*F).then(function(ex){
+        if (ex){ skipped++; return; }
+        return fetchComposited(s, z, x, y).then(function(cv){
+          if (!cv){ failed++; logLine("failed  "+folder+" "+z+"/"+x+"/"+y); return; }
+          var subs = [];
+          for (var a=0;a<F;a++) for (var b=0;b<F;b++) (function(a,b){
+            subs.push(subBlob(cv, tile, a, b).then(function(bl){ if (bl) return sink.put(folder, z, x*F+a, y*F+b, bl).then(function(){ written++; }); }));
+          })(a,b);
+          return Promise.all(subs);
+        });
+      }).catch(function(e){ failed++; logLine("error  "+folder+" "+z+"/"+x+"/"+y); });
+    }
+    function worker(){
+      if (state.cancel || next >= jobs.length) return Promise.resolve();
+      var job = jobs[next++];
+      return processOne(job).then(function(){
+        doneAll++; setBar(doneAll/grand); setStatus(doneAll+" / "+grand+" source tiles ("+p.name+")");
+        if (pauseMs) return sleep(pauseMs).then(worker);
+        return worker();
+      });
+    }
+    var chains = []; for (var k=0;k<CONC;k++) chains.push(worker());
+    return Promise.all(chains).then(function(){ return runSource(idx+1); });
+  }
+
+  runSource(0).then(function(){
+    var tail = state.tilesOnly ? Promise.resolve() : sink.widget(buildLua(tile, zs));
+    return tail.then(function(){
+      return lines.reduce(function(pr, ln){ return pr.then(function(){ return sink.manifest(ln); }); }, Promise.resolve());
+    });
+  }).then(function(){ return sink.finish(); }).then(function(){
+    var secs = Math.round((Date.now()-t0)/1000);
+    logLine((state.cancel ? "Cancelled. Starting again will resume." : ("Done in "+Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0")))+
+            "  —  "+written+" PNGs written, "+skipped+" skipped, "+failed+" failed"+(state.tilesOnly ? "  (tiles only, widget not written)" : ""));
+    setStatus(state.cancel ? "cancelled" : "done"); setBar(1);
+    state.running = false; $("btnDownload").textContent = "Download tiles";
+    if (failed>0 && written===0) showErr("No tiles could be downloaded. The map source may be blocking cross-site requests in this browser — try an Esri layer, or use Chrome/Edge.");
   });
 }
-
-function pickSink(s, folder){
-  // Prefer writing straight to a folder (Chrome/Edge). Fall back to a ZIP.
-  if (window.showDirectoryPicker){
-    return window.showDirectoryPicker({ mode:"readwrite", id:"edgetx-maps" }).then(function(root){
-      logLine(folder ? ("Writing into MAPS/"+folder+"/. Existing tiles are skipped.")
-                      : "Writing into the folder you picked. Existing tiles are skipped.");
-      return folderSink(root, folder);
-    }, function(){ return null; }); // cancelled
-  }
-  logLine("This browser can't write to a folder — building a ZIP instead (use Chrome or Edge to write straight to the SD card).");
-  return Promise.resolve(zipSink(folder));
-}
-
-function runJobs(sink, s, tile, F, zs, lat, lon, jobs, total){
-  state.running = true; state.cancel = false;
-  $("btnDownload").textContent = "Stop";
-  setBar(0);
-  var CONC = s.pause ? 2 : 8;                 // parallel workers (gentle for OpenTopoMap, fast for Esri)
-  var pauseMs = Math.round((s.pause||0)*1000);
-  logLine("Start — "+total+" source tiles, "+(total*F*F)+" PNG files, "+CONC+" in parallel");
-  var next = 0, doneN = 0, written = 0, skipped = 0, failed = 0, t0 = Date.now(), finished = false;
-
-  function processOne(job){
-    var z=job[0], x=job[1], y=job[2];
-    // resume: skip a source tile whose first sub-tile already exists
-    return sink.exists(z, x*F, y*F).then(function(ex){
-      if (ex){ skipped++; return; }
-      return fetchComposited(s, z, x, y).then(function(cv){
-        if (!cv){ failed++; logLine("failed  "+z+"/"+x+"/"+y); return; }
-        var subs = [];
-        for (var a=0;a<F;a++) for (var b=0;b<F;b++) (function(a,b){
-          subs.push(subBlob(cv, tile, a, b).then(function(bl){
-            if (bl) return sink.put(z, x*F+a, y*F+b, bl).then(function(){ written++; });
-          }));
-        })(a,b);
-        return Promise.all(subs);
-      });
-    }).catch(function(e){ failed++; logLine("error  "+z+"/"+x+"/"+y+"  "+((e&&e.message)||e)); });
-  }
-
-  function worker(){
-    if (state.cancel || next >= jobs.length) return Promise.resolve();
-    var job = jobs[next++];
-    return processOne(job).then(function(){
-      doneN++; setBar(doneN/total); setStatus(doneN+" of "+total+" source tiles");
-      if (pauseMs) return sleep(pauseMs).then(worker);
-      return worker();
-    });
-  }
-
-  function finish(){
-    if (finished) return; finished = true;
-    var msg = state.cancel ? "Cancelled. Starting again will resume." : null;
-    var setLine = state.setFolder ? (state.setFolder+"|"+state.setLabel+"|"+tile+"|"+Math.min.apply(null,zs)+"|"+Math.max.apply(null,zs)) : null;
-    sink.widget(buildLua(tile, zs)).then(function(){ return setLine ? sink.manifest(setLine) : null; }).then(function(){ return sink.finish(); }).then(function(){
-      var secs = Math.round((Date.now()-t0)/1000);
-      logLine((msg||("Done in "+Math.floor(secs/60)+":"+String(secs%60).padStart(2,"0")))+
-              "  —  "+written+" PNGs written, "+skipped+" source tiles skipped, "+failed+" failed");
-      setStatus(msg ? "cancelled" : "done"); setBar(1);
-      state.running = false; $("btnDownload").textContent = "Download tiles";
-      if (failed>0 && written===0) showErr("No tiles could be downloaded. The map source may be blocking cross-site requests in this browser — try an Esri layer, or use Chrome/Edge.");
-    });
-  }
-
-  var chains = [];
-  for (var k=0;k<CONC;k++) chains.push(worker());
-  Promise.all(chains).then(finish);
-}
-
-/* stop button reuses the download button while running */
-$("btnDownload").addEventListener("click", function(){ if (state.running) state.cancel = true; });
 
 $("foot").textContent = "Personal, offline use. Imagery © the respective map providers. "+
   "OpenStreetMap's own tile servers are intentionally not offered here because their policy forbids bulk offline downloading.";
