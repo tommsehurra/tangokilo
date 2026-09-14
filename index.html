@@ -91,7 +91,7 @@ body.stale #live .spine{background:var(--crit);animation:pulse 1.6s ease-in-out 
 .standby-hero .sub{margin-top:10px;font-size:15px;font-weight:600;color:var(--ash);
   letter-spacing:.02em;text-transform:none;max-width:46ch;line-height:1.5}
 .player{border:1px solid var(--edge);background:#000;border-radius:6px;overflow:hidden;
-        position:relative;padding-top:56.25%;margin-top:26px}
+        position:relative;padding-top:min(56.25%,405px);max-width:720px;margin:26px auto 0}
 .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
 /* Ruhe-Kacheln: letzter Flug + Bestwerte aller Flüge */
@@ -243,7 +243,7 @@ h2{font-size:15px;font-weight:700;font-stretch:75%;letter-spacing:.28em;
 /* ── Diashow (Galerie) ──────────────────────────────────────── */
 .show{position:relative;overflow:hidden;border:1px solid var(--edge);border-radius:8px;
   background:var(--deck);height:clamp(300px,52vh,560px);
-  -webkit-user-select:none;user-select:none}
+  -webkit-user-select:none;user-select:none;touch-action:pan-y}
 .show-track{display:flex;height:100%;will-change:transform}
 .show-track.anim{transition:transform .62s cubic-bezier(.4,0,.2,1)}
 .show-slide{flex:0 0 100%;width:100%;height:100%;display:flex;align-items:center;
@@ -545,10 +545,8 @@ body.is-standby #standby .player{animation:flyin .6s .18s ease both}
 <section>
   <h2>Tools</h2>
   <div class="links">
-    <a href="/flugpfad.html">
-      <b>Flight Path Viewer</b><span>Upload an EdgeTX log (CSV) or a raw INAV / Betaflight blackbox log → 3D flight path right in your browser. Nothing is stored or uploaded.</span></a>
-    <a href="/maps.html">
-      <b>Map Downloader</b><span>Download offline map tiles for the SatMap widget on your TX16S and generate the Lua widget — straight to your SD card.</span></a>
+    <a href="/flugpfad.html"><b>Flight Path Viewer</b></a>
+    <a href="/maps.html"><b>Map Downloader</b></a>
   </div>
 </section>
 
@@ -1342,6 +1340,7 @@ managePlayer("standby");
     if (dx < -40){ next(); reset(); } else if (dx > 40){ prev(); reset(); }
     setTimeout(function(){ hovering = false; }, 50);
   });
+  window.addEventListener("pointercancel", function(){ dragging = false; setTimeout(function(){ hovering = false; }, 50); });
   show.addEventListener("mouseenter", function(){ hovering = true; });
   show.addEventListener("mouseleave", function(){ hovering = false; });
   $("showPrev").addEventListener("click", function(){ prev(); reset(); });
