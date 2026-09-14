@@ -303,6 +303,7 @@ local F         = 256 / CFG.tile
 local zoom      = CFG.zoomMin
 local follow    = true
 local useTrail  = true
+local headLine  = true               -- course line out of the arrow tip in the HDG direction
 local hudOn     = true
 local menuOpen  = false
 local menuSel   = 1
@@ -687,6 +688,8 @@ local MENU = {
     a = function() hudOn = not hudOn end },
   { l = function() return "Trail:  " .. (useTrail and "on" or "off") end,
     a = function() useTrail = not useTrail; if not useTrail then trail = {} end end },
+  { l = function() return "Heading line: " .. (headLine and "on" or "off") end,
+    a = function() headLine = not headLine end },
   { l = function() return "Graph window: " .. WINS[winSel] .. "s" end,
     a = function() winSel = winSel % #WINS + 1; graphDirty = true end },
   { l = function() return "Graph 1: " .. slotLabel(1) end, a = function() cycleSlot(1) end },
@@ -746,7 +749,7 @@ local function addBtn(id, x, y, w, h, label, accent)
   btns[#btns + 1] = {id = id, x = x, y = y, w = w, h = h}
   lcd.drawFilledRectangle(x, y, w, h, accent and C_BTN2 or C_BTN)
   lcd.drawRectangle(x, y, w, h, C_CY)
-  lcd.drawText(x + w / 2, y + math.floor((h - 12) / 2), label, SMLSIZE + C_W + CENTER)
+  lcd.drawText(x + w / 2, y + 1, label, SMLSIZE + C_W + CENTER)
 end
 
 -- ---------------------------------------------------------------- drawing: map
@@ -831,6 +834,13 @@ end
 local function drawPlane()
   if not center or not gps.ok then return end
   local x, y = toScreen(gps.lat, gps.lon)
+  if headLine then
+    -- long course line from the nose, pointing where the model is heading (0deg = up)
+    local a = math.rad(tele.hdg)
+    local sa, ca = math.sin(a), math.cos(a)
+    local L = VW + VH
+    lcd.drawLine(x + sa * 13, y - ca * 13, x + sa * L, y - ca * L, SOLID, C_W)
+  end
   drawArrow(x, y, tele.hdg)
 end
 
@@ -859,7 +869,6 @@ local function drawHud()
   local mode = follow and "FOLLOW" or (panned and "FIX*" or "FIX")
   lcd.drawText(VX + 4,  y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
   lcd.drawText(VX + 36, y2 - 16, mode, SMLSIZE + C_W)
-  lcd.drawText(VX + 92, y2 - 16, shortLabel(sets[curSet].label, 24), SMLSIZE + C_CY)
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     lcd.drawText(x2 - 4, y2 - 16, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W + RIGHT)
@@ -916,7 +925,12 @@ local function drawMiniStatus()
   lcd.drawFilledRectangle(VX, y2 - 14, VW, 14, C_B)
   lcd.drawText(VX + 3,  y2 - 13, "Z" .. zoom, SMLSIZE + C_W)
   lcd.drawText(VX + 34, y2 - 13, follow and "FOL" or "FIX", SMLSIZE + C_W)
-  lcd.drawText(VX + VW - 3, y2 - 13, shortLabel(sets[curSet].label, 14), SMLSIZE + C_CY + RIGHT)
+end
+
+-- colour a telemetry value to match its graph line (so you can tell the traces apart)
+local function colorFor(ci)
+  for s = 1, #gSlot do if gSlot[s] == ci then return G_COL[s] end end
+  return C_W
 end
 
 local function drawTelem(tx, ty, tw, th)
@@ -929,18 +943,18 @@ local function drawTelem(tx, ty, tw, th)
   local colL, colR = tx + 6, tx + tw / 2 + 4
   local r0, dr = ty + 22, 15
   lcd.drawText(colL, r0,        string.format("SAT  %d", tele.sats), SMLSIZE + (gps.ok and C_G or C_R))
-  lcd.drawText(colL, r0 + dr,   string.format("ALT  %dm", math.floor(tele.alt)), SMLSIZE + C_W)
-  lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0fkm/h", tele.spd), SMLSIZE + C_W)
+  lcd.drawText(colL, r0 + dr,   string.format("ALT  %dm", math.floor(tele.alt)), SMLSIZE + colorFor(3))
+  lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0fkm/h", tele.spd), SMLSIZE + colorFor(5))
   lcd.drawText(colL, r0 + 3*dr, string.format("HDG  %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
 
-  lcd.drawText(colR, r0,        string.format("VLT  %.1fV", tele.volt), SMLSIZE + C_W)
-  lcd.drawText(colR, r0 + dr,   string.format("SIG  %d", math.floor(tele.sig)), SMLSIZE + C_W)
-  lcd.drawText(colR, r0 + 2*dr, string.format("VSP  %.1fm/s", tele.vspd), SMLSIZE + C_W)
+  lcd.drawText(colR, r0,        string.format("VLT  %.1fV", tele.volt), SMLSIZE + colorFor(1))
+  lcd.drawText(colR, r0 + dr,   string.format("SIG  %d", math.floor(tele.sig)), SMLSIZE + colorFor(2))
+  lcd.drawText(colR, r0 + 2*dr, string.format("VSP  %.1fm/s", tele.vspd), SMLSIZE + colorFor(4))
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     lcd.drawText(colR, r0 + 3*dr, string.format("DST  %dm", math.floor(d)), SMLSIZE + C_W)
   else
-    lcd.drawText(colR, r0 + 3*dr, string.format("CUR  %.1fA", tele.curr), SMLSIZE + C_W)
+    lcd.drawText(colR, r0 + 3*dr, string.format("CUR  %.1fA", tele.curr), SMLSIZE + colorFor(6))
   end
 end
 
@@ -960,11 +974,11 @@ local function buildGraphModel(gx, gy, gw, gh)
   local skey = win .. ":" .. gSlot[1] .. "," .. gSlot[2] .. "," .. gSlot[3]
   if skey ~= gScaleKey then gLo, gHi, gScaleKey = {}, {}, skey end
 
-  -- layout: header (value readout) on top, time axis at the bottom, plot in between
-  local nAct = 0
-  for s = 1, #gSlot do if gSlot[s] and gSlot[s] ~= 0 then nAct = nAct + 1 end end
-  local headH = nAct * 10 + 3
-  local footH = 11
+  -- layout: plot fills the panel; a small time-axis strip sits at the bottom (raised so
+  -- the labels are not clipped on the real screen). Values are read from the coloured
+  -- telemetry panel above, so the graph itself needs no header readout.
+  local headH = 2
+  local footH = 16
   local px    = gx + 3
   local pw    = gw - 6
   local pyTop = gy + headH
@@ -1042,20 +1056,6 @@ local function drawGraph(gx, gy, gw, gh)
   lcd.drawFilledRectangle(gx, gy, gw, gh, C_GBG)
   local g = gModel.geom
   if not g then lcd.drawRectangle(gx, gy, gw, gh, C_GRID); return end
-
-  -- header strip: readable value readout on solid black (never over the plot lines)
-  lcd.drawFilledRectangle(gx, gy, gw, g.headH, C_B)
-  local ly = gy + 2
-  for _, m in ipairs(gModel) do
-    lcd.drawFilledRectangle(gx + 3, ly + 1, 7, 7, m.col)
-    local cur = m.cur and fmtVal(m.cur, m.ch) or "--"
-    lcd.drawText(gx + 14, ly, m.label .. " " .. cur, SMLSIZE + m.col)
-    if m.lo then
-      lcd.drawText(gx + gw - 3, ly, fmtNum(m.lo, m.ch) .. ".." .. fmtNum(m.hi, m.ch),
-                   SMLSIZE + C_GRID + RIGHT)
-    end
-    ly = ly + 10
-  end
 
   -- plot frame + faint horizontal / mid-vertical grid
   local px, pw, pyTop, ph = g.px, g.pw, g.pyTop, g.ph
@@ -1326,7 +1326,7 @@ var SOURCES = {
   "OpenTopoMap":           { folder:"otm",     url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", maxz:17, kb:13, reqs:1, pause:0.4, attr:"OpenTopoMap (CC-BY-SA), OpenStreetMap contributors" },
   "OpenTopoMap + Airspace":{ folder:"airspace",url:"https://tile.opentopomap.org/{z}/{x}/{y}.png", air:true, maxz:17, kb:16, reqs:2, pause:0.4, attr:"OpenTopoMap + OpenAIP airspaces" }
 };
-var ZOOMS = { 13:"12 m", 14:"6 m", 15:"3 m", 16:"1.5 m", 17:"0.75 m", 18:"0.4 m" };
+var ZOOMS = { 10:"96 m", 11:"48 m", 12:"24 m", 13:"12 m", 14:"6 m", 15:"3 m", 16:"1.5 m", 17:"0.75 m", 18:"0.4 m" };
 var PV = 520;
 
 var GUIDE =
