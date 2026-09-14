@@ -161,6 +161,15 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
         </div>
         <p class="msg" style="margin-top:8px">128 px is easier on the radio's memory and recommended for the TX16S.</p>
 
+        <div class="row" style="margin-top:16px">
+          <span class="lbl" style="margin:0">Area shape</span>
+          <div class="seg" id="shapeSeg">
+            <button data-s="circle" class="on">◯ Circle</button>
+            <button data-s="square">▢ Square</button>
+          </div>
+        </div>
+        <p class="msg" style="margin-top:8px">A circle downloads only the tiles it covers; a square fills the whole bounding box.</p>
+
         <div class="sep"></div>
 
         <div class="stats">
@@ -195,7 +204,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
         <label class="chk" title="Show aeronautical airspaces (CTR, restricted, danger zones …) for orientation"><input type="checkbox" id="airspace"> ⚠️ Airspace overlay</label>
         <input class="field" id="airKey" placeholder="OpenAIP API key (free)" autocomplete="off">
       </div>
-      <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue circle is what gets downloaded.</div>
+      <div class="pvnote" id="pvnote">🖱️ Click the map or search a place to set the centre. Drag the marker to fine-tune. The blue area (circle or square) is what gets downloaded. With <b>Airspace</b> on and an OpenAIP key, the airspaces are baked into the tiles too.</div>
 
       <div style="margin-top:24px">
         <h3 class="sec">ℹ️ How it works</h3>
@@ -873,6 +882,28 @@ function bbox(lat, lon, r){
   var dlat = r/111.32, dlon = r/(111.32*Math.cos(lat*Math.PI/180));
   return [lat-dlat, lon-dlon, lat+dlat, lon+dlon];
 }
+function num2deg(x, y, z){ var n=Math.pow(2,z); return [ Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI, x/n*360-180 ]; }
+function havM(la1,lo1,la2,lo2){
+  var R=6371000, p1=la1*Math.PI/180, p2=la2*Math.PI/180, dp=(la2-la1)*Math.PI/180, dl=(lo2-lo1)*Math.PI/180;
+  var a=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+/* All [z,x,y] source tiles for the current centre, honouring the circle/square shape. */
+function jobsFor(lat, lon){
+  var zs = selectedZooms(), jobs = [], rM = state.radius*1000;
+  zs.forEach(function(z){
+    var r = tileRanges(lat, lon, state.radius, z);
+    var tileM = 40075016.686*Math.cos(lat*Math.PI/180)/Math.pow(2,z);   // tile width in metres
+    r[0].forEach(function(x){ r[1].forEach(function(y){
+      if (state.shape === "circle"){
+        var c = num2deg(x+0.5, y+0.5, z);
+        if (havM(lat, lon, c[0], c[1]) > rM + tileM) return;            // tile outside the circle
+      }
+      jobs.push([z,x,y]);
+    }); });
+  });
+  return jobs;
+}
 function tileRanges(lat, lon, r, z){
   var b = bbox(lat, lon, r);
   var a0 = deg2num(b[0], b[1], z), a1 = deg2num(b[2], b[3], z);
@@ -899,6 +930,8 @@ var state = {
   tile: 128,
   zoom: {},     // z -> bool
   center: null, // {lat,lon} set by map click / search / manual entry
+  shape: "circle", // "circle" | "square"
+  airspace: false, // bake the OpenAIP airspace overlay into the downloaded tiles
   running: false,
   cancel: false
 };
@@ -945,9 +978,16 @@ function paintChips(){
 $("radius").addEventListener("input", function(){
   state.radius = parseFloat(this.value);
   $("radiusVal").textContent = state.radius.toFixed(1)+" km";
-  updateCircle(); estimate();
+  updateArea(); estimate();
 });
 $("radius").addEventListener("change", function(){ fitArea(); });
+Array.prototype.forEach.call($("shapeSeg").children, function(b){
+  b.addEventListener("click", function(){
+    Array.prototype.forEach.call($("shapeSeg").children, function(x){ x.classList.remove("on"); });
+    b.classList.add("on"); state.shape = b.dataset.s;
+    updateArea(); estimate(); fitArea();
+  });
+});
 Array.prototype.forEach.call($("tileSeg").children, function(b){
   b.addEventListener("click", function(){
     Array.prototype.forEach.call($("tileSeg").children, function(x){ x.classList.remove("on"); });
@@ -965,8 +1005,7 @@ function estimate(){
   var lat=state.center.lat, lon=state.center.lon;
   var zs = selectedZooms();
   if (!zs.length){ $("stFiles").textContent="0"; $("stSize").textContent="0 MB"; $("stTime").textContent="–"; return; }
-  var s = src(), F = 256/state.tile, srcTiles = 0;
-  zs.forEach(function(z){ var r = tileRanges(lat, lon, state.radius, z); srcTiles += r[0].length*r[1].length; });
+  var s = src(), F = 256/state.tile, srcTiles = jobsFor(lat, lon).length;
   var pngs = srcTiles*F*F;
   var kb = s.kb/(state.tile===256?1:3.4);
   var mb = pngs*kb/1024;
@@ -989,14 +1028,14 @@ function loadImg(url){
 function tileUrl(s, z, x, y){ return s.url.replace("{z}",z).replace("{x}",x).replace("{y}",y); }
 
 /* ---------------- interactive map (Leaflet) ---------------- */
-var map, baseLayer=null, airLayer=null, marker=null, circle=null;
+var map, baseLayer=null, airLayer=null, marker=null, area=null;
 var AIR_KEY = "";
 try { AIR_KEY = localStorage.getItem("openaip_key") || ""; } catch(e){}
 
 function makeBase(name){
   var s = SOURCES[name];
-  var layers = [ L.tileLayer(s.url, { maxZoom:19, maxNativeZoom:s.maxz, crossOrigin:true, attribution:s.attr }) ];
-  if (s.overlay) layers.push(L.tileLayer(s.overlay, { maxZoom:19, maxNativeZoom:s.maxz, crossOrigin:true }));
+  var layers = [ L.tileLayer(s.url, { maxZoom:19, maxNativeZoom:s.maxz, attribution:s.attr }) ];
+  if (s.overlay) layers.push(L.tileLayer(s.overlay, { maxZoom:19, maxNativeZoom:s.maxz }));
   return L.layerGroup(layers);
 }
 function setBaseLayer(){
@@ -1007,23 +1046,30 @@ function setAirspace(on){
   if (airLayer){ map.removeLayer(airLayer); airLayer = null; }
   if (!on || !AIR_KEY) return;
   airLayer = L.tileLayer("https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey="+encodeURIComponent(AIR_KEY),
-    { maxZoom:14, opacity:0.85, crossOrigin:true, attribution:"Airspaces © OpenAIP" });
+    { maxZoom:19, maxNativeZoom:14, opacity:0.85, attribution:"Airspaces © OpenAIP" });
   airLayer.addTo(map);
 }
-function fitArea(){ if (circle) map.fitBounds(circle.getBounds(), { padding:[26,26], maxZoom:16, animate:true }); }
-function updateCircle(){
+function fitArea(){ if (area) map.fitBounds(area.getBounds(), { padding:[26,26], maxZoom:16, animate:true }); }
+function updateArea(){
   if (!state.center) return;
-  var c = [state.center.lat, state.center.lon], rM = state.radius*1000;
-  if (!circle){ circle = L.circle(c, { radius:rM, color:"#3FA9FF", weight:2, fillColor:"#3FA9FF", fillOpacity:0.10 }).addTo(map); }
-  else { circle.setLatLng(c); circle.setRadius(rM); }
+  var lat=state.center.lat, lon=state.center.lon, rM=state.radius*1000;
+  if (area){ map.removeLayer(area); area=null; }
+  var style = { color:"#3FA9FF", weight:2, fillColor:"#3FA9FF", fillOpacity:0.10 };
+  if (state.shape === "square"){
+    var b = bbox(lat, lon, state.radius);
+    area = L.rectangle([[b[0],b[1]],[b[2],b[3]]], style);
+  } else {
+    area = L.circle([lat,lon], Object.assign({ radius:rM }, style));
+  }
+  area.addTo(map);
 }
 function setCenter(lat, lon, keepView){
   state.center = { lat:lat, lon:lon };
   if (!marker){
     marker = L.marker([lat,lon], { draggable:true }).addTo(map);
-    marker.on("dragend", function(){ var p = marker.getLatLng(); state.center={lat:p.lat,lon:p.lng}; updateCircle(); estimate(); scheduleThumbs(); });
+    marker.on("dragend", function(){ var p = marker.getLatLng(); state.center={lat:p.lat,lon:p.lng}; updateArea(); estimate(); scheduleThumbs(); });
   } else marker.setLatLng([lat,lon]);
-  updateCircle(); estimate(); scheduleThumbs();
+  updateArea(); estimate(); scheduleThumbs();
   if (!keepView) fitArea();
 }
 
@@ -1033,8 +1079,8 @@ function setCenter(lat, lon, keepView){
   map.on("click", function(e){ setCenter(e.latlng.lat, e.latlng.lng, true); });
   $("airKey").value = AIR_KEY;
   $("airspace").addEventListener("change", function(){
-    var on = this.checked; $("airKey").classList.toggle("show", on);
-    if (on && !AIR_KEY) setStatus("Airspace: enter a free OpenAIP API key (openaip.net) to show airspaces.");
+    var on = this.checked; state.airspace = on; $("airKey").classList.toggle("show", on);
+    if (on && !AIR_KEY) setStatus("Airspace: enter a free OpenAIP API key (openaip.net) to show and download airspaces.");
     setAirspace(on);
   });
   $("airKey").addEventListener("change", function(){
@@ -1118,18 +1164,19 @@ $("guideModal").addEventListener("click", function(e){ if (e.target === this) op
 document.addEventListener("keydown", function(e){ if (e.key==="Escape") openGuide(false); });
 
 /* ---------------- tile fetch + crop ---------------- */
+function airUrl(z, x, y){ return "https://api.tiles.openaip.net/api/data/openaip/"+z+"/"+x+"/"+y+".png?apiKey="+encodeURIComponent(AIR_KEY); }
 function fetchComposited(s, z, x, y){
-  // returns a 256x256 canvas (base + optional overlay), or null
+  // returns a 256x256 canvas (base + optional labels overlay + optional airspace), or null
   return loadImg(tileUrl(s, z, x, y)).then(function(base){
     if (!base) return null;
     var cv = document.createElement("canvas"); cv.width=256; cv.height=256;
     var ctx = cv.getContext("2d");
     try { ctx.drawImage(base, 0,0,256,256); } catch(e){ return null; }
-    if (!s.overlay) return cv;
-    return loadImg(tileUrl({url:s.overlay}, z, x, y)).then(function(ov){
-      if (ov){ try { ctx.drawImage(ov, 0,0,256,256); } catch(e){} }
-      return cv;
-    });
+    var chain = Promise.resolve();
+    if (s.overlay) chain = chain.then(function(){ return loadImg(tileUrl({url:s.overlay}, z, x, y)).then(function(ov){ if (ov){ try { ctx.drawImage(ov,0,0,256,256); } catch(e){} } }); });
+    // bake the airspace overlay into the tile as well (needs CORS + an OpenAIP key; silently skipped if unavailable)
+    if (state.airspace && AIR_KEY) chain = chain.then(function(){ return loadImg(airUrl(z,x,y)).then(function(av){ if (av){ try { ctx.drawImage(av,0,0,256,256); } catch(e){} } }); });
+    return chain.then(function(){ return cv; });
   });
 }
 function subBlob(canvas256, tile, a, b){
@@ -1198,15 +1245,10 @@ function startDownload(){
   var zs = selectedZooms();
   if (!zs.length){ showErr("Select at least one zoom level."); return; }
   var s = src(), tile = state.tile, F = 256/tile;
-
-  // build job list
-  var jobs = [];
-  zs.forEach(function(z){
-    var r = tileRanges(lat, lon, state.radius, z);
-    r[0].forEach(function(x){ r[1].forEach(function(y){ jobs.push([z,x,y]); }); });
-  });
+  var jobs = jobsFor(lat, lon);
   var total = jobs.length;
   if (!total){ showErr("Nothing to download for this area."); return; }
+  if (state.airspace && !AIR_KEY) logLine("Airspace is on but no OpenAIP key is set — tiles will download without airspaces.");
 
   pickSink(s).then(function(sink){
     if (!sink) return; // user cancelled picker
