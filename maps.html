@@ -292,6 +292,11 @@ local C_PANEL= lcd.RGB(14,20,30)     -- telemetry panel background
 local C_GBG  = lcd.RGB(10,14,20)     -- graph background
 local C_BTN  = lcd.RGB(20,32,48)     -- idle button
 local C_BTN2 = lcd.RGB(0,120,210)    -- accent button
+local C_PURP = lcd.RGB(190,70,255)   -- heading / home course line
+local C_PINK = lcd.RGB(255,90,190)   -- SAT count (>=10)
+local C_SKY  = lcd.RGB(64,146,214)   -- ADI sky
+local C_GND  = lcd.RGB(140,92,44)    -- ADI ground
+local C_HUD  = lcd.RGB(0,20,34)      -- PFD panel background
 local atan2  = math.atan2 or math.atan
 
 local MENU_W, MENU_ROW, MENU_VIS = 260, 22, 10
@@ -335,6 +340,9 @@ local panned    = false
 local lastHdgLat, lastHdgLon
 
 local btns      = {}                 -- touch buttons rebuilt every drawn frame
+
+local MODELNAME = "MODEL"            -- read once in create()
+local stats     = {maxAlt = 0, maxSpd = 0, maxDist = 0, minLQ = nil, tStart = nil}  -- session records (page 3)
 
 -- graph channels (each reads whatever sensor exists, with fallbacks)
 local function gv(name)
@@ -671,8 +679,8 @@ local function cycleSlot(slot)
 end
 
 local MENU = {
-  { l = function() return "Page:   " .. (page == 1 and "MAP" or "MAP + GRAPH") end,
-    a = function() page = (page == 1) and 2 or 1; graphDirty = true end },
+  { l = function() return "Page:   " .. (page == 1 and "MAP" or (page == 2 and "MAP + GRAPH" or "HUD / ADI")) end,
+    a = function() page = page % 3 + 1; graphDirty = true end },
   { l = function() return "Map:    " .. sets[curSet].label .. "  (" .. curSet .. "/" .. #sets .. ")" end,
     a = function() switchSet(1) end },
   { l = function() return "Zoom:   Z" .. zoom end,
@@ -839,7 +847,7 @@ local function drawPlane()
     local a = math.rad(tele.hdg)
     local sa, ca = math.sin(a), math.cos(a)
     local L = VW + VH
-    lcd.drawLine(x + sa * 13, y - ca * 13, x + sa * L, y - ca * L, SOLID, C_W)
+    lcd.drawLine(x + sa * 13, y - ca * 13, x + sa * L, y - ca * L, SOLID, C_PURP)
   end
   drawArrow(x, y, tele.hdg)
 end
@@ -938,11 +946,11 @@ local function drawTelem(tx, ty, tw, th)
   lcd.drawRectangle(tx, ty, tw, th, C_GRID)
   lcd.drawText(tx + 4, ty + 4, "TELEMETRY", SMLSIZE + C_Y)
   addBtn("map",  tx + tw - 54, ty + 2, 50, 16, "MAP", true)
-  addBtn("page", tx + tw - 108, ty + 2, 50, 16, "PG1", false)
+  addBtn("page", tx + tw - 108, ty + 2, 50, 16, "PG3", false)
 
   local colL, colR = tx + 6, tx + tw / 2 + 4
   local r0, dr = ty + 22, 15
-  lcd.drawText(colL, r0,        string.format("SAT  %d", tele.sats), SMLSIZE + (gps.ok and C_G or C_R))
+  lcd.drawText(colL, r0,        string.format("SAT  %d", tele.sats), SMLSIZE + (tele.sats >= 10 and C_PINK or C_R))
   lcd.drawText(colL, r0 + dr,   string.format("ALT  %dm", math.floor(tele.alt)), SMLSIZE + colorFor(3))
   lcd.drawText(colL, r0 + 2*dr, string.format("SPD  %.0fkm/h", tele.spd), SMLSIZE + colorFor(5))
   lcd.drawText(colL, r0 + 3*dr, string.format("HDG  %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
@@ -1085,6 +1093,212 @@ local function drawGraph(gx, gy, gw, gh)
   lcd.drawText(gx + gw - 3,   fy + 1, "now", SMLSIZE + C_W + RIGHT)
 end
 
+-- ---------------------------------------------------------------- page 3: PFD / ADI
+
+-- session records + flight timer (accrue on every frame, so they are meaningful on page 3)
+local function updateStats()
+  if gps.ok then
+    if not stats.tStart then stats.tStart = getTime() end
+    if tele.alt > stats.maxAlt then stats.maxAlt = tele.alt end
+    if tele.spd > stats.maxSpd then stats.maxSpd = tele.spd end
+    if home then
+      local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
+      if d > stats.maxDist then stats.maxDist = d end
+    end
+  end
+  local lq = gv("RQly")
+  if lq and (not stats.minLQ or lq < stats.minLQ) then stats.minLQ = lq end
+end
+
+local function attitude()
+  return (gv("Ptch") or gv("Pitch") or 0), (gv("Roll") or 0)
+end
+
+local function drawADIPage()
+  local W, H = LCD_W, LCD_H
+  local hH = 16
+  local pitch, roll = attitude()
+  local hdg = tele.hdg
+
+  -- ADI box (left), telemetry column (right)
+  local ax, ay = 2, hH + 1
+  local aw     = 286
+  local ah     = H - hH - 2
+  local cx, cy = ax + aw / 2, ay + ah / 2
+
+  -- --- header -----------------------------------------------------------
+  lcd.drawFilledRectangle(0, 0, W, hH, C_B)
+  lcd.drawText(4, 2, MODELNAME, SMLSIZE + C_Y)
+  local txv = gv("tx-voltage")
+  lcd.drawText(W / 2, 2, txv and string.format("TX %.1fV", txv) or "TX --", SMLSIZE + C_W + CENTER)
+  addBtn("page", W - 52, 0, 50, 15, "PG1", false)
+
+  -- --- artificial horizon ----------------------------------------------
+  lcd.drawFilledRectangle(ax, ay, aw, ah, C_SKY)
+  local rr = math.rad(roll)
+  local sl = math.tan(rr)
+  local pitchPx = 3
+  local base = cy + pitch * pitchPx
+
+  clipOn(ax, ay, aw, ah)
+  -- ground as vertical strips below the (rolled+pitched) horizon line
+  local stp = 6
+  local x = ax
+  while x < ax + aw do
+    local w = stp
+    if x + w > ax + aw then w = ax + aw - x end
+    local yH = base + sl * ((x + w / 2) - cx)
+    if yH < ay then yH = ay elseif yH > ay + ah then yH = ay + ah end
+    local gnd = (ay + ah) - yH
+    if gnd > 0 then lcd.drawFilledRectangle(x, yH, w, gnd, C_GND) end
+    x = x + stp
+  end
+  lcd.drawLine(ax, base + sl * (ax - cx), ax + aw, base + sl * (ax + aw - cx), SOLID, C_W)
+  -- pitch ladder (rotated with roll)
+  local unx, uny = math.sin(rr), -math.cos(rr)     -- screen "up"
+  local hdx, hdy = math.cos(rr), math.sin(rr)      -- along the horizon
+  local ladder = {-30, -20, -10, 10, 20, 30}
+  for i = 1, #ladder do
+    local a = ladder[i]
+    local d = a * pitchPx
+    local mxp, myp = cx + unx * d, base + uny * d
+    local half = (a > 0) and 22 or 16
+    lcd.drawLine(mxp - hdx * half, myp - hdy * half, mxp + hdx * half, myp + hdy * half, SOLID, C_W)
+    lcd.drawText(mxp + hdx * (half + 2), myp + hdy * (half + 2) - 3, tostring(math.abs(a)), SMLSIZE + C_W)
+  end
+  -- home course pointer (purple), relative to heading
+  if home and gps.ok then
+    local _, brg = distBrg(home.lat, home.lon, gps.lat, gps.lon)
+    local rel = math.rad(brg - hdg)
+    local sr, cr = math.sin(rel), math.cos(rel)
+    local R = 44
+    lcd.drawLine(cx + sr * (R - 12), cy - cr * (R - 12), cx + sr * R, cy - cr * R, SOLID, C_PURP)
+    lcd.drawFilledRectangle(cx + sr * R - 1, cy - cr * R - 1, 3, 3, C_PURP)
+  end
+  clipOff()
+
+  -- fixed aircraft reticle
+  lcd.drawLine(cx - 30, cy, cx - 10, cy, SOLID, C_Y)
+  lcd.drawLine(cx + 10, cy, cx + 30, cy, SOLID, C_Y)
+  lcd.drawLine(cx - 10, cy, cx - 6, cy + 5, SOLID, C_Y)
+  lcd.drawLine(cx + 10, cy, cx + 6, cy + 5, SOLID, C_Y)
+  lcd.drawFilledRectangle(cx - 1, cy - 1, 3, 3, C_Y)
+
+  -- speed tape (left)
+  local spd = tele.spd
+  lcd.drawFilledRectangle(ax, ay, 30, ah, C_HUD)
+  local tp = 2.2
+  local v0 = math.floor((spd - 24) / 5) * 5
+  for v = v0, v0 + 48, 5 do
+    if v >= 0 then
+      local yy = cy - (v - spd) * tp
+      if yy > ay + 14 and yy < ay + ah - 4 then
+        lcd.drawLine(ax + 22, yy, ax + 29, yy, SOLID, C_W)
+        if v % 10 == 0 then lcd.drawText(ax + 2, yy - 3, tostring(v), SMLSIZE + C_W) end
+      end
+    end
+  end
+  lcd.drawFilledRectangle(ax, cy - 7, 30, 14, C_B)
+  lcd.drawRectangle(ax, cy - 7, 30, 14, C_W)
+  lcd.drawText(ax + 2, cy - 4, string.format("%.0f", spd), SMLSIZE + C_W)
+
+  -- altitude tape (right)
+  local alt = tele.alt
+  local axr = ax + aw - 32
+  lcd.drawFilledRectangle(axr, ay, 32, ah, C_HUD)
+  local ap = 0.4
+  local a0 = math.floor((alt - 60) / 10) * 10
+  for v = a0, a0 + 120, 10 do
+    local yy = cy - (v - alt) * ap
+    if yy > ay + 14 and yy < ay + ah - 4 then
+      lcd.drawLine(axr, yy, axr + 7, yy, SOLID, C_W)
+      if v % 20 == 0 then lcd.drawText(axr + 9, yy - 3, tostring(v), SMLSIZE + C_W) end
+    end
+  end
+  lcd.drawFilledRectangle(axr, cy - 7, 32, 14, C_B)
+  lcd.drawRectangle(axr, cy - 7, 32, 14, C_W)
+  lcd.drawText(axr + 2, cy - 4, string.format("%d", math.floor(alt)), SMLSIZE + C_W)
+
+  -- heading strip (top)
+  lcd.drawFilledRectangle(ax, ay, aw, 12, C_HUD)
+  local hp = 1.5
+  local hb = math.floor(hdg / 10) * 10
+  for dd = -60, 60, 10 do
+    local hh = hb + dd
+    local sx = cx + (hh - hdg) * hp
+    if sx > ax + 32 and sx < axr - 2 then
+      lcd.drawLine(sx, ay, sx, ay + 4, SOLID, C_W)
+      local hn = (hh % 360 + 360) % 360
+      local lbl
+      if hn == 0 then lbl = "N" elseif hn == 90 then lbl = "E"
+      elseif hn == 180 then lbl = "S" elseif hn == 270 then lbl = "W"
+      elseif hn % 30 == 0 then lbl = string.format("%d", hn / 10) end
+      if lbl then lcd.drawText(sx, ay + 5, lbl, SMLSIZE + C_W + CENTER) end
+    end
+  end
+  lcd.drawFilledRectangle(cx - 15, ay, 30, 12, C_B)
+  lcd.drawRectangle(cx - 15, ay, 30, 12, C_W)
+  lcd.drawText(cx, ay + 1, string.format("%03d", math.floor(hdg)), SMLSIZE + C_W + CENTER)
+
+  -- --- telemetry column (right) ----------------------------------------
+  local rx = ax + aw + 2
+  local rw = W - rx - 2
+  lcd.drawFilledRectangle(rx, ay, rw, ah, C_PANEL)
+  local ry = ay + 3
+  local lq   = gv("RQly")
+  local rssi = gv("1RSS") or gv("2RSS") or gv("RSSI")
+  local tpwr = gv("TPWR")
+  local cap  = gv("Capa") or gv("Fuel") or gv("Bat%")
+  local dist, brg
+  if home and gps.ok then dist, brg = distBrg(home.lat, home.lon, gps.lat, gps.lon) end
+
+  local function hdr(t) lcd.drawText(rx + 4, ry, t, SMLSIZE + C_GRID); ry = ry + 11 end
+  local function val(t, c) lcd.drawText(rx + 4, ry, t, SMLSIZE + (c or C_W)); ry = ry + 12 end
+
+  hdr("POSITION")
+  val(gps.ok and string.format("%.6f", gps.lat) or "-- . --", C_W)
+  val(gps.ok and string.format("%.6f", gps.lon) or "-- . --", C_W)
+  ry = ry + 3
+
+  hdr("LINK")
+  lcd.drawText(rx + 4,      ry, string.format("SAT %d", tele.sats), SMLSIZE + (tele.sats >= 10 and C_PINK or C_R))
+  lcd.drawText(rx + rw / 2, ry, "LQ " .. (lq and (math.floor(lq) .. "%") or "--"), SMLSIZE + C_W)
+  ry = ry + 12
+  lcd.drawText(rx + 4,      ry, "RSSI " .. (rssi and (math.floor(rssi) .. "dBm") or "--"), SMLSIZE + C_W)
+  lcd.drawText(rx + rw / 2, ry, "TX " .. (tpwr and (math.floor(tpwr) .. "mW") or "--"), SMLSIZE + C_W)
+  ry = ry + 15
+
+  hdr("FLIGHT")
+  lcd.drawText(rx + 4,      ry, "ALT " .. math.floor(tele.alt) .. "m", SMLSIZE + colorFor(3))
+  lcd.drawText(rx + rw / 2, ry, "SPD " .. string.format("%.0f", tele.spd), SMLSIZE + colorFor(5))
+  ry = ry + 12
+  lcd.drawText(rx + 4,      ry, "VS " .. string.format("%.1fm/s", tele.vspd), SMLSIZE + colorFor(4))
+  lcd.drawText(rx + rw / 2, ry, "I " .. string.format("%.1fA", tele.curr), SMLSIZE + colorFor(6))
+  ry = ry + 12
+  lcd.drawText(rx + 4,      ry, "BAT " .. string.format("%.1fV", tele.volt), SMLSIZE + colorFor(1))
+  if cap then lcd.drawText(rx + rw / 2, ry, "CAP " .. math.floor(cap), SMLSIZE + C_W) end
+  ry = ry + 15
+
+  hdr("HOME")
+  if dist then
+    val(string.format("%dm  %03d", math.floor(dist), math.floor(brg)), C_PURP)
+  else
+    val("no home yet", C_GRID)
+  end
+  ry = ry + 3
+
+  -- flight timer + session records (the extra "wow" bits)
+  hdr("SESSION")
+  if stats.tStart then
+    local s = math.floor((getTime() - stats.tStart) / 100)
+    val(string.format("TIME %02d:%02d", math.floor(s / 60), s % 60), C_CY)
+  else
+    val("TIME --:--", C_GRID)
+  end
+  val(string.format("MAX %dm  %.0f  %dm", math.floor(stats.maxAlt), stats.maxSpd, math.floor(stats.maxDist)), C_W)
+  if stats.minLQ then val("LQ min " .. math.floor(stats.minLQ) .. "%", C_W) end
+end
+
 -- ---------------------------------------------------------------- input
 
 local function hitBtn(tx, ty)
@@ -1095,7 +1309,7 @@ local function hitBtn(tx, ty)
 end
 
 local function doBtn(id)
-  if id == "page" then page = (page == 1) and 2 or 1; graphDirty = true
+  if id == "page" then page = page % 3 + 1; graphDirty = true
   elseif id == "map" then switchSet(1) end
 end
 
@@ -1157,8 +1371,8 @@ local function handleEvent(event, touchState)
     end
     -- only react to map-area taps for HUD / zoom / mode
     if tx >= VX and tx <= VX + VW and ty >= VY and ty <= VY + VH then
-      if page == 2 then
-        return                              -- map half on page 2: no extra tap actions
+      if page ~= 1 then
+        return                              -- pages 2/3: only the buttons are interactive
       elseif not hudOn then
         hudOn = true
       elseif ty > VY + VH - 55 then
@@ -1170,7 +1384,7 @@ local function handleEvent(event, touchState)
       end
     end
 
-  elseif touchState and EVT_TOUCH_SLIDE and event == EVT_TOUCH_SLIDE and center then
+  elseif touchState and EVT_TOUCH_SLIDE and event == EVT_TOUCH_SLIDE and center and page == 1 then
     local tx, ty = touchState.x or 0, touchState.y or 0
     if not follow and tx >= VX and tx <= VX + VW and ty >= VY and ty <= VY + VH then
       local dx = touchState.slideX or 0
@@ -1209,6 +1423,8 @@ end
 
 local function create(zone, opt)
   if math.randomseed then math.randomseed(getTime()) end
+  local ok, info = pcall(function() return model.getInfo() end)
+  if ok and info and info.name and info.name ~= "" then MODELNAME = info.name end
   loadSets()
   applySet(curSet)
   applyOptions(opt)
@@ -1223,6 +1439,7 @@ end
 local function background(widget)
   readTelemetry()
   pushSample()
+  updateStats()
 end
 
 local function refresh(widget, event, touchState)
@@ -1234,6 +1451,7 @@ local function refresh(widget, event, touchState)
 
   readTelemetry()
   pushSample()
+  updateStats()
 
   -- small widget zone: info only, hold no tile memory
   if not fullscreen then
@@ -1273,6 +1491,12 @@ local function refresh(widget, event, touchState)
     local telH = math.floor(LCD_H / 3)
     drawTelem(rx, 0, rw, telH)
     drawGraph(rx, telH, rw, LCD_H - telH)
+
+  elseif fullscreen and page == 3 then
+    -- PFD / artificial-horizon page
+    VX, VY, VW, VH = 0, 0, LCD_W, LCD_H
+    drawADIPage()
+
   else
     -- full-screen map (page 1, or a large widget zone)
     if fullscreen then VX, VY, VW, VH = 0, 0, LCD_W, LCD_H end
