@@ -422,9 +422,12 @@ end
 
 -- ---------------------------------------------------------------- map types
 
+-- NOTE: EdgeTX Lua does NOT attach the string library to the string metatable,
+-- so "str:method()" (s:gsub / s:gmatch / s:sub ...) throws "attempt to index a
+-- string value". Always call string.xxx(s, ...) explicitly here.
 local function splitFields(line)
   local a = {}
-  for field in (line .. "|"):gmatch("(.-)|") do a[#a + 1] = field end
+  for field in string.gmatch(line .. "|", "(.-)|") do a[#a + 1] = field end
   return a
 end
 
@@ -432,9 +435,11 @@ local function loadSets()
   sets = {}
   local txt = readAll(CFG.root .. "/sets.txt")
   if txt then
-    for line in (txt .. "\n"):gmatch("(.-)\n") do
-      line = line:gsub("\r", ""):gsub("^%s+", ""):gsub("%s+$", "")
-      if line ~= "" and line:sub(1, 1) ~= "#" then
+    for line in string.gmatch(txt .. "\n", "(.-)\n") do
+      line = string.gsub(line, "\r", "")
+      line = string.gsub(line, "^%s+", "")
+      line = string.gsub(line, "%s+$", "")
+      if line ~= "" and string.sub(line, 1, 1) ~= "#" then
         local a = splitFields(line)
         if a[1] and a[1] ~= "" then
           sets[#sets + 1] = {
@@ -443,6 +448,8 @@ local function loadSets()
             tile  = tonumber(a[3]) or CFG.tile,
             zmin  = tonumber(a[4]) or CFG.zoomMin,
             zmax  = tonumber(a[5]) or CFG.zoomMax,
+            clat  = tonumber(a[6]),   -- optional area centre (from the downloader),
+            clon  = tonumber(a[7]),   -- used only to show the map before a GPS fix
           }
         end
       end
@@ -455,6 +462,15 @@ local function loadSets()
   if curSet > #sets then curSet = 1 end
 end
 
+-- a type index whose stored area centre we can fall back to before a GPS fix
+local function noGpsCenter()
+  if sets[curSet].clat and sets[curSet].clon then return curSet end
+  local cand = {}
+  for i = 1, #sets do if sets[i].clat and sets[i].clon then cand[#cand + 1] = i end end
+  if #cand == 0 then return nil end
+  return cand[math.random(#cand)]     -- a random available point when several exist
+end
+
 local function applySet(i)
   curSet   = i
   local s  = sets[i]
@@ -463,6 +479,8 @@ local function applySet(i)
   F        = 256 / s.tile
   if zoom < s.zmin then zoom = s.zmin end
   if zoom > s.zmax then zoom = s.zmax end
+  -- no model yet: show this type's downloaded area (never overrides a real GPS centre)
+  if not gps.ok and s.clat and s.clon then center = {lat = s.clat, lon = s.clon} end
   flushCache()
 end
 
@@ -605,7 +623,12 @@ end
 
 local function updateCenter()
   if not center then
-    if gps.ok then center = {lat = gps.lat, lon = gps.lon} end
+    if gps.ok then
+      center = {lat = gps.lat, lon = gps.lon}
+    else
+      local i = noGpsCenter()
+      if i then center = {lat = sets[i].clat, lon = sets[i].clon} end
+    end
     return
   end
   if not gps.ok then return end
@@ -1095,6 +1118,7 @@ local function applyOptions(opt)
 end
 
 local function create(zone, opt)
+  if math.randomseed then math.randomseed(getTime()) end
   loadSets()
   applySet(curSet)
   applyOptions(opt)
@@ -1740,7 +1764,9 @@ function runAll(sink, zs){
     var p = perSrc[idx], s = p.s, jobs = p.jobs, folder = p.folder;
     if (!jobs.length) return runSource(idx+1);
     logLine("["+p.name+"] "+jobs.length+" source tiles -> MAPS/"+folder+"/");
-    lines.push(folder+"|"+p.name+"|"+tile+"|"+Math.min.apply(null,p.zz)+"|"+Math.max.apply(null,p.zz));
+    // fields: folder|label|tile|zmin|zmax|clat|clon  (clat/clon only so the widget can
+    // show this area before a GPS fix; written to the local card only, never to the repo)
+    lines.push(folder+"|"+p.name+"|"+tile+"|"+Math.min.apply(null,p.zz)+"|"+Math.max.apply(null,p.zz)+"|"+lat.toFixed(6)+"|"+lon.toFixed(6));
     var CONC = s.pause ? 2 : 8, pauseMs = Math.round((s.pause||0)*1000), next = 0;
 
     function processOne(job){
