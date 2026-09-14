@@ -409,6 +409,7 @@ details.sect[open] summary{margin-bottom:10px}
       <button id="btnMeas" aria-expanded="false">Measure</button>
       <button id="btnBatt" aria-expanded="false">Battery<span class="dot"></span></button>
       <button id="btnView" aria-expanded="false">View</button>
+      <a id="btnHome" class="helpbtn" href="/" aria-label="Back to Tango Kilo" title="Back to the main page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:calc(18px * var(--ui));height:calc(18px * var(--ui))"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h5v-6h4v6h5v-9"/></svg></a>
       <button id="btnHelp" class="helpbtn" aria-label="Help">?</button>
     </div>
 
@@ -573,7 +574,13 @@ details.sect[open] summary{margin-bottom:10px}
       </div>
       <div id="helpBody">
         <div class="hsec">
-          <h3>Control the map</h3>
+          <h3>📂 What you can load</h3>
+          <p>This viewer opens an <b>EdgeTX / OpenTX telemetry log (.csv)</b> and a <b>raw INAV / Betaflight blackbox log (.txt / .bbl / .bfl)</b>. A blackbox log carries far more: airspeed, wind estimate, G-force, baro altitude &amp; temperature, HDOP, sag-compensated battery and more — they appear automatically in the colour metric, search, curves, markers and the data panel.</p>
+          <p>Whatever a particular log does <b>not</b> contain is switched off by itself: those channels are dropped from the menus and shown greyed as <b>n/a</b> in the data panel. Everything runs in your browser — the file is never uploaded.</p>
+          <p>The <b>⌂ home</b> button (top right) returns to the main page.</p>
+        </div>
+        <div class="hsec">
+          <h3>🗺️ Control the map</h3>
           <div class="hrow"><span class="hkbd">Left drag</span><span><b>Pan the map.</b></span></div>
           <div class="hrow"><span class="hkbd">Right drag</span><span><b>Tilt &amp; rotate</b> – horizontal turns the view, vertical tilts between oblique and top-down.</span></div>
           <div class="hrow"><span class="hkbd">Mouse wheel</span><span><b>Zoom.</b></span></div>
@@ -2946,6 +2953,7 @@ document.addEventListener("click", function(){ closePops(null); });
 function openHelp(on){
   el("helpWrap").classList.toggle("open", on);
   el("btnHelp").setAttribute("aria-expanded", on ? "true" : "false");
+  document.body.style.overflow = on ? "hidden" : "";   // lock background scroll while help is open
 }
 el("btnHelp").onclick = function(ev){
   if (ev && ev.stopPropagation) ev.stopPropagation();
