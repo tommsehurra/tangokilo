@@ -243,6 +243,8 @@ input[type=number]{-moz-appearance:textfield}
 #mini .k{font-family:var(--label);font-size:calc(11px * var(--ui));letter-spacing:.06em;color:var(--dim);white-space:nowrap}
 #mini .v{font-size:calc(12px * var(--ui));font-variant-numeric:tabular-nums;white-space:nowrap}
 #mini .v u{text-decoration:none;color:var(--dimmer);font-size:calc(9px * var(--ui));margin-left:2px}
+#mini .m.off{opacity:.4}
+#mini .m.off .v{color:var(--dimmer);font-style:italic}
 
 /* Akkubalken */
 #battbar{margin-bottom:10px}
@@ -816,7 +818,18 @@ const FIELDS = [
   {k:"hdg",  n:"Heading",            sh:"Heading",     u:"°",    d:0, s:"seq",  c:"#90A4AE"},
   {k:"ptch", n:"Pitch",           sh:"Pitch",    u:"°",    d:0, s:"div",  c:"#CE93D8", sym:true},
   {k:"roll", n:"Roll angle",      sh:"Roll",     u:"°",    d:0, s:"div",  c:"#F48FB1", sym:true},
-  {k:"txbat",n:"TX battery",      sh:"TX",   u:"V",    d:2, s:"link", c:"#A5D6A7"}
+  {k:"txbat",n:"TX battery",      sh:"TX",   u:"V",    d:2, s:"link", c:"#A5D6A7"},
+  /* --- extra channels available from raw blackbox logs (auto-greyed when a log lacks them) --- */
+  {k:"airspd", n:"Airspeed",            sh:"Airspd",  u:"km/h", d:0, s:"seq",  c:"#29C7E8"},
+  {k:"balt",   n:"Baro altitude",       sh:"Baro alt",u:"m",    d:0, s:"seq",  c:"#6FB7FF"},
+  {k:"vbatsag",n:"Battery (sag-comp.)", sh:"Batt sag",u:"V",    d:2, s:"link", c:"#4ED6A0"},
+  {k:"windspd",n:"Wind (est.)",         sh:"Wind",    u:"m/s",  d:1, s:"seq",  c:"#B0BEC5"},
+  {k:"gforce", n:"G-force",             sh:"G",       u:"g",    d:2, s:"seq",  c:"#F48FB1"},
+  {k:"hdop",   n:"GPS HDOP",            sh:"HDOP",    u:"",     d:2, s:"seq",  c:"#9AD1FF"},
+  {k:"baroT",  n:"Baro temperature",    sh:"Baro °C", u:"°C", d:1, s:"seq", c:"#FFB74D"},
+  {k:"rpm",    n:"Motor RPM",           sh:"RPM",     u:"",     d:0, s:"seq",  c:"#FFD54F"},
+  {k:"esct",   n:"ESC temperature",     sh:"ESC °C", u:"°C", d:0, s:"seq", c:"#FF7043"},
+  {k:"imut",   n:"IMU temperature",     sh:"IMU °C", u:"°C", d:1, s:"seq", c:"#FF8A65"}
 ];
 const FMAP = {};
 FIELDS.forEach(function(f){ FMAP[f.k] = f; });
@@ -1215,6 +1228,17 @@ function rows(list){
     return '<div class="row'+(r[3]?' warn':'')+'"><span class="k">'+r[0]+
            '</span><span class="v">'+r[1]+(r[2]?'<u>'+r[2]+'</u>':'')+'</span></div>'; }).join("");
 }
+function chStat(k){
+  const a = F[k]; if (!a) return null;
+  let mx = -Infinity, mn = Infinity, su = 0, n = 0;
+  for (let i = FL.from; i <= FL.to; i++){ const x = a[i]; if (x != null){ if (x>mx) mx=x; if (x<mn) mn=x; su+=x; n++; } }
+  return n ? { max:mx, min:mn, avg:su/n } : null;
+}
+function chRow(k, label, unit, dec, useMin){
+  if (!avail(k)) return false;
+  const s = chStat(k); if (!s) return false;
+  return [label, useMin ? nf(s.min,dec)+" / "+nf(s.max,dec) : nf(s.max,dec)+" / "+nf(s.avg,dec), unit];
+}
 const GROUPS = [
   ["Flight", [
     ["Flight time", dur(ST.flight_duration), ""],
@@ -1236,7 +1260,18 @@ const GROUPS = [
     HAVE.rss1 && ["RSSI Minimum", nf(ST.rss_min,0), "dBm"],
     HAVE.rsnr && ["SNR Minimum", nf(ST.snr_min,0), "dB"],
     HAVE.tpwr && ["TX power", nf(ST.tpwr_max,0), "mW"],
-    HAVE.sats && ["Satelliten min / max", nf(ST.sats_min,0)+" / "+nf(ST.sats_max,0), ""]
+    HAVE.sats && ["Satelliten min / max", nf(ST.sats_min,0)+" / "+nf(ST.sats_max,0), ""],
+    avail("hdop") && chRow("hdop", "HDOP min / max", "", 2, true)
+  ]],
+  ["Sensors", [
+    chRow("airspd", "Airspeed max / ⌀", "km/h", 0, false),
+    chRow("windspd", "Wind max / ⌀", "m/s", 1, false),
+    chRow("gforce", "G-force min / max", "g", 2, true),
+    chRow("balt", "Baro altitude max", "m", 0, false),
+    chRow("baroT", "Baro temp max", "°C", 1, false),
+    chRow("rpm", "Motor RPM max", "", 0, false),
+    chRow("esct", "ESC temp max", "°C", 0, false),
+    chRow("imut", "IMU temp max", "°C", 1, false)
   ]]
 ];
 el("stats").innerHTML = GROUPS.map(function(g){
@@ -1274,8 +1309,9 @@ let TILE_KEYS = [], MINI_KEYS = [];
 function buildLive(){
   const has = function(k){ return avail(k); };
   TILE_KEYS = ["alt","agl","spd","vspd","dist"].filter(has).slice(0,4);
-  MINI_KEYS = ["msl","gnd","hdg","sats","rxbt","batt","curr","capa","rqly","rss1","rss2",
-               "rsnr","tpwr","ptch","roll","txbat"].filter(function(k){
+  MINI_KEYS = ["msl","gnd","hdg","sats","rxbt","vbatsag","batt","curr","capa","rqly","rss1","rss2",
+               "rsnr","tpwr","ptch","roll","txbat","airspd","balt","windspd","gforce","hdop",
+               "baroT","rpm","esct","imut"].filter(function(k){
     return has(k) && TILE_KEYS.indexOf(k) < 0; });
   el("tiles").innerHTML = TILE_KEYS.map(function(k){
     const f = FMAP[k];
@@ -1285,6 +1321,19 @@ function buildLive(){
     const f = FMAP[k];
     return '<div class="m"><span class="k">'+f.sh+'</span><span class="v" id="lv_'+k+
            '">–'+(f.u?'<u>'+f.u+'</u>':'')+'</span></div>'; }).join("");
+  /* Blackbox-only channels absent from this log are shown greyed out, so it is obvious
+     which telemetry a log carries. Only shown when the log has some blackbox extras at all
+     (a plain EdgeTX CSV stays uncluttered). */
+  var EXTRA_CAT = ["airspd","balt","vbatsag","windspd","gforce","hdop","baroT","rpm","esct","imut"];
+  if (EXTRA_CAT.some(function(k){ return avail(k); })){
+    var offExtras = EXTRA_CAT.filter(function(k){ return !avail(k) && MINI_KEYS.indexOf(k) < 0 && TILE_KEYS.indexOf(k) < 0; });
+    if (offExtras.length){
+      el("mini").insertAdjacentHTML("beforeend", offExtras.map(function(k){
+        const f = FMAP[k];
+        return '<div class="m off" title="Not recorded in this log"><span class="k">'+f.sh+
+               '</span><span class="v">n/a'+(f.u?'<u>'+f.u+'</u>':'')+'</span></div>'; }).join(""));
+    }
+  }
   const attHtml = [
     HAVE.ptch && ["Pitch","lv_a_ptch"], HAVE.roll && ["Roll","lv_a_roll"],
     (HAVE.yaw||HAVE.hdg) && ["Kurs","lv_a_hdg"]
