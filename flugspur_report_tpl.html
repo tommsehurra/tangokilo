@@ -94,7 +94,7 @@ input[type=number]{-moz-appearance:textfield}
 #frag{display:none;align-self:center;margin-left:12px;padding:3px 9px;border-radius:3px;
   background:rgba(63,169,255,.13);border:1px solid rgba(63,169,255,.45);color:var(--amber);
   font-family:var(--label);font-size:calc(11px * var(--ui));letter-spacing:.13em;text-transform:uppercase;
-  white-space:nowrap;cursor:help}
+  white-space:nowrap;cursor:pointer}
 
 /* ---------- Klappmenüs ---------- */
 /* Direkt unter der Kopfzeile öffnen. Die Kopfhöhe skaliert mit --ui,
@@ -497,14 +497,8 @@ details.sect[open] summary{margin-bottom:10px}
     </div>
 
     <!-- Akku -->
-    <div class="pop" id="battMenu" role="dialog" aria-label="Battery profile">
+    <div class="pop" id="battMenu" role="dialog" aria-label="Battery">
       <div class="grp">
-        <div class="line"><span class="lbl">Profile</span>
-          <select id="bpSel" style="flex:1"></select>
-        </div>
-        <div class="line"><span class="lbl">Name</span>
-          <input id="bpName" type="text" style="flex:1">
-        </div>
         <div class="line"><span class="lbl">Type</span>
           <select id="bpType" style="flex:1">
             <option value="lipo">LiPo</option>
@@ -552,8 +546,8 @@ details.sect[open] summary{margin-bottom:10px}
         </div>
         <div class="line"><span class="lbl">Control</span>
           <select id="sens" style="width:118px">
-            <option value="fein" selected>Fine</option>
-            <option value="normal">Normal</option>
+            <option value="fein">Fine</option>
+            <option value="normal" selected>Normal</option>
             <option value="schnell">Fast</option>
           </select>
         </div>
@@ -609,7 +603,7 @@ details.sect[open] summary{margin-bottom:10px}
         </div>
         <div class="hsec">
           <h3>Battery</h3>
-          <p>Pick a <b>battery profile</b> (cell count, capacity). Flugspur then computes state of charge from current and used capacity and shows it as a bar.</p>
+          <p>Enter your <b>battery</b> (cell count, and capacity if you know it). Flugspur then computes state of charge from current and used capacity and shows it as a bar. These settings reset every time you open a log.</p>
         </div>
         <div class="hsec">
           <h3>View</h3>
@@ -776,9 +770,12 @@ function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
 /* ====================================================== Farbverläufe */
+/* Data colour ramps for the path, the timeline fill and the legend (NOT the UI chrome,
+   which stays glass-cockpit blue). Natural multi-hue so altitude/speed read like a normal
+   heat map instead of a monochrome blue wash. */
 const SCALES = {
-  seq:  ["#0E2A47","#1E6DB0","#3FA9FF","#5FE3D0","#B7F5D8","#EAF2FA"],
-  div:  ["#3FA9FF","#8FD0FF","#0D1622","#7DE0A8","#33D68A"],
+  seq:  ["#2C5BEF","#22A8DC","#2FCE86","#C6D63C","#F3A11E","#EF4D3A"],
+  div:  ["#EF4D3A","#F3A11E","#AEB9C4","#7DE0A8","#2FCE86"],
   link: ["#FF4D57","#FFC24B","#33D68A"]
 };
 const SCALE_RGB = {};
@@ -805,7 +802,7 @@ const FIELDS = [
   {k:"spd",  n:"Speed", sh:"Speed",    u:"km/h", d:0, s:"seq",  c:"#4FC3F7"},
   {k:"vspd", n:"Climb/Sink",  sh:"Vertical", u:"m/s",  d:1, s:"div",  c:"#B388FF", sym:true},
   {k:"dist", n:DIST_LONG,         sh:HOME_KNOWN?"Distance":"Distance", u:"m", d:0, s:"seq", c:"#8FD04A"},
-  {k:"batt", n:"Battery profile",      sh:"Batt SoC", u:"%",    d:0, s:"link", c:"#4ED6A0", need:"batt"},
+  {k:"batt", n:"Battery charge",       sh:"Batt SoC", u:"%",    d:0, s:"link", c:"#4ED6A0", need:"batt"},
   {k:"rxbt", n:"Battery voltage",    sh:"Battery",     u:"V",    d:2, s:"link", c:"#4ED6A0"},
   {k:"curr", n:"Current",           sh:"Current",    u:"A",    d:1, s:"seq",  c:"#FF4D57"},
   {k:"capa", n:"Consumption",       sh:"Cons.",   u:"mAh",  d:0, s:"seq",  c:"#E9A0FF"},
@@ -884,16 +881,9 @@ function cellsGuess(){
   return Math.max(1, Math.round(mx / 4.16));
 }
 function battInit(){
-  const b = FL.battery || {};
-  BP.list = (b.profiles || []).slice();
-  BP.idx = Math.min(BP.list.length-1, Math.max(0, b.active || 0));
-  if (BP.list.length){
-    const p = BP.list[BP.idx];
-    BP.type = p.type || "lipo"; BP.cells = p.cells || 0;
-    BP.cap = p.capacity || 0; BP.ri = p.ri != null ? p.ri : RI_DEFAULT[BP.type];
-  } else {
-    BP.type = "lipo"; BP.cells = 0; BP.cap = 0; BP.ri = RI_DEFAULT.lipo;
-  }
+  /* No stored profiles. Battery settings are always fresh and reset every time a log is
+     opened; the user is prompted to enter cell count / capacity in the Battery menu. */
+  BP.type = "lipo"; BP.cells = 0; BP.cap = 0; BP.ri = RI_DEFAULT.lipo;
   battCompute();
 }
 const V_NOM = { lipo: 3.70, liion: 3.60 };
@@ -1219,8 +1209,38 @@ el("kpis").innerHTML = KPI.map(function(k){
 if (!HOME_KNOWN){
   const fr = el("frag");
   fr.style.display = "block";
-  fr.title = "The recording starts and ends in the air. There is no start point in the log; "
-           + "distances are counted from the first sample.";
+  fr.setAttribute("role","button");
+  fr.setAttribute("tabindex","0");
+  fr.setAttribute("aria-label","What does Log fragment mean?");
+  const FRAG_MSG = "Log fragment — the recording starts and ends in mid-air. There is no point on "
+    + "the ground anywhere in the log, so the take-off / landing spot and the height above ground "
+    + "can't be worked out. Distances are counted from the first recorded sample, and altitudes are "
+    + "shown unchanged from the log.";
+  function toggleFragPop(){
+    let p = el("fragPop");
+    if (p){ p.remove(); return; }
+    p = document.createElement("div");
+    p.id = "fragPop";
+    p.textContent = FRAG_MSG;
+    p.style.cssText = "position:fixed;z-index:130;max-width:min(360px,86vw);background:#0D1622;"
+      + "border:1px solid rgba(63,169,255,.5);border-radius:8px;padding:12px 14px;color:#EAF2FA;"
+      + "font-family:var(--face);font-size:calc(13px * var(--ui));line-height:1.5;"
+      + "box-shadow:0 12px 32px rgba(0,0,0,.55)";
+    document.body.appendChild(p);
+    const r = fr.getBoundingClientRect();
+    p.style.left = Math.max(8, Math.min(r.left, window.innerWidth - p.offsetWidth - 8)) + "px";
+    p.style.top = (r.bottom + 8) + "px";
+    setTimeout(function(){
+      document.addEventListener("click", function h(e){
+        if (e.target !== fr && !p.contains(e.target)){ p.remove(); document.removeEventListener("click", h); }
+      });
+      document.addEventListener("keydown", function esc(e){
+        if (e.key === "Escape"){ const q = el("fragPop"); if (q) q.remove(); document.removeEventListener("keydown", esc); }
+      });
+    }, 0);
+  }
+  fr.addEventListener("click", function(e){ e.stopPropagation(); toggleFragPop(); });
+  fr.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); toggleFragPop(); } });
 }
 
 function rows(list){
@@ -1377,7 +1397,7 @@ const SENS = {
   normal:  { zoom:3.2, inertia:0.75, ratio:0.075, rotate:0.8 },
   schnell: { zoom:5.0, inertia:0.90, ratio:0.100, rotate:1.0 }
 };
-let sensKey = "fein";
+let sensKey = "normal";
 
 function mapControls(){
   /* Bedienung wie in Kartendiensten: links ziehen schiebt die Karte,
@@ -1534,15 +1554,25 @@ function buildWall(){
   if (wallEnt){ viewer.entities.remove(wallEnt); wallEnt = null; }
   if (!wallOn) return;
   const step = Math.max(1, Math.ceil(LINE_IDX.length/1400));
-  const pos = [], min = [];
+  /* Canonical Cesium wall: flat lon/lat positions plus separate top (maximumHeights)
+     and bottom (minimumHeights) arrays. Mixing per-vertex heights INTO the positions
+     while also passing minimumHeights renders unreliably, which is why the wall used to
+     stay invisible. */
+  const pos = [], maxH = [], minH = [];
   for (let k=0;k<LINE_IDX.length;k+=step){
     const i = LINE_IDX[k];
-    pos.push(posOf(i)); min.push(gndOff(i));
+    pos.push(C.Cartesian3.fromDegrees(F.lon[i], F.lat[i]));
+    maxH.push(hAt(i));
+    minH.push(gndOff(i));
   }
   if (pos.length < 2) return;
   try {
-    wallEnt = viewer.entities.add({ wall:{ positions:pos, minimumHeights:min, outline:false,
-      material: C.Color.fromCssColorString("#3FA9FF").withAlpha(0.13) } });
+    wallEnt = viewer.entities.add({ wall:{
+      positions: pos, maximumHeights: maxH, minimumHeights: minH,
+      material: C.Color.fromCssColorString("#3FA9FF").withAlpha(0.30),
+      outline: true,
+      outlineColor: C.Color.fromCssColorString("#7FC8FF").withAlpha(0.55),
+      outlineWidth: 1 } });
   } catch(e){ console.warn("Wall:", e); }
 }
 function buildGround(){
@@ -2661,7 +2691,7 @@ function refreshMenus(){
     return '<option value="'+f.k+'"'+(f.k===metric.k?" selected":"")+'>'+f.n+'</option>'; }).join("");
   if (FMAP.batt && !BP.valid){
     el("metric").insertAdjacentHTML("beforeend",
-      '<option value="batt" disabled>Akkuprofil – erst Profil einstellen</option>');
+      '<option value="batt" disabled>Battery charge – set battery first</option>');
   }
   dom = domain(metric.k); updateLegend();
 
@@ -2812,11 +2842,6 @@ function findValue(){
 
 /* ====================================================== Akku-Panel */
 function battPanel(){
-  el("bpSel").innerHTML = BP.list.length
-    ? BP.list.map(function(p,i){ return '<option value="'+i+'"'+(i===BP.idx?" selected":"")+'>'+
-        esc(p.name || ("Profil "+(i+1)))+'</option>'; }).join("")
-    : '<option value="-1">kein Profil hinterlegt</option>';
-  el("bpName").value = BP.list.length ? (BP.list[BP.idx].name || "") : "";
   el("bpType").value = BP.type;
   el("bpCells").value = BP.cells || "";
   el("bpCap").value = BP.cap || "";
@@ -2829,9 +2854,10 @@ function battPanel(){
   if (!BP.valid){
     el("bpOut").innerHTML = "";
     el("bpHint").innerHTML = HAVE.rxbt
-      ? "Enter the cell count to compute state of charge, voltage level and reserve. "
-        + "Ohne Profil bleibt <b>Farbe nach Akkuprofil</b> gesperrt."
-      : "This log has no battery voltage, so a profile does not help here.";
+      ? "Set your battery here to see state of charge, cell voltage and reserve – enter the cell "
+        + "count (and capacity, if you know it). <b>These settings reset every time you open a log.</b> "
+        + "Until they are set, <b>Colour by battery</b> stays disabled."
+      : "This log has no battery voltage, so battery settings don’t apply here.";
     return;
   }
   const s = BP.stats;
@@ -3068,25 +3094,6 @@ el("vaGo").onclick = function(){ findValue(); };
 el("vaValue").addEventListener("keydown", function(e){ if (e.key === "Enter") findValue(); });
 el("hitsClear").onclick = function(){ clearHits(); el("hitsHead").textContent = "Hits"; };
 
-el("bpSel").onchange = function(){
-  const i = parseInt(this.value,10);
-  if (i >= 0 && BP.list[i]){
-    BP.idx = i;
-    const p = BP.list[i];
-    BP.type = p.type || "lipo";
-    BP.cells = p.cells || 0;
-    BP.cap = p.capacity || 0;
-    BP.ri = RI_DEFAULT[BP.type];
-    battPanel();   // Eingabefelder erst auf das neue Profil setzen,
-  }                // sonst liest battApply gleich wieder die alten Werte
-  battApply();
-};
-el("bpName").onchange = function(){
-  const n = String(this.value).trim();
-  if (!n || !BP.list.length) return;
-  BP.list[BP.idx].name = n;
-  battPanel();
-};
 ["bpType","bpCells","bpCap"].forEach(function(id){
   el(id).onchange = function(){ battApply(); };
 });
