@@ -297,6 +297,8 @@ local C_PINK = lcd.RGB(255,90,190)   -- SAT count (>=10)
 local C_SKY  = lcd.RGB(64,146,214)   -- ADI sky
 local C_GND  = lcd.RGB(140,92,44)    -- ADI ground
 local C_HUD  = lcd.RGB(0,20,34)      -- PFD panel background
+local C_LBL  = lcd.RGB(150,172,196)  -- tile / label text (readable on dark panel)
+local C_ORNG = lcd.RGB(255,140,0)    -- tile contour lines
 local atan2  = math.atan2 or math.atan
 local F_M    = MIDSIZE or 0          -- medium font for values (bigger, readable)
 local F_L    = DBLSIZE or 0          -- large font for hero values
@@ -311,6 +313,7 @@ local zoom      = CFG.zoomMin
 local follow    = true
 local useTrail  = true
 local headLine  = true               -- course line out of the arrow tip in the HDG direction
+local attRad    = false              -- page 3: FC sends attitude in radians (toggle if horizon is flat)
 local hudOn     = true
 local menuOpen  = false
 local menuSel   = 1
@@ -700,6 +703,8 @@ local MENU = {
     a = function() useTrail = not useTrail; if not useTrail then trail = {} end end },
   { l = function() return "Heading line: " .. (headLine and "on" or "off") end,
     a = function() headLine = not headLine end },
+  { l = function() return "Attitude: " .. (attRad and "RAD" or "DEG") end,
+    a = function() attRad = not attRad end },
   { l = function() return "Graph window: " .. WINS[winSel] .. "s" end,
     a = function() winSel = winSel % #WINS + 1; graphDirty = true end },
   { l = function() return "Graph 1: " .. slotLabel(1) end, a = function() cycleSlot(1) end },
@@ -1113,14 +1118,17 @@ local function updateStats()
 end
 
 local function attitude()
-  return (gv("Ptch") or gv("Pitch") or 0), (gv("Roll") or 0)
+  local p = gv("Ptch") or gv("Pitch") or gv("ptch") or 0
+  local r = gv("Roll") or gv("roll") or 0
+  if attRad then p = math.deg(p); r = math.deg(r) end   -- FC sends radians (menu toggle)
+  return p, r
 end
 
--- a bordered tile with a small grey label in the corner
+-- a bordered tile with a readable label; orange contour
 local function tileFrame(x, y, w, h, label, lcol)
   lcd.drawFilledRectangle(x, y, w, h, C_PANEL)
-  lcd.drawRectangle(x, y, w, h, C_GRID)
-  if label then lcd.drawText(x + 4, y + 2, label, SMLSIZE + (lcol or C_GRID)) end
+  lcd.drawRectangle(x, y, w, h, C_ORNG)
+  if label then lcd.drawText(x + 4, y + 2, label, SMLSIZE + (lcol or C_LBL)) end
 end
 
 -- a horizontal bar gauge (0..1)
@@ -1144,25 +1152,25 @@ local function drawADIPage()
   lcd.drawFilledRectangle(0, 0, W, H, C_B)
 
   -- ================= header =================
-  local hyH = 14
+  local hyH = 18
   lcd.drawFilledRectangle(0, 0, W, hyH, C_HUD)
-  lcd.drawText(4, 3, MODELNAME, SMLSIZE + C_Y)
+  lcd.drawText(4, 5, MODELNAME, SMLSIZE + C_Y)
   local txv = gv("tx-voltage")
   local mid = "TX " .. (txv and string.format("%.1fV", txv) or "--")
   if stats.tStart then
     local s = math.floor((getTime() - stats.tStart) / 100)
-    mid = mid .. "   FLT " .. string.format("%02d:%02d", math.floor(s / 60), s % 60)
+    mid = mid .. "    FLT " .. string.format("%02d:%02d", math.floor(s / 60), s % 60)
   end
-  lcd.drawText(W / 2 - 6, 3, mid, SMLSIZE + C_W + CENTER)
-  addBtn("page", W - 44, 0, 42, 13, "PG1", false)
-  lcd.drawLine(0, hyH, W, hyH, SOLID, C_GRID)
+  lcd.drawText(W / 2 - 6, 5, mid, SMLSIZE + C_W + CENTER)
+  addBtn("page", W - 46, 1, 44, 16, "PG1", false)
+  lcd.drawLine(0, hyH, W, hyH, SOLID, C_ORNG)
 
   -- ================= artificial horizon =================
-  local ax, ay = 0, hyH + 1
-  local aw, ah = 284, 162
-  local htH    = 13                       -- heading tape height
-  local spW    = 26                       -- speed tape width
-  local alW    = 30                       -- alt tape width
+  local ax, ay = 0, hyH + 3
+  local aw, ah = 284, 148
+  local htH    = 13
+  local spW    = 26
+  local alW    = 30
   local axr    = ax + aw - alW
   local cx     = ax + spW + math.floor((aw - spW - alW) / 2)
   local cy     = ay + htH + math.floor((ah - htH) / 2)
@@ -1183,7 +1191,6 @@ local function drawADIPage()
     x = x + stp
   end
   lcd.drawLine(ax, base + sl * (ax - cx), ax + aw, base + sl * (ax + aw - cx), SOLID, C_W)
-  -- pitch ladder (rotated), labelled both ends
   local unx, uny = math.sin(rr), -math.cos(rr)
   local hdx, hdy = math.cos(rr), math.sin(rr)
   local ladder = {10, 20, 30, -10, -20, -30}
@@ -1199,7 +1206,6 @@ local function drawADIPage()
     lcd.drawText(x2 + 2, y2 - 3, lab, SMLSIZE + C_W)
     lcd.drawText(x1 - 11, y1 - 3, lab, SMLSIZE + C_W)
   end
-  -- purple home course pointer
   if home and gps.ok then
     local _, brg = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     local rel = math.rad(brg - hdg)
@@ -1210,7 +1216,7 @@ local function drawADIPage()
   end
   clipOff()
 
-  -- fixed aircraft reticle (yellow)
+  -- reticle
   lcd.drawLine(cx - 36, cy, cx - 12, cy, SOLID, C_Y)
   lcd.drawLine(cx + 12, cy, cx + 36, cy, SOLID, C_Y)
   lcd.drawLine(cx - 12, cy, cx - 12, cy + 5, SOLID, C_Y)
@@ -1220,12 +1226,12 @@ local function drawADIPage()
   -- speed tape (left)
   lcd.drawFilledRectangle(ax, ay, spW, ah, C_HUD)
   lcd.drawLine(ax + spW, ay, ax + spW, ay + ah, SOLID, C_GRID)
-  lcd.drawText(ax + 2, ay + htH + 2, "SPD", SMLSIZE + C_CY)
+  lcd.drawText(ax + 3, ay + 2, "SPD", SMLSIZE + C_CY)
   local spd, tp = tele.spd, 2.4
   for v = math.floor((spd - 30) / 10) * 10, math.floor((spd + 30) / 10) * 10, 10 do
     if v >= 0 then
       local yy = cy - (v - spd) * tp
-      if yy > ay + htH + 14 and yy < ay + ah - 4 then
+      if yy > ay + htH + 2 and yy < ay + ah - 4 then
         lcd.drawLine(ax + 18, yy, ax + spW - 1, yy, SOLID, C_W)
         lcd.drawText(ax + 2, yy - 3, tostring(v), SMLSIZE + C_W)
       end
@@ -1235,104 +1241,106 @@ local function drawADIPage()
   lcd.drawRectangle(ax, cy - 8, spW, 16, C_W)
   lcd.drawText(ax + 2, cy - 5, string.format("%.0f", spd), SMLSIZE + C_W)
 
-  -- altitude tape (right)
+  -- altitude tape (right) -- floor at -5 m (nothing below)
   lcd.drawFilledRectangle(axr, ay, alW, ah, C_HUD)
   lcd.drawLine(axr, ay, axr, ay + ah, SOLID, C_GRID)
-  lcd.drawText(axr + 2, ay + htH + 2, "ALT", SMLSIZE + C_CY)
-  local alt, ap = tele.alt, 1.0
+  lcd.drawText(axr + 3, ay + 2, "ALT", SMLSIZE + C_CY)
+  local alt, apx = tele.alt, 1.0
   for v = math.floor((alt - 60) / 20) * 20, math.floor((alt + 60) / 20) * 20, 20 do
-    local yy = cy - (v - alt) * ap
-    if yy > ay + htH + 14 and yy < ay + ah - 4 then
-      lcd.drawLine(axr, yy, axr + 6, yy, SOLID, C_W)
-      lcd.drawText(axr + 8, yy - 3, tostring(v), SMLSIZE + C_W)
+    if v >= -5 then
+      local yy = cy - (v - alt) * apx
+      if yy > ay + htH + 2 and yy < ay + ah - 4 then
+        lcd.drawLine(axr, yy, axr + 6, yy, SOLID, C_W)
+        lcd.drawText(axr + 8, yy - 3, tostring(v), SMLSIZE + C_W)
+      end
     end
   end
   lcd.drawFilledRectangle(axr, cy - 8, alW, 16, C_B)
   lcd.drawRectangle(axr, cy - 8, alW, 16, C_W)
   lcd.drawText(axr + 2, cy - 5, string.format("%d", math.floor(alt)), SMLSIZE + C_W)
 
-  -- heading tape (top)
-  lcd.drawFilledRectangle(ax, ay, aw, htH, C_HUD)
-  lcd.drawLine(ax, ay + htH, ax + aw, ay + htH, SOLID, C_GRID)
+  -- heading tape (top, only between the tapes)
+  local hx0, hx1 = ax + spW, axr
+  lcd.drawFilledRectangle(hx0, ay, hx1 - hx0, htH, C_HUD)
+  lcd.drawLine(hx0, ay + htH, hx1, ay + htH, SOLID, C_GRID)
   local hp, hb = 1.7, math.floor(hdg / 10) * 10
   for dd = -70, 70, 10 do
     local hh = hb + dd
     local sx = cx + (hh - hdg) * hp
-    if sx > ax + spW + 2 and sx < axr - 2 then
+    if sx > hx0 + 2 and sx < hx1 - 2 then
       lcd.drawLine(sx, ay, sx, ay + 4, SOLID, C_W)
       local hn = (hh % 360 + 360) % 360
       local lbl
       if hn == 0 then lbl = "N" elseif hn == 90 then lbl = "E"
       elseif hn == 180 then lbl = "S" elseif hn == 270 then lbl = "W"
       elseif hn % 30 == 0 then lbl = string.format("%d", hn / 10) end
-      if lbl then lcd.drawText(sx, ay + 4, lbl, SMLSIZE + C_W + CENTER) end
+      if lbl then lcd.drawText(sx, ay + 5, lbl, SMLSIZE + C_W + CENTER) end
     end
   end
   lcd.drawFilledRectangle(cx - 16, ay, 32, htH, C_B)
   lcd.drawRectangle(cx - 16, ay, 32, htH, C_W)
   lcd.drawText(cx, ay + 1, string.format("%03d", math.floor(hdg)), SMLSIZE + C_W + CENTER)
-  lcd.drawRectangle(ax, ay, aw, ah, C_W)          -- crisp ADI frame
+  lcd.drawRectangle(ax, ay, aw, ah, C_ORNG)      -- ADI frame
 
   -- ================= right column =================
   local rx = ax + aw + 2
   local rw = W - rx
 
   -- compass rose
-  local chH = 92
+  local chH = 72
   tileFrame(rx, ay, rw, chH, "COMPASS")
-  local ccx, ccy, R = rx + rw / 2, ay + 44, 30
+  local ccx, ccy, R = rx + rw / 2, ay + 40, 24
   for d = 0, 330, 30 do
     local a = math.rad(d)
     local s1, c1 = math.sin(a), math.cos(a)
-    local r2 = (d % 90 == 0) and R - 8 or R - 5
-    lcd.drawLine(ccx + s1 * R, ccy - c1 * R, ccx + s1 * r2, ccy - c1 * r2, SOLID, C_GRID)
+    local r2 = (d % 90 == 0) and R - 7 or R - 4
+    lcd.drawLine(ccx + s1 * R, ccy - c1 * R, ccx + s1 * r2, ccy - c1 * r2, SOLID, C_LBL)
   end
-  lcd.drawText(ccx, ccy - R - 8, "N", SMLSIZE + C_W + CENTER)
+  lcd.drawText(ccx, ccy - R - 9, "N", SMLSIZE + C_W + CENTER)
   lcd.drawText(ccx + R + 4, ccy - 4, "E", SMLSIZE + C_W)
   lcd.drawText(ccx, ccy + R + 1, "S", SMLSIZE + C_W + CENTER)
   lcd.drawText(ccx - R - 8, ccy - 4, "W", SMLSIZE + C_W)
-  -- home bearing marker (purple)
   if home and gps.ok then
     local _, brg = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     local ba = math.rad(brg)
     lcd.drawFilledRectangle(ccx + math.sin(ba) * R - 2, ccy - math.cos(ba) * R - 2, 5, 5, C_PURP)
   end
-  -- heading pointer (cyan triangle)
   local ha = math.rad(hdg)
   local tipx, tipy = ccx + math.sin(ha) * (R - 2), ccy - math.cos(ha) * (R - 2)
   local pa, pb = math.rad(hdg + 145), math.rad(hdg - 145)
   if lcd.drawFilledTriangle then
     lcd.drawFilledTriangle(tipx, tipy,
-      ccx + math.sin(pa) * 9, ccy - math.cos(pa) * 9,
-      ccx + math.sin(pb) * 9, ccy - math.cos(pb) * 9, C_CY)
+      ccx + math.sin(pa) * 8, ccy - math.cos(pa) * 8,
+      ccx + math.sin(pb) * 8, ccy - math.cos(pb) * 8, C_CY)
   else
     lcd.drawLine(ccx, ccy, tipx, tipy, SOLID, C_CY)
   end
   lcd.drawFilledRectangle(ccx - 1, ccy - 1, 3, 3, C_W)
-  lcd.drawText(ccx, ay + chH - 12, string.format("%03d", math.floor(hdg)), F_M + C_W + CENTER)
 
   -- position tile (coordinates)
   local py = ay + chH + 2
-  tileFrame(rx, py, rw, 32, "POSITION")
+  local pyH = 34
+  tileFrame(rx, py, rw, pyH, "POSITION")
   if gps.ok then
-    lcd.drawText(rx + 6, py + 11, string.format("%.6f", gps.lat), SMLSIZE + C_W)
-    lcd.drawText(rx + 6, py + 21, string.format("%.6f", gps.lon), SMLSIZE + C_W)
+    lcd.drawText(rx + 6, py + 12, string.format("%.6f", gps.lat), SMLSIZE + C_W)
+    lcd.drawText(rx + 6, py + 23, string.format("%.6f", gps.lon), SMLSIZE + C_W)
   else
-    lcd.drawText(rx + 6, py + 15, "no GPS fix", SMLSIZE + C_GRID)
+    lcd.drawText(rx + 6, py + 16, "no GPS fix", SMLSIZE + C_LBL)
   end
 
-  -- link tile (sat / rssi / tx power)
-  local ly = py + 34
-  tileFrame(rx, ly, rw, ay + ah - ly, "LINK")
-  lcd.drawText(rx + 6, ly + 12, "SAT", SMLSIZE + C_GRID)
-  lcd.drawText(rx + 30, ly + 10, tostring(tele.sats), F_M + (tele.sats >= 10 and C_PINK or C_R))
+  -- link tile (sat centred, rssi + tx power)
+  local ly = py + pyH + 2
+  local lyH = (ay + ah) - ly
+  tileFrame(rx, ly, rw, lyH, "LINK")
+  lcd.drawText(rx + rw / 2, ly + 11, "SAT", SMLSIZE + C_LBL + CENTER)
+  lcd.drawText(rx + rw / 2, ly + 18, tostring(tele.sats), F_M + (tele.sats >= 10 and C_PINK or C_R) + CENTER)
   local rssi = gv("1RSS") or gv("2RSS") or gv("RSSI")
   local tpwr = gv("TPWR")
-  lcd.drawText(rx + rw - 6, ly + 12, (rssi and (math.floor(rssi) .. "dBm") or "--"), SMLSIZE + C_W + RIGHT)
-  lcd.drawText(rx + rw - 6, ly + 22, (tpwr and (math.floor(tpwr) .. "mW") or "--"), SMLSIZE + C_W + RIGHT)
+  lcd.drawText(rx + 6, ly + lyH - 10, (rssi and (math.floor(rssi) .. "dBm") or "--"), SMLSIZE + C_W)
+  lcd.drawText(rx + rw - 6, ly + lyH - 10, (tpwr and (math.floor(tpwr) .. "mW") or "--"), SMLSIZE + C_W + RIGHT)
 
   -- ================= bottom hero tiles =================
-  local by = ay + ah + 2
+  local by = ay + ah + 3
   local bh = H - by
   local tw = math.floor(W / 5)
   local lq = gv("RQly")
@@ -1340,14 +1348,14 @@ local function drawADIPage()
     local tx = (i - 1) * tw
     local w = (i == 5) and (W - tx) or tw
     tileFrame(tx, by, w, bh, label)
-    bigVal(tx + 5, by + 16, num, unit, col)
+    bigVal(tx + 6, by + 20, num, unit, col)
     return tx, w
   end
   hero(1, "BATTERY", string.format("%.1f", tele.volt), "V", C_Y)
   hero(2, "CURRENT", string.format("%.1f", tele.curr), "A", C_W)
   do
     local tx = hero(3, "LINK Q", lq and tostring(math.floor(lq)) or "--", "%", C_G)
-    if lq then bar(tx + 5, by + bh - 12, tw - 12, 7, lq / 100, C_G) end
+    if lq then bar(tx + 6, by + bh - 12, tw - 14, 7, lq / 100, C_G) end
   end
   local dist = 0
   if home and gps.ok then dist = select(1, distBrg(home.lat, home.lon, gps.lat, gps.lon)) end
