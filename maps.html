@@ -245,12 +245,14 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 -- PAGES
 --   Page 1  full-screen map
 --   Page 2  map on the left, telemetry (top) and a scrolling time graph (bottom)
+--   Page 3  PFD / artificial-horizon HUD with position, compass and value tiles
 --
 -- FULLSCREEN CONTROLS
 --   Rotary            zoom in / out
 --   ENTER short       toggle FOLLOW / FIX
---   ENTER long        open the settings menu (page, map, graph, ...)
---   Tap [PG] / [MAP]  switch page / cycle map type
+--   ENTER long        open the settings menu (page, map, zoom knob, graph, ...)
+--   Tap [PG] / [MAP]  switch page / cycle map type ([PG] is always in the far-right slot)
+--   Zoom knob         optional: pick a pot / slider / channel in the menu to set zoom
 --   Tap on the map    hide the HUD, tap again to bring it back
 --   Drag in FIX mode  pan the map with your finger
 --
@@ -299,6 +301,7 @@ local C_GND  = lcd.RGB(140,92,44)    -- ADI ground
 local C_HUD  = lcd.RGB(0,20,34)      -- PFD panel background
 local C_LBL  = lcd.RGB(150,172,196)  -- tile / label text (readable on dark panel)
 local C_ORNG = lcd.RGB(255,140,0)    -- tile contour lines
+local C_TILET= lcd.RGB(205,208,212)  -- light-grey text drawn on empty / loading tiles
 local atan2  = math.atan2 or math.atan
 local F_M    = MIDSIZE or 0          -- medium font for values (bigger, readable)
 local F_L    = DBLSIZE or 0          -- large font for hero values
@@ -346,8 +349,35 @@ local lastHdgLat, lastHdgLon
 
 local btns      = {}                 -- touch buttons rebuilt every drawn frame
 
-local MODELNAME = "MODEL"            -- read once in create()
+local MODELNAME = "MODEL"            -- filled from model.getInfo() (see readModelName)
+local modelTries= 0                  -- keep retrying for a few frames; some radios have no model yet in create()
 local stats     = {maxAlt = 0, maxSpd = 0, maxDist = 0, minLQ = nil, tStart = nil}  -- session records (page 3)
+
+-- read the radio model name; retries for the first ~20 frames in case model.getInfo()
+-- is not ready when create() runs, then gives up so it costs nothing afterwards.
+local function readModelName()
+  if modelTries < 0 then return end
+  local ok, info = pcall(function() return model.getInfo() end)
+  if ok and info and info.name and info.name ~= "" then
+    MODELNAME = info.name
+    modelTries = -1
+  else
+    modelTries = modelTries + 1
+    if modelTries > 20 then modelTries = -1 end
+  end
+end
+
+-- optional "zoom knob": a pot / slider / channel drives the zoom level. OFF by default;
+-- the source is picked in the settings menu. Moving the knob overrides the rotary, but the
+-- rotary still works until the knob is next moved.
+local ZSRC       = {"off", "s1", "s2", "s3", "s4", "ls", "rs", "ch5", "ch6", "ch7", "ch8"}
+local zoomSrcIdx = 1                 -- index into ZSRC (1 = off)
+local lastPotZoom= nil               -- last zoom the knob asked for
+
+-- settings menu: swallow the stray ENTER that trails the long-press which opens the menu,
+-- so the top setting is not toggled the instant the menu appears.
+local menuArm    = false
+local menuOpenT  = 0
 
 -- graph channels (each reads whatever sensor exists, with fallbacks)
 local function gv(name)
@@ -573,6 +603,24 @@ local function setZoom(dz)
   flushCache()
 end
 
+-- optional zoom knob: map a pot / slider / channel (-1024..1024) onto the zoom range.
+-- Only acts when the resulting zoom step changes, so it does not fight the rotary between moves.
+local function applyZoomChannel()
+  if zoomSrcIdx <= 1 then return end
+  local raw = getValue(ZSRC[zoomSrcIdx])
+  if type(raw) ~= "number" then return end
+  local s    = sets[curSet]
+  local span = s.zmax - s.zmin
+  if span < 0 then span = 0 end
+  local frac = (raw + 1024) / 2048
+  if frac < 0 then frac = 0 elseif frac > 1 then frac = 1 end
+  local nz = s.zmin + math.floor(frac * span + 0.5)
+  if nz ~= lastPotZoom then
+    lastPotZoom = nz
+    if nz ~= zoom then zoom = nz; flushCache() end
+  end
+end
+
 -- ---------------------------------------------------------------- telemetry
 
 local function readTelemetry()
@@ -695,6 +743,8 @@ local MENU = {
           if nz > s.zmax then nz = s.zmin end
           if nz ~= zoom then zoom = nz; flushCache() end
         end },
+  { l = function() return "Zoom knob: " .. string.upper(ZSRC[zoomSrcIdx]) end,
+    a = function() zoomSrcIdx = zoomSrcIdx % #ZSRC + 1; lastPotZoom = nil end },
   { l = function() return "Mode:   " .. (follow and "FOLLOW" or "FIX") end,
     a = function() follow = not follow; panned = false; if follow then recenter() end end },
   { l = function() return "HUD:    " .. (hudOn and "on" or "off") end,
@@ -722,8 +772,10 @@ local function menuVis() return math.min(MENU_VIS, #MENU) end
 
 local function menuGeom()
   local h = menuVis() * MENU_ROW + 30
-  local x = VX + (VW - MENU_W) / 2
-  local y = VY + (VH - h) / 2
+  -- always centre on the whole screen. On page 2 the map viewport is only half the width,
+  -- which used to push the menu off to the left.
+  local x = (LCD_W - MENU_W) / 2
+  local y = (LCD_H - h) / 2
   return math.floor(x), math.floor(y), MENU_W, h
 end
 
@@ -800,8 +852,12 @@ local function drawMap()
         elseif absent[k] then
           lcd.drawFilledRectangle(sx, sy, CUR_TILE, CUR_TILE, C_MISS)
           lcd.drawRectangle(sx, sy, CUR_TILE, CUR_TILE, C_GRID)
+          lcd.drawText(sx + CUR_TILE / 2, sy + CUR_TILE / 2 - 4, "No Tiles Found",
+                       SMLSIZE + C_TILET + CENTER)
         else
           lcd.drawFilledRectangle(sx, sy, CUR_TILE, CUR_TILE, C_WAIT)
+          lcd.drawText(sx + CUR_TILE / 2, sy + CUR_TILE / 2 - 4, "Loading",
+                       SMLSIZE + C_TILET + CENTER)
           wanted[#wanted + 1] = {zoom, gx, gy}
         end
       end
@@ -877,9 +933,10 @@ local function drawHud()
   lcd.drawText(VX + 158, VY + 3, string.format("SPD %.0fkm/h", tele.spd), SMLSIZE + C_W)
   lcd.drawText(VX + 250, VY + 3, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
 
-  -- top-right buttons (nice, tappable)
-  addBtn("map",  x2 - 56,  VY + 2, 52, 16, "MAP",  true)
-  addBtn("page", x2 - 112, VY + 2, 52, 16, "PG2",  false)
+  -- top-right buttons: PG stays in the far-right slot on every page (same place as page 3),
+  -- MAP sits to its left.
+  addBtn("page", x2 - 56,  VY + 2, 52, 16, "PG2",  false)
+  addBtn("map",  x2 - 112, VY + 2, 52, 16, "MAP",  true)
 
   local mode = follow and "FOLLOW" or (panned and "FIX*" or "FIX")
   lcd.drawText(VX + 4,  y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
@@ -952,8 +1009,8 @@ local function drawTelem(tx, ty, tw, th)
   lcd.drawFilledRectangle(tx, ty, tw, th, C_PANEL)
   lcd.drawRectangle(tx, ty, tw, th, C_GRID)
   lcd.drawText(tx + 4, ty + 4, "TELEMETRY", SMLSIZE + C_Y)
-  addBtn("map",  tx + tw - 54, ty + 2, 50, 16, "MAP", true)
-  addBtn("page", tx + tw - 108, ty + 2, 50, 16, "PG3", false)
+  addBtn("page", tx + tw - 54, ty + 2, 50, 16, "PG3", false)
+  addBtn("map",  tx + tw - 108, ty + 2, 50, 16, "MAP", true)
 
   local colL, colR = tx + 6, tx + tw / 2 + 4
   local r0, dr = ty + 22, 15
@@ -1157,10 +1214,6 @@ local function drawADIPage()
   lcd.drawText(4, 5, MODELNAME, SMLSIZE + C_Y)
   local txv = gv("tx-voltage")
   local mid = "TX " .. (txv and string.format("%.1fV", txv) or "--")
-  if stats.tStart then
-    local s = math.floor((getTime() - stats.tStart) / 100)
-    mid = mid .. "    FLT " .. string.format("%02d:%02d", math.floor(s / 60), s % 60)
-  end
   lcd.drawText(W / 2 - 6, 5, mid, SMLSIZE + C_W + CENTER)
   addBtn("page", W - 46, 1, 44, 16, "PG1", false)
   lcd.drawLine(0, hyH, W, hyH, SOLID, C_ORNG)
@@ -1378,6 +1431,16 @@ local function doBtn(id)
 end
 
 local function handleMenu(event, touchState)
+  if not menuArm then
+    -- eat a single ENTER that lands right after the menu opened (the break event of the
+    -- long-press). Time-boxed so a deliberate ENTER a moment later still selects normally.
+    if (event == EVT_VIRTUAL_ENTER or event == EVT_VIRTUAL_ENTER_LONG)
+       and (getTime() - menuOpenT) < 40 then
+      menuArm = true
+      return
+    end
+    menuArm = true
+  end
   if event == EVT_VIRTUAL_NEXT or event == EVT_VIRTUAL_INC then
     menuSel = menuSel % #MENU + 1
   elseif event == EVT_VIRTUAL_PREV or event == EVT_VIRTUAL_DEC then
@@ -1414,6 +1477,13 @@ local function handleEvent(event, touchState)
     menuOpen = true
     menuSel  = 1
     menuTop  = 1
+    menuArm  = false
+    menuOpenT = getTime()
+    if killEvents then
+      killEvents(EVT_VIRTUAL_ENTER_LONG)
+      killEvents(EVT_VIRTUAL_ENTER)
+    end
+    return
 
   elseif event == EVT_VIRTUAL_NEXT or event == EVT_VIRTUAL_INC then
     setZoom(1)
@@ -1487,8 +1557,7 @@ end
 
 local function create(zone, opt)
   if math.randomseed then math.randomseed(getTime()) end
-  local ok, info = pcall(function() return model.getInfo() end)
-  if ok and info and info.name and info.name ~= "" then MODELNAME = info.name end
+  readModelName()
   loadSets()
   applySet(curSet)
   applyOptions(opt)
@@ -1509,6 +1578,7 @@ end
 local function refresh(widget, event, touchState)
   tickCnt   = tickCnt + 1
   cacheFull = false
+  readModelName()
 
   local fullscreen = (event ~= nil)
   local zone = widget.zone
@@ -1530,6 +1600,7 @@ local function refresh(widget, event, touchState)
 
   if fullscreen then
     handleEvent(event, touchState)   -- uses last frame's button rects (positions are stable)
+    applyZoomChannel()               -- optional pot/slider zoom (no-op unless a source is picked)
   end
 
   btns = {}                           -- rebuilt by the draw calls below
