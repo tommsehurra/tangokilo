@@ -21,7 +21,7 @@ This is the **static site** for tangokilo.de — plain HTML, CSS and JavaScript,
 | [`flugpfad.html`](flugpfad.html) | 🛩️ **Flight Path Viewer** — drop in a flight log and see it as an interactive 3D map. Reads EdgeTX telemetry CSV **and** raw INAV / Betaflight blackbox logs. Everything runs in your browser — nothing is uploaded. |
 | [`maps.html`](maps.html) | 📡 **Map Downloader** — grab offline map tiles for your flying spot, write them to your SD card, and generate the matching **SatMap** EdgeTX widget (`main.lua`). |
 
-Supporting files: `flugspur_parse.js` + `flugspur_report_tpl.html` power the Flight Path Viewer, and `images/` holds the gallery photos (drop a new one in and it shows up on its own).
+Supporting files: `flugspur_parse.js` + `flugspur_report_tpl.html` power the Flight Path Viewer, and `images/` holds the gallery photos (i put new photos in every once in a while).
 
 > ℹ️ The live overlay only shows data while I'm **actually flying and streaming**. Between flights it just sits idle. The two tools work on their own anytime — no stream needed.
 
