@@ -32,7 +32,7 @@ header{border-bottom:1px solid var(--edge);
 h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-height:1;letter-spacing:-.01em;
   text-transform:uppercase;border-top:3px solid var(--accent);padding-top:20px;margin-top:6px}
 .lead{margin-top:14px;font-size:16px;font-weight:600;color:var(--ash);max-width:96ch;line-height:1.55}
-.lead b{color:var(--good)}
+.lead b{color:var(--accent)}
 .drop{margin-top:28px;border:2px dashed var(--edge);border-radius:14px;
   background:linear-gradient(180deg,var(--deck) 0%,var(--void-2) 100%);padding:min(9vw,80px) 24px;text-align:center;transition:.18s;cursor:pointer}
 .drop.hot{border-color:var(--accent);background:var(--deck-2)}
@@ -46,13 +46,25 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 .btn:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
 .btn.primary{background:var(--accent);color:var(--void);border-color:var(--accent)}
 .btn.primary:hover{background:var(--white);border-color:var(--white)}
+/* the main call-to-action gently breathes with a glow so it reads as the thing to press */
+#pick{animation:pickpulse 1.9s ease-in-out infinite;will-change:transform}
+#pick:hover{animation-play-state:paused}
+@keyframes pickpulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 rgba(63,169,255,0)}
+  50%{transform:scale(1.06);box-shadow:0 0 24px rgba(63,169,255,.6)}
+}
+@media (prefers-reduced-motion:reduce){#pick{animation:none}}
 .err{margin-top:16px;color:var(--crit);font-size:14px;font-weight:600;display:none;white-space:pre-line;text-align:left;
   background:rgba(255,77,87,.08);border:1px solid rgba(255,77,87,.4);border-radius:8px;padding:14px 16px;max-width:96ch}
-.feat{margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
-.feat div{background:linear-gradient(180deg,var(--deck),var(--void-2));border:1px solid var(--edge);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
-.feat div::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);opacity:.85}
-.feat h3{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
-.feat p{font-size:14px;color:var(--ash);line-height:1.55}
+.featwrap{margin-top:36px}
+.featwrap .cap{font-size:12px;font-weight:700;font-stretch:75%;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--ash-dim);padding-bottom:10px;margin-bottom:20px;border-bottom:1px solid var(--edge)}
+.feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px 34px}
+/* deliberately NOT card/button styled — flat rows so they read as information, not controls */
+.feat div{display:flex;gap:13px;align-items:flex-start;cursor:default;background:none;border:0;padding:0}
+.feat .ico{font-size:21px;line-height:1;flex:0 0 auto;margin-top:1px;filter:saturate(1.1)}
+.feat h3{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.1em;text-transform:uppercase;color:var(--white);margin:0 0 5px}
+.feat p{font-size:13px;color:var(--ash);line-height:1.5}
 .note{margin-top:20px;font-size:13px;color:var(--ash-dim);line-height:1.6;max-width:110ch}
 #busy{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;
   background:rgba(7,11,17,.86);z-index:20;color:var(--ash);font-size:14px}
@@ -84,11 +96,14 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
     <div class="err" id="err"></div>
   </div>
 
-  <div class="feat">
-    <div><h3>🗺️ 3D map</h3><p>The flight path over real terrain and satellite imagery, free to rotate and zoom.</p></div>
-    <div><h3>🛩️ Attitude display</h3><p>A 3D model shows roll, pitch and yaw at every moment of the flight.</p></div>
-    <div><h3>📊 Metrics</h3><p>Altitude, speed, climb, distance, battery, link quality — read automatically from the log. Blackbox logs add airspeed, wind, G-force and more.</p></div>
-    <div><h3>⏱️ Timeline</h3><p>Scrub through the flight on the band, toggle extra curves on and off.</p></div>
+  <div class="featwrap">
+    <div class="cap">What you get</div>
+    <div class="feat">
+      <div><span class="ico">🗺️</span><div><h3>3D map</h3><p>The flight path over real terrain and satellite imagery, free to rotate and zoom.</p></div></div>
+      <div><span class="ico">🛩️</span><div><h3>Attitude display</h3><p>A 3D model shows roll, pitch and yaw at every moment of the flight.</p></div></div>
+      <div><span class="ico">📊</span><div><h3>Metrics</h3><p>Altitude, speed, climb, distance, battery, link quality — read automatically from the log. Blackbox logs add airspeed, wind, G-force and more.</p></div></div>
+      <div><span class="ico">⏱️</span><div><h3>Timeline</h3><p>Scrub through the flight on the band, toggle extra curves on and off.</p></div></div>
+    </div>
   </div>
 
 </div>
