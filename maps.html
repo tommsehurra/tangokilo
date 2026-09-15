@@ -151,7 +151,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
           <span class="lbl" style="margin:0">Radius</span>
           <span class="val" id="radiusVal">3.0 km</span>
         </div>
-        <input type="range" id="radius" min="0.5" max="150" step="0.5" value="3">
+        <input type="range" id="radius" min="0.5" max="20" step="0.5" value="3">
 
         <div class="sep"></div>
 
@@ -253,6 +253,10 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 --   ENTER long        open the settings menu (page, map, zoom knob, graph, ...)
 --   Tap [PG] / [MAP]  switch page / cycle map type ([PG] is always in the far-right slot)
 --   Zoom knob         optional: pick a pot / slider / channel in the menu to set zoom
+--
+-- SETTINGS
+--   Everything set in the menu is saved to /MAPS/satmap.cfg and restored on boot,
+--   so a reboot no longer resets your settings.
 --   Tap on the map    hide the HUD, tap again to bring it back
 --   Drag in FIX mode  pan the map with your finger
 --
@@ -378,6 +382,13 @@ local lastPotZoom= nil               -- last zoom the knob asked for
 -- so the top setting is not toggled the instant the menu appears.
 local menuArm    = false
 local menuOpenT  = 0
+
+-- settings persistence: the menu settings are written to the SD card and restored on boot,
+-- so a reboot no longer wipes them. Saved a couple of seconds after they stop changing.
+local CFG_FILE   = CFG.root .. "/satmap.cfg"
+local savedSig   = nil               -- signature of what is currently on the card
+local pendingSig = nil
+local pendingAt  = 0
 
 -- graph channels (each reads whatever sensor exists, with fallbacks)
 local function gv(name)
@@ -1555,12 +1566,91 @@ local function applyOptions(opt)
   end
 end
 
+-- ---------------------------------------------------------------- settings persistence
+
+-- a compact signature of every persisted setting; used to detect changes cheaply
+local function cfgSig()
+  return table.concat({
+    page, curSet, zoom,
+    follow and 1 or 0, hudOn and 1 or 0, useTrail and 1 or 0,
+    headLine and 1 or 0, attRad and 1 or 0,
+    zoomSrcIdx, gSlot[1], gSlot[2], gSlot[3], winSel
+  }, ",")
+end
+
+local function saveCfg()
+  if not (io and io.open) then return end
+  local f = io.open(CFG_FILE, "w")
+  if not f then return end
+  io.write(f,
+    "page="    .. page ..
+    "\nmap="    .. curSet ..
+    "\nzoom="   .. zoom ..
+    "\nfollow=" .. (follow and 1 or 0) ..
+    "\nhud="    .. (hudOn and 1 or 0) ..
+    "\ntrail="  .. (useTrail and 1 or 0) ..
+    "\nhead="   .. (headLine and 1 or 0) ..
+    "\nattrad=" .. (attRad and 1 or 0) ..
+    "\nzsrc="   .. zoomSrcIdx ..
+    "\ng1="     .. gSlot[1] ..
+    "\ng2="     .. gSlot[2] ..
+    "\ng3="     .. gSlot[3] ..
+    "\nwin="    .. winSel .. "\n")
+  io.close(f)
+  savedSig = cfgSig()
+end
+
+local function clampInt(v, lo, hi, dflt)
+  if type(v) ~= "number" then return dflt end
+  v = math.floor(v)
+  if v < lo then return lo elseif v > hi then return hi end
+  return v
+end
+
+-- load saved settings (call AFTER loadSets so curSet can be clamped to the real set count)
+local function loadCfg()
+  local txt = readAll(CFG_FILE)
+  if not txt then return end
+  local t = {}
+  for line in string.gmatch(txt .. "\n", "(.-)\n") do
+    local k, v = string.match(line, "^%s*(%w+)%s*=%s*(-?%d+)")
+    if k then t[k] = tonumber(v) end
+  end
+  if t.page   then page       = clampInt(t.page, 1, 3, page) end
+  if t.map    then curSet     = clampInt(t.map, 1, #sets, curSet) end
+  if t.zoom   then zoom       = clampInt(t.zoom, CFG.zoomMin, CFG.zoomMax, zoom) end
+  if t.follow then follow     = (t.follow ~= 0) end
+  if t.hud    then hudOn      = (t.hud ~= 0) end
+  if t.trail  then useTrail   = (t.trail ~= 0) end
+  if t.head   then headLine   = (t.head ~= 0) end
+  if t.attrad then attRad     = (t.attrad ~= 0) end
+  if t.zsrc   then zoomSrcIdx = clampInt(t.zsrc, 1, #ZSRC, zoomSrcIdx) end
+  if t.g1     then gSlot[1]   = clampInt(t.g1, 0, #CH, gSlot[1]) end
+  if t.g2     then gSlot[2]   = clampInt(t.g2, 0, #CH, gSlot[2]) end
+  if t.g3     then gSlot[3]   = clampInt(t.g3, 0, #CH, gSlot[3]) end
+  if t.win    then winSel     = clampInt(t.win, 1, #WINS, winSel) end
+  graphDirty = true
+end
+
+-- write pending changes to the card once they have been stable for ~2 s (no SD thrashing)
+local function persistTick()
+  local sig = cfgSig()
+  if sig ~= savedSig then
+    if sig ~= pendingSig then pendingSig = sig; pendingAt = getTime() end
+    if getTime() - pendingAt >= 200 then saveCfg(); pendingSig = nil end
+  else
+    pendingSig = nil
+  end
+end
+
 local function create(zone, opt)
   if math.randomseed then math.randomseed(getTime()) end
   readModelName()
   loadSets()
-  applySet(curSet)
-  applyOptions(opt)
+  applyOptions(opt)      -- baseline from the widget's own options (EdgeTX-stored)
+  loadCfg()              -- saved menu settings win over the baseline
+  applySet(curSet)       -- clamp zoom to the active set, set folders
+  savedSig = cfgSig()    -- in sync with the card; nothing to write until something changes
   return {zone = zone, options = opt}
 end
 
@@ -1579,6 +1669,7 @@ local function refresh(widget, event, touchState)
   tickCnt   = tickCnt + 1
   cacheFull = false
   readModelName()
+  persistTick()
 
   local fullscreen = (event ~= nil)
   local zone = widget.zone
@@ -1710,9 +1801,10 @@ var GUIDE =
 "   buttons and touch input, the second page and the graph.\n\n"+
 "CONTROLS IN FULLSCREEN\n\n"+
 "   Rotary            zoom in / out\n"+
+"   Zoom knob         optional pot / slider / channel (pick it in the menu)\n"+
 "   ENTER short       toggle FOLLOW and FIX\n"+
 "   ENTER long        open the settings menu\n"+
-"   Tap [PG]          switch between page 1 (map) and page 2\n"+
+"   Tap [PG]          cycle pages: 1 map / 2 graph / 3 HUD (always top-right)\n"+
 "   Tap [MAP]         cycle to the next downloaded map type\n"+
 "   Tap on the map    hide the HUD, tap again to bring it back\n"+
 "   Bottom third      left zoom out, centre mode, right zoom in\n"+
@@ -1723,6 +1815,12 @@ var GUIDE =
 "the settings menu (ENTER long) to pick up to three graph channels\n"+
 "(Volt, Signal, Alt, VSpd, Speed, Curr) and the time window\n"+
 "(30 s to 10 min). Each channel auto-scales to its own range.\n\n"+
+"YOUR SETTINGS ARE SAVED\n\n"+
+"Everything you change in the settings menu - page, map type, zoom,\n"+
+"zoom knob, graph channels and window, HUD, trail, heading line and\n"+
+"attitude DEG/RAD - is written to MAPS/satmap.cfg on the SD card and\n"+
+"restored on the next boot. Set it up once; a reboot no longer wipes\n"+
+"it.\n\n"+
 "MULTIPLE MAPS\n\n"+
 "Tick several map types before downloading (Satellite, OpenTopoMap,\n"+
 "Airspace, ...) and they all download for the same spot in one run,\n"+
@@ -1735,11 +1833,13 @@ var GUIDE =
 "Tick \"Tiles only\" to fetch just the map folders without writing\n"+
 "the widget (main.lua). Use it when the widget is already on the\n"+
 "card and you only want to add imagery.\n\n"+
-"READING THE COLOURS\n\n"+
-"   Reddish tile   the PNG is not on the SD card.\n"+
-"   Bluish tile    the tile is loading. If it stays and the cache\n"+
-"                  counter turns red, the radio is out of bitmap\n"+
-"                  memory.\n\n"+
+"READING THE MAP AREA\n\n"+
+"   \"No Tiles Found\" (reddish)  no PNG on the SD card for this\n"+
+"                  spot and zoom - download the area, or zoom back\n"+
+"                  to a level you have.\n"+
+"   \"Loading\" (bluish)  the tile is being read in; it clears in a\n"+
+"                  moment. If it stays, the PNG may be corrupt (or\n"+
+"                  the radio is out of bitmap memory).\n\n"+
 "COLOUR SCREENS ONLY\n\n"+
 "This widget needs a colour radio (TX16S and similar). It does not\n"+
 "work on monochrome radios.\n\n"+
