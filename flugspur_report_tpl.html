@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flugspur - Flugspur</title>
+<title>Flight Path · Tango Kilo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -201,6 +201,14 @@ input[type=number]{-moz-appearance:textfield}
   display:grid;place-items:center;font-size:calc(10px * var(--ui));font-weight:600;flex:none}
 .hit .t{color:var(--dim);font-variant-numeric:tabular-nums}
 .hit .v{margin-left:auto;font-variant-numeric:tabular-nums}
+/* search hits: hover the number badge to turn it into an X that removes just that point */
+#hits .hit .n{cursor:pointer;position:relative;transition:background .12s}
+#hits .hit .n .num{transition:opacity .1s}
+#hits .hit .n:hover{background:#FF4D57}
+#hits .hit .n:hover .num{opacity:0}
+#hits .hit .n::after{content:"×";position:absolute;inset:0;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:calc(12px * var(--ui));line-height:1;opacity:0;transition:opacity .1s}
+#hits .hit .n:hover::after{opacity:1}
 .empty{color:var(--dimmer);font-size:calc(11px * var(--ui));padding:8px 10px;text-align:center}
 
 /* ---------- Seitenleiste ---------- */
@@ -398,7 +406,7 @@ details.sect[open] summary{margin-bottom:10px}
 <body>
 <div id="app">
   <header id="head">
-    <div id="brand"><i></i><b>Flugspur</b></div>
+    <div id="brand"><i></i><b>Flight Path</b></div>
     <div id="file"><span id="fname">–</span><span id="fmeta">–</span></div>
     <div class="kpis" id="kpis"></div>
     <div id="frag">Log fragment</div>
@@ -610,7 +618,7 @@ details.sect[open] summary{margin-bottom:10px}
         </div>
         <div class="hsec">
           <h3>Battery</h3>
-          <p>Enter your <b>battery</b> (cell count, and capacity if you know it). Flugspur then computes state of charge from current and used capacity and shows it as a bar. These settings reset every time you open a log.</p>
+          <p>Enter your <b>battery</b> (cell count, and capacity if you know it). Flight Path then computes state of charge from current and used capacity and shows it as a bar. These settings reset every time you open a log.</p>
         </div>
         <div class="hsec">
           <h3>View</h3>
@@ -1199,7 +1207,7 @@ function norm(i){
 /* ====================================================== Kopf und Panele */
 el("fname").textContent = FL.meta.source;
 el("fname").title = FL.meta.source;
-el("fmeta").textContent = [FL.meta.date, FL.meta.start ? FL.meta.start.slice(0,5)+" Uhr" : "",
+el("fmeta").textContent = [FL.meta.date, FL.meta.start ? FL.meta.start.slice(0,5) : "",
   dur(ST.flight_duration)].filter(Boolean).join(" · ");
 
 const KPI = [
@@ -1306,7 +1314,7 @@ el("stats").innerHTML = GROUPS.map(function(g){
   return b ? '<div class="grp-h">'+g[0]+'</div>'+b : ""; }).join("");
 
 el("meta").innerHTML = rows([
-  ["Datum", FL.meta.date || "–", ""],
+  ["Date", FL.meta.date || "–", ""],
   ["Start time", FL.meta.start || "–", ""],
   ["Samples", nf(FL.meta.points,0)+(FL.meta.decimated>1?" of "+nf(FL.meta.raw,0):""), ""],
   ["Abtastrate", nf(FL.meta.rate,2), "Hz"],
@@ -1843,6 +1851,12 @@ function addHit(h){
   if (hits.length > 40) hits.shift();
   drawHitMarkers(); renderHits();
 }
+// remove a single hit by its position in the list (the number shown on the left)
+function removeHit(k){
+  if (k == null || k < 0 || k >= hits.length) return;
+  hits.splice(k, 1);
+  drawHitMarkers(); renderHits();
+}
 function drawHitMarkers(){
   if (!ready) return;
   const C = Cesium;
@@ -1872,13 +1886,20 @@ function renderHits(){
     const off = !inRange(h.i);
     return '<button class="hit'+(off?" inactive":"")+'" data-i="'+h.i+'"'+
            (off?'':'')+'>'+
-           '<span class="n">'+(k+1)+'</span>'+
+           '<span class="n" data-k="'+k+'" title="Remove this point"><span class="num">'+(k+1)+'</span></span>'+
            '<span class="t">T+'+dur(F.t[h.i]-F.t[winFrom])+'</span>'+
            '<span class="v">'+esc(h.text)+(h.n>1?" ×"+h.n:"")+'</span></button>'; }).join("");
   Array.prototype.forEach.call(box.querySelectorAll(".hit"), function(b){
     b.onclick = function(){
       const i = parseInt(b.getAttribute("data-i"),10);
       jumpToIdx(i);
+    };
+  });
+  // clicking the number badge (shown as an X on hover) removes just that hit
+  Array.prototype.forEach.call(box.querySelectorAll(".hit .n"), function(n){
+    n.onclick = function(ev){
+      ev.stopPropagation();
+      removeHit(parseInt(n.getAttribute("data-k"),10));
     };
   });
 }
@@ -2061,11 +2082,11 @@ function measReport(){
 
   if (measPts.length >= 2 && !measIsRing()){
     parts.push(["Total distance", km(total), ""]);
-    parts.push(["Luftlinie 1 → " + measPts.length,
+    parts.push(["Straight line 1 → " + measPts.length,
                 km(measGeo(measPts[0], measPts[measPts.length-1])), ""]);
   }
   if (measIsRing()){
-    parts.push(["Umfang", km(total), ""]);
+    parts.push(["Perimeter", km(total), ""]);
     parts.push(["Area", fmtArea(measPolyArea(measRingPts())), ""]);
   }
   out.innerHTML = parts.length ? rows(parts) : "";
