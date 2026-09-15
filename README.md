@@ -40,21 +40,6 @@ The full guides — how the whole thing works, how to use each tool, how to set 
 - [CesiumJS](https://cesium.com/platform/cesiumjs/) for the 3D globe in the Flight Path Viewer.
 - The blackbox and CSV decoding is hand-rolled and runs entirely client-side (`flugspur_parse.js`).
 
-## Running it locally
-
-It's a static site, so just serve the folder and open it:
-
-```bash
-# any static server works
-python -m http.server 8080
-# then open http://localhost:8080
-```
-
-The Flight Path Viewer and Map Downloader work fully offline in the browser. The live overlay needs the telemetry feed to show anything — that backend runs on my machine and isn't part of this repo.
-
-## Deploying
-
-`main` deploys automatically to Cloudflare Pages. Push to `main` → it goes live at tangokilo.de. That's the whole pipeline.
 
 ---
 
