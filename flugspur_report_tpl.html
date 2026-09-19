@@ -417,8 +417,30 @@ details.sect[open] summary{margin-bottom:10px}
       <button id="btnMeas" aria-expanded="false">Measure</button>
       <button id="btnBatt" aria-expanded="false">Battery<span class="dot"></span></button>
       <button id="btnView" aria-expanded="false">View</button>
+      <button id="btnCmp" aria-expanded="false">Compare</button>
       <a id="btnHome" class="helpbtn" href="/" aria-label="Back to Tango Kilo" title="Back to the main page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:calc(18px * var(--ui));height:calc(18px * var(--ui))"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h5v-6h4v6h5v-9"/></svg></a>
       <button id="btnHelp" class="helpbtn" aria-label="Help">?</button>
+    </div>
+
+    <!-- Zwei Fluege vergleichen -->
+    <div class="pop" id="cmpMenu" role="dialog" aria-label="Compare two flights">
+      <div class="grp">
+        <div class="gh">Second flight</div>
+        <div class="line">
+          <button id="btnCmpLoad" class="wide">Load second flight …</button>
+        </div>
+        <div class="line" id="cmpToggleLine" style="display:none">
+          <button class="tgl" id="btnCmpShow" aria-pressed="true">Show second path</button>
+          <button id="btnCmpClear">Remove</button>
+        </div>
+        <div id="cmpNote" style="opacity:.75;font-size:calc(11px * var(--ui));margin-top:4px">
+          Loads a second log and draws it in magenta on the same scene. The timeline scrubs both; stats are compared below. Runs in your browser — nothing is uploaded.</div>
+      </div>
+      <div class="grp" id="cmpStatsGrp" style="display:none">
+        <div class="gh">This flight <span style="color:var(--amber)">■</span> vs second <span style="color:#FF5CC8">■</span></div>
+        <div id="cmpStats"></div>
+      </div>
+      <input type="file" id="cmpFile" accept=".csv,.txt,.bbl,.bfl,.log,text/csv,text/plain" hidden>
     </div>
 
     <!-- Suche -->
@@ -2370,6 +2392,171 @@ if (attc){
   }
 })();
 
+/* ====================================================== Zwei Fluege vergleichen (B)
+   Rein additiv: ein optionaler zweiter Flug wird als eigene magenta Bahn auf DIESELBE
+   Cesium-Szene gelegt, mit eigenem Marker, der ueber die GEMEINSAME Timeline (Fortschritt
+   0..1) mitgezogen wird, plus einer A-vs-B-Stats-Tabelle. Ohne geladenen 2. Flug laeuft
+   KEIN B-Code -> der Ein-Flug-Fall bleibt unveraendert. Dekodierung im Web-Worker
+   (importScripts des gleich-origin Parsers), koordinatenfrei im Repo (Daten erst zur Laufzeit). */
+let FB = null, FLB = null, pathPrimB = null, markerB = null, curPosB = null, cmpShow = true;
+const COLOR_B = "#FF5CC8";
+
+function bIdxAtFrac(frac){
+  const a = (FLB.from|0), b = (FLB.to|0), n = FB.t.length;
+  let idx = Math.round(a + clamp(frac,0,1) * (b - a));
+  if (idx < 0) idx = 0; if (idx > n-1) idx = n-1;
+  return idx;
+}
+function bHeight(i){
+  const base = (FLB.meta && FLB.meta.altBase) || 0;
+  const a = FB.alt[i];
+  return (a == null ? 0 : a) - base;
+}
+function buildPathB(){
+  const C = Cesium;
+  if (pathPrimB){ viewer.scene.primitives.remove(pathPrimB); pathPrimB = null; }
+  const idxs = (FLB.lineIdx || []).filter(function(i){ return i >= FLB.from && i <= FLB.to; });
+  const use = idxs.length >= 2 ? idxs : (FLB.lineIdx || []).slice();
+  if (use.length < 2) return;
+  const pos = use.map(function(i){ return C.Cartesian3.fromDegrees(FB.lon[i], FB.lat[i], bHeight(i)); });
+  const col = C.Color.fromCssColorString(COLOR_B);
+  const cols = pos.map(function(){ return col; });
+  pathPrimB = viewer.scene.primitives.add(new C.Primitive({
+    geometryInstances: new C.GeometryInstance({
+      geometry: new C.PolylineGeometry({
+        positions: pos, width: 3.5, colors: cols, colorsPerVertex: true,
+        arcType: C.ArcType.NONE, vertexFormat: C.PolylineColorAppearance.VERTEX_FORMAT })
+    }),
+    appearance: new C.PolylineColorAppearance({ translucent: false }),
+    asynchronous: false }));
+  pathPrimB.show = cmpShow;
+  buildPathB._pos = pos;
+}
+function ensureMarkerB(){
+  if (markerB) return;
+  const C = Cesium;
+  markerB = viewer.entities.add({
+    position: new C.CallbackProperty(function(){ return curPosB; }, false),
+    point:{ pixelSize:12, color:C.Color.fromCssColorString(COLOR_B),
+            outlineColor:C.Color.BLACK, outlineWidth:2,
+            disableDepthTestDistance:Number.POSITIVE_INFINITY },
+    label:{ text:"2", font:"bold 12px sans-serif", fillColor:C.Color.WHITE,
+            showBackgroundColor:false, pixelOffset:new C.Cartesian2(0,-16),
+            disableDepthTestDistance:Number.POSITIVE_INFINITY, show:false }
+  });
+}
+function refreshB(){
+  if (!FB || !viewer) return;
+  const span = (tMax - tMin) || 1;
+  const frac = (t - tMin) / span;
+  const i = bIdxAtFrac(frac);
+  const la = FB.lat[i], lo = FB.lon[i];
+  if (la == null || lo == null){ curPosB = null; return; }
+  curPosB = Cesium.Cartesian3.fromDegrees(lo, la, bHeight(i));
+  if (markerB && markerB.label) markerB.label.show = cmpShow;
+  viewer.scene.requestRender();
+}
+function cmpFmtDist(m){ if (m == null) return "—"; return m < 1000 ? Math.round(m)+" m" : (m/1000).toFixed(2)+" km"; }
+function cmpRow(label, av, bv){
+  return '<div class="line" style="justify-content:space-between;gap:10px">'
+       + '<span style="opacity:.7">'+label+'</span>'
+       + '<span style="color:var(--amber);min-width:5em;text-align:right">'+av+'</span>'
+       + '<span style="color:'+COLOR_B+';min-width:5em;text-align:right">'+bv+'</span></div>';
+}
+function fillCompareStats(){
+  const A = FL.stats || {}, B = (FLB && FLB.stats) || {};
+  function n0(x,u){ return x==null?"—":(Math.round(x)+(u||"")); }
+  function n1(x,u){ return x==null?"—":(x.toFixed(1)+(u||"")); }
+  let h = "";
+  h += cmpRow("Flight time", dur(A.flight_duration||0), dur(B.flight_duration||0));
+  h += cmpRow("Max altitude", n0(A.alt_max," m"), n0(B.alt_max," m"));
+  h += cmpRow("Max speed", n0(A.spd_max," km/h"), n0(B.spd_max," km/h"));
+  h += cmpRow("Max distance", cmpFmtDist(A.dist_max), cmpFmtDist(B.dist_max));
+  h += cmpRow("Best climb", n1(A.climb_max," m/s"), n1(B.climb_max," m/s"));
+  h += cmpRow("Path length", cmpFmtDist(A.path_len), cmpFmtDist(B.path_len));
+  el("cmpStats").innerHTML = h;
+  el("cmpStatsGrp").style.display = "";
+}
+function fitBoth(){
+  const C = Cesium;
+  const pts = (LINE_POS || []).concat(buildPathB._pos || []);
+  if (pts.length < 2 || !viewer) return;
+  try { viewer.camera.flyToBoundingSphere(C.BoundingSphere.fromPoints(pts), { duration: 0.8 }); } catch(e){}
+}
+function applySecondFlight(payload){
+  FLB = payload; FB = payload.f;
+  buildPathB(); ensureMarkerB();
+  cmpShow = true;
+  const sb = el("btnCmpShow"); if (sb) sb.setAttribute("aria-pressed","true");
+  el("cmpToggleLine").style.display = "";
+  fillCompareStats();
+  refreshB(); fitBoth();
+  el("cmpNote").textContent = "Loaded: " + ((payload.meta && payload.meta.source) || "second flight")
+    + " — magenta on the scene, compared below.";
+}
+function clearSecondFlight(){
+  if (pathPrimB){ viewer.scene.primitives.remove(pathPrimB); pathPrimB = null; }
+  if (markerB){ viewer.entities.remove(markerB); markerB = null; }
+  FB = null; FLB = null; curPosB = null; buildPathB._pos = null;
+  el("cmpToggleLine").style.display = "none";
+  el("cmpStatsGrp").style.display = "none";
+  el("cmpNote").textContent = "Loads a second log and draws it in magenta on the same scene. The timeline scrubs both; stats are compared below. Runs in your browser — nothing is uploaded.";
+  if (viewer) viewer.scene.requestRender();
+}
+/* Zweiten Flug im Web-Worker dekodieren (gleich-origin Parser), Fallback sync. */
+function decodeSecond(buf, name){
+  el("cmpNote").textContent = "Decoding second flight …";
+  function ok(pl){ try { applySecondFlight(pl); } catch(e){ el("cmpNote").textContent = "Could not use that log: " + (e && e.message || e); } }
+  function fail(msg){ el("cmpNote").textContent = msg || "That file could not be read as a flight log."; }
+  function sync(){
+    try {
+      if (!self.FlugspurParse){ fail("Parser not available for the second flight."); return; }
+      ok(self.FlugspurParse.load(new Uint8Array(buf), name || "flight-2"));
+    } catch(e){ fail(e && e.message ? e.message : "That file could not be read."); }
+  }
+  if (typeof Worker === "undefined"){ sync(); return; }
+  let w;
+  try {
+    const url = new URL("flugspur_parse.js", location.href).href;
+    const src = "importScripts(" + JSON.stringify(url) + ");"
+      + "self.onmessage=function(e){var d=e.data;"
+      + "try{var p=self.FlugspurParse.load(new Uint8Array(d.buf), d.name, d.maxPoints);"
+      + "self.postMessage({ok:true,payload:p});}"
+      + "catch(err){self.postMessage({ok:false,error:(err&&err.message)?err.message:String(err)});}};";
+    w = new Worker(URL.createObjectURL(new Blob([src], {type:"application/javascript"})));
+  } catch(e){ sync(); return; }
+  w.onmessage = function(e){ const m = e.data; try{ w.terminate(); }catch(_){}
+    if (m && m.ok) ok(m.payload); else fail(m && m.error ? m.error : "Could not decode the second flight."); };
+  w.onerror = function(){ try{ w.terminate(); }catch(_){}; sync(); };
+  try { w.postMessage({ buf: buf, name: name || "flight-2", maxPoints: 25000 }); }
+  catch(e){ try{ w.terminate(); }catch(_){}; sync(); }
+}
+(function wireCompare(){
+  const btn = el("btnCmpLoad"), fi = el("cmpFile");
+  if (btn && fi){
+    btn.onclick = function(){ fi.click(); };
+    fi.onchange = function(){
+      const f = fi.files && fi.files[0]; fi.value = "";
+      if (!f) return;
+      if (f.size > 120*1024*1024){ el("cmpNote").textContent = "That file is very large (>120 MB)."; return; }
+      const fr = new FileReader();
+      fr.onload = function(){ decodeSecond(fr.result, f.name); };
+      fr.onerror = function(){ el("cmpNote").textContent = "The file could not be read."; };
+      fr.readAsArrayBuffer(f);
+    };
+  }
+  const sh = el("btnCmpShow");
+  if (sh) sh.onclick = function(){
+    cmpShow = !cmpShow;
+    sh.setAttribute("aria-pressed", cmpShow ? "true" : "false");
+    if (pathPrimB) pathPrimB.show = cmpShow;
+    if (markerB && markerB.label) markerB.label.show = cmpShow;
+    if (viewer) viewer.scene.requestRender();
+  };
+  const cl = el("btnCmpClear");
+  if (cl) cl.onclick = clearSecondFlight;
+})();
+
 /* ====================================================== Flugband */
 const tc = el("tapec"), hc = el("headc");
 const tctx = tc.getContext("2d"), hctx = hc.getContext("2d");
@@ -2706,6 +2893,7 @@ function refresh(){
     viewer.scene.requestRender();
   }
   drawHead();
+  if (typeof refreshB === "function") refreshB();   // zweiter Flug (falls geladen) mitziehen
 }
 
 let LIVE_KEYS = [];
@@ -2930,9 +3118,9 @@ function battApply(){
 
 /* ====================================================== Klappmenüs */
 const POPS = [["btnFind","findMenu"],["btnMark","markMenu"],["btnMeas","measMenu"],["btnBatt","battMenu"],
-              ["btnView","viewMenu"],["btnCurve","curvePop"],["btnRange","rangePop"]];
+              ["btnView","viewMenu"],["btnCmp","cmpMenu"],["btnCurve","curvePop"],["btnRange","rangePop"]];
 // Diese Menüs sitzen oben rechts und überlagern das Flugzeugmodell.
-const HEAD_POPS = ["findMenu","markMenu","measMenu","battMenu","viewMenu"];
+const HEAD_POPS = ["findMenu","markMenu","measMenu","battMenu","viewMenu","cmpMenu"];
 function shiftAtt(){
   const att = el("attpanel"); if (!att) return;
   let openMenu = null;
