@@ -355,8 +355,7 @@ body.demo .clock{display:none}
   border:1px solid var(--edge);background:var(--deck);color:var(--accent);cursor:pointer;font-family:inherit;
   font-size:13px;font-weight:700;font-stretch:87.5%;letter-spacing:.06em;text-transform:uppercase;transition:.15s}
 .demo-toggle:hover{background:var(--accent);color:var(--void);border-color:var(--accent)}
-#demoToggleWrap{display:none}
-body.is-standby.can-demo #demoToggleWrap{display:block}
+.links a.tool-demo{cursor:pointer}
 /* Song-Request-Widget (nur aktiv, wenn der Stream live ist; sonst klarer Hinweis) */
 #songreq .sr-box{background:linear-gradient(180deg,var(--deck) 0%,var(--void-2) 100%);
   border:1px solid var(--edge);border-radius:12px;padding:18px 20px}
@@ -450,7 +449,6 @@ body.is-standby.can-demo #demoToggleWrap{display:block}
     <div>
       <h1>Currently not flying</h1>
       <div class="sub">As soon as the aircraft takes off, this page switches to live telemetry automatically. Until then: the last flight and the all-time records.</div>
-      <div id="demoToggleWrap"><button type="button" class="demo-toggle" id="demoStart">▶ Watch a demo flight</button></div>
     </div>
   </div>
 
@@ -477,7 +475,7 @@ body.is-standby.can-demo #demoToggleWrap{display:block}
   <div id="demoBadge" aria-hidden="true">
     <span class="dot"></span><span>Demo · Replay</span>
     <span class="sep"></span>
-    <button type="button" id="demoToStandby">Records &amp; stream ›</button>
+    <button type="button" id="demoToStandby">Exit demo ›</button>
     <span class="sep"></span>
     <a href="https://www.twitch.tv/tommtee" target="_blank" rel="noopener noreferrer">Watch live ›</a>
   </div>
@@ -610,6 +608,7 @@ body.is-standby.can-demo #demoToggleWrap{display:block}
     <a href="/flugpfad.html"><b>✈️ Flight Path Viewer</b><span>Turn a flight log into a 3D map</span></a>
     <a href="/maps.html"><b>🗺️ Map Downloader</b><span>Offline map tiles for the radio widget</span></a>
     <a href="https://github.com/tommsehurra/tangokilo/wiki" target="_blank" rel="noopener noreferrer"><b>📖 Wiki &amp; Docs</b><span>Guides for the site, tools &amp; widget</span></a>
+    <a href="#live" class="tool-demo" id="demoTool"><b>▶️ Demo flight</b><span>Watch a looped sample flight (no live stream needed)</span></a>
   </div>
 </section>
 
@@ -737,8 +736,8 @@ function applyState(){
   var online   = rigOnline();
   var realLive = online && seenGps;
   var v;
-  if (realLive) v = "live";
-  else if (demoReady && userView !== "standby") v = "demo";   // no live feed -> looped demo
+  if (realLive){ v = "live"; userView = null; }         // real telemetry always wins
+  else if (userView === "demo" && demoReady) v = "demo";   // demo is opt-in via Tools only
   else v = "standby";
   var isStale = (v === "live") && (gpsAge() >= CFG.gpsHold);
 
@@ -746,8 +745,7 @@ function applyState(){
     var wasLive = (view === "live");
     view = v; stale = isStale;
     document.body.className = (v === "demo" ? "is-live demo" : "is-" + v)
-                           + (isStale ? " stale" : "")
-                           + (demoReady ? " can-demo" : "");
+                           + (isStale ? " stale" : "");
     document.title = (v === "live" && !isStale) ? CFG.brand + " · LIVE"
                    : (v === "demo" ? CFG.brand + " · DEMO" : CFG.brand);
     if (v === "live" || v === "demo") requestAnimationFrame(function(){ sizeGraph(); sizeAtt(); });
@@ -1572,9 +1570,14 @@ function fallbackDemo(){
     .then(enable).catch(function(){ enable(fallbackDemo()); });
 })();
 (function demoControls(){
-  var a = $("demoStart"), b = $("demoToStandby");
-  if (a) a.addEventListener("click", function(){ userView = "demo"; applyState(); });
-  if (b) b.addEventListener("click", function(){ userView = "standby"; applyState(); });
+  var a = $("demoTool"), b = $("demoToStandby");
+  if (a) a.addEventListener("click", function(e){
+    e.preventDefault();
+    if (!demoReady){ return; }        // demo.json not loaded yet
+    userView = "demo"; applyState();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  if (b) b.addEventListener("click", function(){ userView = null; applyState(); });
 })();
 
 setInterval(applyState, 400);
@@ -1619,13 +1622,15 @@ requestAnimationFrame(frame);
         showLive();
         if (j.remaining_s > 0 && (cdUntil() - Date.now()) <= 0) setCdUntil(Date.now() + j.remaining_s*1000);
         startCd();
+      } else if (j && j.enabled && j.spotify_ready === false){
+        showState("🎧 Requests are up, but Spotify isn't connected on the streamer's side yet.");
       } else if (j && j.enabled && !j.live){
         showState("🔴 Song requests are open only while the stream is live — check back during a live flight.");
       } else {
         showState("Song requests are switched off right now.");
       }
     }).catch(function(){
-      showState("🔌 Song requests are offline right now — they work while the stream is live. Come back during a stream.");
+      showState("🔌 Can't reach the request service — it only runs while the stream is live. Check back during a stream.");
     });
   }
 
@@ -1662,6 +1667,7 @@ requestAnimationFrame(frame);
     if (r === "cooldown")  return "⏳ Please wait a moment before requesting again.";
     if (r === "duplicate") return "That track is already in the queue.";
     if (r === "no_device") return "The streamer's Spotify has no active device right now.";
+    if (r === "no_spotify")return "Spotify isn't connected on the streamer's side right now.";
     if (r === "premium")   return "Song requests need Spotify Premium on the streamer's side.";
     if (r === "offline")   return "The stream just went offline.";
     if (r === "blocked" || r === "too_long" || r === "bad_id") return "That request wasn't accepted.";
