@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="View an EdgeTX flight log as an interactive 3D map — Tango Kilo">
 <meta name="theme-color" content="#3FA9FF">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tango Kilo">
+<meta property="og:title" content="Flight Path Viewer — Tango Kilo">
+<meta property="og:description" content="Turn an EdgeTX / INAV / Betaflight flight log into an interactive 3D map. Runs entirely in your browser; nothing is uploaded.">
+<meta property="og:url" content="https://www.tangokilo.de/flugpfad.html">
+<meta property="og:image" content="https://www.tangokilo.de/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Flight Path Viewer — Tango Kilo">
+<meta name="twitter:description" content="Turn an EdgeTX / INAV / Betaflight flight log into an interactive 3D map, right in your browser.">
+<meta name="twitter:image" content="https://www.tangokilo.de/og.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A1A2F'/%3E%3Cpath d='M16 4.5 L25.5 27.5 L16 21.5 L6.5 27.5 Z' fill='%233FA9FF'/%3E%3Cpath d='M16 4.5 L16 21.5 L6.5 27.5 Z' fill='%2378C8FF'/%3E%3C/svg%3E">
 <title>Flight Path Viewer · Tango Kilo</title>
 <style>
@@ -115,7 +127,7 @@ h1{font-size:clamp(32px,5.5vw,58px);font-weight:700;font-stretch:87.5%;line-heig
 (function(){
 "use strict";
 function $(id){ return document.getElementById(id); }
-var TPL_URL = "/flugspur_report_tpl.html?v=12";
+var TPL_URL = "/flugspur_report_tpl.html?v=13";
 var tplCache = null;
 
 function showErr(msg){ var e=$("err"); e.textContent=msg||""; e.classList.toggle("show", !!msg); }
@@ -157,15 +169,58 @@ function render(payload){
   });
 }
 
-function process(data, fname){
-  showErr("");
-  busy(true, "Reading log …");
+/* Decoding a long log (30 min+, 150k–900k frames) can take many seconds. Run it in a Web
+   Worker so the page never freezes and the spinner keeps turning. The worker importScripts
+   the same-origin parser; if Workers are unavailable (or the worker fails to start) we fall
+   back to the original synchronous path. The ArrayBuffer is kept intact (not transferred) so
+   the fallback can still read it. */
+function makeWorker(){
+  var url = new URL("flugspur_parse.js", location.href).href;   // same-origin, absolute
+  var src =
+    "importScripts(" + JSON.stringify(url) + ");" +
+    "self.onmessage=function(e){var d=e.data;" +
+    "try{var payload=self.FlugspurParse.load(new Uint8Array(d.buf), d.fname, d.maxPoints);" +
+    "self.postMessage({ok:true,payload:payload});}" +
+    "catch(err){self.postMessage({ok:false,error:(err&&err.message)?err.message:String(err)});}};";
+  var blobUrl = URL.createObjectURL(new Blob([src], {type:"application/javascript"}));
+  var w = new Worker(blobUrl);
+  URL.revokeObjectURL(blobUrl);
+  return w;
+}
+
+function decodeSync(buf, fname){
   setTimeout(function(){
     var payload;
-    try { payload = FlugspurParse.load(data, fname || "log"); }
+    try { payload = FlugspurParse.load(new Uint8Array(buf), fname || "log"); }
     catch(e){ busy(false); showErr(e && e.message ? e.message : "The file could not be read."); return; }
     render(payload);
   }, 30);
+}
+
+function process(buf, fname){
+  showErr("");
+  busy(true, "Decoding log …");
+  if (typeof Worker !== "undefined"){
+    var w;
+    try { w = makeWorker(); }
+    catch(e){ decodeSync(buf, fname); return; }        // no worker -> sync
+    var done = false;
+    w.onmessage = function(e){
+      done = true;
+      var m = e.data; try { w.terminate(); } catch(_){}
+      if (m && m.ok) render(m.payload);
+      else { busy(false); showErr((m && m.error) ? m.error : "The file could not be read."); }
+    };
+    w.onerror = function(){
+      if (done) return;
+      try { w.terminate(); } catch(_){}
+      decodeSync(buf, fname);                            // worker crashed early -> sync (buf intact)
+    };
+    try { w.postMessage({buf:buf, fname:fname || "log", maxPoints:25000}); }
+    catch(e){ try { w.terminate(); } catch(_){}; decodeSync(buf, fname); }
+    return;
+  }
+  decodeSync(buf, fname);
 }
 
 function readFile(file){
@@ -173,7 +228,7 @@ function readFile(file){
   if(file.size > 120*1024*1024){ showErr("That file is very large (>120 MB). Please pick a single flight log."); return; }
   // Read as bytes: blackbox logs are binary; the parser auto-detects blackbox vs CSV.
   var fr=new FileReader();
-  fr.onload=function(){ process(new Uint8Array(fr.result), file.name); };
+  fr.onload=function(){ process(fr.result, file.name); };   // ArrayBuffer -> process
   fr.onerror=function(){ showErr("The file could not be read."); };
   fr.readAsArrayBuffer(file);
 }
