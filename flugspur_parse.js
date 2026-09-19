@@ -16,7 +16,7 @@ var CESIUM_VERSION = "1.120";
  * ===================================================================================== */
 var BB = (function(){
 "use strict";
-var ENC_SIGNED_VB=0, ENC_UNSIGNED_VB=1, ENC_NEG_14BIT=3, ENC_TAG8_8SVB=6, ENC_TAG2_3S32=7, ENC_TAG8_4S16=8, ENC_NULL=9;
+var ENC_SIGNED_VB=0, ENC_UNSIGNED_VB=1, ENC_NEG_14BIT=3, ENC_TAG8_8SVB=6, ENC_TAG2_3S32=7, ENC_TAG8_4S16=8, ENC_NULL=9, ENC_TAG2_3SVAR=10;
 var P_0=0, P_PREVIOUS=1, P_STRAIGHT=2, P_AVERAGE2=3, P_MINTHROTTLE=4, P_MOTOR0=5,
     P_INC=6, P_HOME0=7, P_1500=8, P_VBATREF=9, P_LAST_MAIN_TIME=10, P_MINMOTOR=11, P_HOME1=256;
 var TWO32=4294967296;
@@ -27,7 +27,9 @@ function sx24(v){ return v<0x800000?v:v-0x1000000; }
 function sx14(v){ return v<0x2000?v:v-0x4000; }
 function sx2(v){ return v<0x2?v:v-0x4; }
 function sx4(v){ return v<0x8?v:v-0x10; }
+function sx5(v){ return v<0x10?v:v-0x20; }
 function sx6(v){ return v<0x20?v:v-0x40; }
+function sx7(v){ return v<0x40?v:v-0x80; }
 function Stream(bytes){ this.b=bytes; this.i=0; this.n=bytes.length; }
 Stream.prototype.u8=function(){ return this.b[this.i++]; };
 Stream.prototype.peek=function(){ return this.i<this.n ? this.b[this.i] : -1; };
@@ -46,6 +48,34 @@ Stream.prototype.tag2_3s32=function(out){
     else if(ft===2){ a=this.u8(); b=this.u8(); c=this.u8(); out[i]=sx24(a|(b<<8)|(c<<16)); }
     else { a=this.u8(); b=this.u8(); c=this.u8(); d=this.u8(); out[i]= a + b*256 + c*65536 + d*16777216; }
     lead>>=2; } }
+};
+// Betaflight encoding 10: TAG2_3SVARIABLE — 3 signed fields, selector in the top 2 bits of
+// the lead byte picks one of four packing schemes. Exact inverse of the firmware encoder
+// blackboxWriteTag2_3SVariable (src/main/blackbox/blackbox_encoding.c). Neither orangebox nor
+// blackbox-tools implement this yet, so it is round-trip-verified against that encoder.
+Stream.prototype.tag2_3svariable=function(out){
+  var lead=this.u8(), sel=lead>>6, b1, b2, i, ft, a, b, c, d;
+  if(sel===0){                       // 2 bits per field   ss11 2233
+    out[0]=sx2((lead>>4)&3); out[1]=sx2((lead>>2)&3); out[2]=sx2(lead&3);
+  } else if(sel===1){                // 554 bits per field  ss11 1112 2222 3333
+    b1=this.u8();
+    out[0]=sx5((lead>>1)&0x1F);
+    out[1]=sx5(((lead&0x01)<<4)|(b1>>4));
+    out[2]=sx4(b1&0x0F);
+  } else if(sel===2){                // 877 bits per field  ss11 1111 1122 2222 2333 3333
+    b1=this.u8(); b2=this.u8();
+    out[0]=sx8(((lead&0x3F)<<2)|(b1>>6));
+    out[1]=sx7(((b1&0x3F)<<1)|(b2>>7));
+    out[2]=sx7(b2&0x7F);
+  } else {                           // 32: sstt tttt then 1/2/3/4-byte little-endian fields
+    var s2=lead&0x3F;
+    for(i=0;i<3;i++){ ft=s2&0x03;
+      if(ft===0){ out[i]=sx8(this.u8()); }
+      else if(ft===1){ a=this.u8(); b=this.u8(); out[i]=sx16(a|(b<<8)); }
+      else if(ft===2){ a=this.u8(); b=this.u8(); c=this.u8(); out[i]=sx24(a|(b<<8)|(c<<16)); }
+      else { a=this.u8(); b=this.u8(); c=this.u8(); d=this.u8(); out[i]=(a|(b<<8)|(c<<16)|(d<<24)); }
+      s2>>=2; }
+  }
 };
 Stream.prototype.tag8_4s16v2=function(out){
   var sel=this.u8(), i, ft, nib=0, buf=0, a, b;
@@ -146,6 +176,7 @@ function decode(input, opts){
       else if(enc===ENC_TAG8_8SVB){ n=1; while(n<8 && (i+n)<def.count && def.encoding[i+n]===ENC_TAG8_8SVB) n++; st.tag8_8svb(n,tmp); for(j=0;j<n;j++) cur[i+j]=tmp[j]; i+=n; }
       else if(enc===ENC_TAG2_3S32){ st.tag2_3s32(tmp); for(j=0;j<3;j++) cur[i+j]=tmp[j]; i+=3; }
       else if(enc===ENC_TAG8_4S16){ st.tag8_4s16v2(tmp); for(j=0;j<4;j++) cur[i+j]=tmp[j]; i+=4; }
+      else if(enc===ENC_TAG2_3SVAR){ st.tag2_3svariable(tmp); for(j=0;j<3;j++) cur[i+j]=tmp[j]; i+=3; }
       else throw new Error("Unsupported blackbox encoding "+enc+" ("+def.names[i]+")");
     }
     for(i=0;i<def.count;i++) cur[i]=applyPred(def.predictor[i], i, cur[i], cur, prevArr, prev2Arr);
