@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Download offline map tiles for the SatMap EdgeTX widget — Tango Kilo">
 <meta name="theme-color" content="#3FA9FF">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tango Kilo">
+<meta property="og:title" content="Map Downloader — Tango Kilo">
+<meta property="og:description" content="Download offline satellite / topo map tiles and generate the SatMap widget for your EdgeTX radio, straight from the browser.">
+<meta property="og:url" content="https://www.tangokilo.de/maps.html">
+<meta property="og:image" content="https://www.tangokilo.de/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Map Downloader — Tango Kilo">
+<meta name="twitter:description" content="Download offline map tiles and generate the SatMap widget for your EdgeTX radio.">
+<meta name="twitter:image" content="https://www.tangokilo.de/og.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230A1A2F'/%3E%3Cpath d='M16 4.5 L25.5 27.5 L16 21.5 L6.5 27.5 Z' fill='%233FA9FF'/%3E%3Cpath d='M16 4.5 L16 21.5 L6.5 27.5 Z' fill='%2378C8FF'/%3E%3C/svg%3E">
 <title>Map Downloader · Tango Kilo</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -151,7 +163,7 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
           <span class="lbl" style="margin:0">Radius</span>
           <span class="val" id="radiusVal">3.0 km</span>
         </div>
-        <input type="range" id="radius" min="0.5" max="150" step="0.5" value="3">
+        <input type="range" id="radius" min="0.5" max="20" step="0.5" value="3">
 
         <div class="sep"></div>
 
@@ -321,6 +333,7 @@ local follow    = true
 local useTrail  = true
 local headLine  = true               -- course line out of the arrow tip in the HDG direction
 local attRad    = false              -- page 3: FC sends attitude in radians (toggle if horizon is flat)
+local mapCompass= false              -- page 1/2: show a track-up compass badge on the map (see note below)
 local hudOn     = true
 local menuOpen  = false
 local menuSel   = 1
@@ -729,6 +742,36 @@ local function updateCenter()
   end
 end
 
+-- ---------------------------------------------------------------- page-3 tiles (config)
+
+-- Configurable value tiles for the 2x4 grid at the bottom of page 3. Each field returns
+-- its value string and colour; an optional "bar" names a 0..100 sensor drawn as a gauge.
+-- The eight slots are chosen in the settings menu and saved to satmap.cfg (keys t1..t8).
+-- Declared before MENU so the menu's tile closures capture these as upvalues (not globals).
+local TILEFIELDS = {
+  { lbl = "BATTERY V", fn = function() return string.format("%.1f", tele.volt), C_Y end },
+  { lbl = "CURRENT A", fn = function() return string.format("%.1f", tele.curr), C_W end },
+  { lbl = "DIST m",    fn = function()
+      local d = 0
+      if home and gps.ok then d = select(1, distBrg(home.lat, home.lon, gps.lat, gps.lon)) end
+      return tostring(math.floor(d)), C_W end },
+  { lbl = "SPEED kmh", fn = function() return string.format("%.0f", tele.spd), C_W end },
+  { lbl = "SATS",      fn = function() return tostring(tele.sats), (tele.sats >= 10 and C_PINK or C_R) end },
+  { lbl = "LINK %",    bar = "RQly",
+    fn = function() local lq = gv("RQly"); return lq and tostring(math.floor(lq)) or "--", C_G end },
+  { lbl = "RSSI dBm",  fn = function()
+      local v = gv("1RSS") or gv("2RSS") or gv("RSSI"); return v and tostring(math.floor(v)) or "--", C_W end },
+  { lbl = "TX PWR mW", fn = function() local v = gv("TPWR"); return v and tostring(math.floor(v)) or "--", C_W end },
+  { lbl = "ALT m",     fn = function() return tostring(math.floor(tele.alt)), C_W end },
+  { lbl = "VSPD m/s",  fn = function() return string.format("%.1f", tele.vspd), C_W end },
+  { lbl = "HDG deg",   fn = function() return string.format("%03d", math.floor(tele.hdg)), C_W end },
+  { lbl = "TX V",      fn = function() local v = gv("tx-voltage"); return v and string.format("%.1f", v) or "--", C_Y end },
+  { lbl = "FUEL mAh",  fn = function() local v = gv("Fuel"); return v and tostring(math.floor(v)) or "--", C_W end },
+  { lbl = "SIG %",     fn = function() return tostring(math.floor(tele.sig)), C_G end },
+}
+-- default slots reproduce the previous fixed layout exactly
+local tileSel = {1, 2, 3, 4, 5, 6, 7, 8}
+
 -- ---------------------------------------------------------------- menu
 
 local function slotLabel(slot)
@@ -764,8 +807,26 @@ local MENU = {
     a = function() useTrail = not useTrail; if not useTrail then trail = {} end end },
   { l = function() return "Heading line: " .. (headLine and "on" or "off") end,
     a = function() headLine = not headLine end },
+  { l = function() return "Track-up ind.: " .. (mapCompass and "on" or "off") end,
+    a = function() mapCompass = not mapCompass end },
   { l = function() return "Attitude: " .. (attRad and "RAD" or "DEG") end,
     a = function() attRad = not attRad end },
+  { l = function() return "Tile 1: " .. TILEFIELDS[tileSel[1]].lbl end,
+    a = function() tileSel[1] = tileSel[1] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 2: " .. TILEFIELDS[tileSel[2]].lbl end,
+    a = function() tileSel[2] = tileSel[2] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 3: " .. TILEFIELDS[tileSel[3]].lbl end,
+    a = function() tileSel[3] = tileSel[3] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 4: " .. TILEFIELDS[tileSel[4]].lbl end,
+    a = function() tileSel[4] = tileSel[4] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 5: " .. TILEFIELDS[tileSel[5]].lbl end,
+    a = function() tileSel[5] = tileSel[5] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 6: " .. TILEFIELDS[tileSel[6]].lbl end,
+    a = function() tileSel[6] = tileSel[6] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 7: " .. TILEFIELDS[tileSel[7]].lbl end,
+    a = function() tileSel[7] = tileSel[7] % #TILEFIELDS + 1 end },
+  { l = function() return "Tile 8: " .. TILEFIELDS[tileSel[8]].lbl end,
+    a = function() tileSel[8] = tileSel[8] % #TILEFIELDS + 1 end },
   { l = function() return "Graph window: " .. WINS[winSel] .. "s" end,
     a = function() winSel = winSel % #WINS + 1; graphDirty = true end },
   { l = function() return "Graph 1: " .. slotLabel(1) end, a = function() cycleSlot(1) end },
@@ -926,6 +987,30 @@ local function drawPlane()
   drawArrow(x, y, tele.hdg)
 end
 
+-- Track-up compass badge (menu: "Track-up ind.").
+-- NOTE: EdgeTX's lcd.drawBitmap has NO rotation, so the raster map tiles themselves
+-- cannot be turned into the direction of flight on the radio. Instead this draws a small
+-- heading-up compass in the map corner: the aircraft symbol stays pointing up and the
+-- "N" marker rotates by -heading, giving the track-up reference without rotating the tiles.
+local function drawMapCompass()
+  if not mapCompass then return end
+  local r   = 15
+  local cx0 = VX + r + 6
+  local cy0 = VY + r + 22            -- below the top HUD bar
+  lcd.drawFilledRectangle(cx0 - r - 3, cy0 - r - 3, (r + 3) * 2, (r + 3) * 2, C_B)
+  lcd.drawRectangle(cx0 - r - 3, cy0 - r - 3, (r + 3) * 2, (r + 3) * 2, C_GRID)
+  -- N marker rotated so "up" is the current heading (track-up)
+  local a  = math.rad(-tele.hdg)
+  local nx = cx0 + math.sin(a) * (r - 1)
+  local ny = cy0 - math.cos(a) * (r - 1)
+  lcd.drawText(nx, ny - 4, "N", SMLSIZE + C_R + CENTER)
+  -- aircraft symbol: fixed pointing up
+  lcd.drawLine(cx0, cy0 + (r - 5), cx0, cy0 - (r - 5), SOLID, C_CY)
+  lcd.drawLine(cx0, cy0 - (r - 5), cx0 - 3, cy0 - (r - 9), SOLID, C_CY)
+  lcd.drawLine(cx0, cy0 - (r - 5), cx0 + 3, cy0 - (r - 9), SOLID, C_CY)
+  lcd.drawFilledRectangle(cx0 - 1, cy0 - 1, 3, 3, C_W)
+end
+
 -- ---------------------------------------------------------------- drawing: HUD
 
 local function shortLabel(s, n)
@@ -952,6 +1037,10 @@ local function drawHud()
   local mode = follow and "FOLLOW" or (panned and "FIX*" or "FIX")
   lcd.drawText(VX + 4,  y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
   lcd.drawText(VX + 36, y2 - 16, mode, SMLSIZE + C_W)
+  local txv = gv("tx-voltage")
+  if txv then
+    lcd.drawText(VX + VW / 2, y2 - 16, string.format("TX %.1fV", txv), SMLSIZE + C_W + CENTER)
+  end
   if home and gps.ok then
     local d = distBrg(home.lat, home.lon, gps.lat, gps.lon)
     lcd.drawText(x2 - 4, y2 - 16, string.format("DIST %dm", math.floor(d)), SMLSIZE + C_W + RIGHT)
@@ -1020,6 +1109,10 @@ local function drawTelem(tx, ty, tw, th)
   lcd.drawFilledRectangle(tx, ty, tw, th, C_PANEL)
   lcd.drawRectangle(tx, ty, tw, th, C_GRID)
   lcd.drawText(tx + 4, ty + 4, "TELEMETRY", SMLSIZE + C_Y)
+  local txv = gv("tx-voltage")
+  if txv and tw >= 200 then
+    lcd.drawText(tx + tw - 112, ty + 4, string.format("TX %.1fV", txv), SMLSIZE + C_W + RIGHT)
+  end
   addBtn("page", tx + tw - 54, ty + 2, 50, 16, "PG3", false)
   addBtn("map",  tx + tw - 108, ty + 2, 50, 16, "MAP", true)
 
@@ -1407,24 +1500,17 @@ local function drawADIPage()
     lcd.drawText(tx + w / 2, ty + 16, value, F_M + (col2 or C_W) + CENTER)
     return tx, ty, w, h
   end
-  local lq   = gv("RQly")
-  local rssi = gv("1RSS") or gv("2RSS") or gv("RSSI")
-  local tpwr = gv("TPWR")
-  local dist = 0
-  if home and gps.ok then dist = select(1, distBrg(home.lat, home.lon, gps.lat, gps.lon)) end
-
-  tile(1, 1, "BATTERY V", string.format("%.1f", tele.volt), C_Y)
-  tile(2, 1, "CURRENT A", string.format("%.1f", tele.curr), C_W)
-  tile(3, 1, "DIST m",    tostring(math.floor(dist)), C_W)
-  tile(4, 1, "SPEED kmh", string.format("%.0f", tele.spd), C_W)
-
-  tile(1, 2, "SATS",      tostring(tele.sats), (tele.sats >= 10 and C_PINK or C_R))
-  do
-    local tx, ty, w, h = tile(2, 2, "LINK %", lq and tostring(math.floor(lq)) or "--", C_G)
-    if lq then bar(tx + 6, ty + h - 9, w - 14, 6, lq / 100, C_G) end
+  for slot = 1, 8 do
+    local col = ((slot - 1) % 4) + 1
+    local row = math.floor((slot - 1) / 4) + 1
+    local fld = TILEFIELDS[tileSel[slot]] or TILEFIELDS[1]
+    local val, vcol = fld.fn()
+    local tx, ty, w, h = tile(col, row, fld.lbl, val, vcol)
+    if fld.bar then
+      local bv = gv(fld.bar)
+      if bv then bar(tx + 6, ty + h - 9, w - 14, 6, bv / 100, C_G) end
+    end
   end
-  tile(3, 2, "RSSI dBm",  rssi and tostring(math.floor(rssi)) or "--", C_W)
-  tile(4, 2, "TX PWR mW", tpwr and tostring(math.floor(tpwr)) or "--", C_W)
 end
 
 -- ---------------------------------------------------------------- input
@@ -1570,19 +1656,21 @@ end
 
 -- a compact signature of every persisted setting; used to detect changes cheaply
 local function cfgSig()
-  return table.concat({
+  local a = {
     page, curSet, zoom,
     follow and 1 or 0, hudOn and 1 or 0, useTrail and 1 or 0,
-    headLine and 1 or 0, attRad and 1 or 0,
+    headLine and 1 or 0, attRad and 1 or 0, mapCompass and 1 or 0,
     zoomSrcIdx, gSlot[1], gSlot[2], gSlot[3], winSel
-  }, ",")
+  }
+  for i = 1, 8 do a[#a + 1] = tileSel[i] end
+  return table.concat(a, ",")
 end
 
 local function saveCfg()
   if not (io and io.open) then return end
   local f = io.open(CFG_FILE, "w")
   if not f then return end
-  io.write(f,
+  local s =
     "page="    .. page ..
     "\nmap="    .. curSet ..
     "\nzoom="   .. zoom ..
@@ -1591,11 +1679,14 @@ local function saveCfg()
     "\ntrail="  .. (useTrail and 1 or 0) ..
     "\nhead="   .. (headLine and 1 or 0) ..
     "\nattrad=" .. (attRad and 1 or 0) ..
+    "\nmapc="   .. (mapCompass and 1 or 0) ..
     "\nzsrc="   .. zoomSrcIdx ..
     "\ng1="     .. gSlot[1] ..
     "\ng2="     .. gSlot[2] ..
     "\ng3="     .. gSlot[3] ..
-    "\nwin="    .. winSel .. "\n")
+    "\nwin="    .. winSel
+  for i = 1, 8 do s = s .. "\nt" .. i .. "=" .. tileSel[i] end
+  io.write(f, s .. "\n")
   io.close(f)
   savedSig = cfgSig()
 end
@@ -1624,11 +1715,16 @@ local function loadCfg()
   if t.trail  then useTrail   = (t.trail ~= 0) end
   if t.head   then headLine   = (t.head ~= 0) end
   if t.attrad then attRad     = (t.attrad ~= 0) end
+  if t.mapc   then mapCompass = (t.mapc ~= 0) end
   if t.zsrc   then zoomSrcIdx = clampInt(t.zsrc, 1, #ZSRC, zoomSrcIdx) end
   if t.g1     then gSlot[1]   = clampInt(t.g1, 0, #CH, gSlot[1]) end
   if t.g2     then gSlot[2]   = clampInt(t.g2, 0, #CH, gSlot[2]) end
   if t.g3     then gSlot[3]   = clampInt(t.g3, 0, #CH, gSlot[3]) end
   if t.win    then winSel     = clampInt(t.win, 1, #WINS, winSel) end
+  for i = 1, 8 do
+    local kk = "t" .. i
+    if t[kk] then tileSel[i] = clampInt(t[kk], 1, #TILEFIELDS, tileSel[i]) end
+  end
   graphDirty = true
 end
 
@@ -1710,6 +1806,7 @@ local function refresh(widget, event, touchState)
     drawTrail()
     drawHome()
     drawPlane()
+    drawMapCompass()
     drawMiniStatus()
     clipOff()
 
@@ -1736,6 +1833,7 @@ local function refresh(widget, event, touchState)
     drawTrail()
     drawHome()
     drawPlane()
+    drawMapCompass()
     if hudOn then drawHud() end
     clipOff()
   end
@@ -1814,13 +1912,26 @@ var GUIDE =
 "live telemetry on top and a scrolling time graph below it. Open\n"+
 "the settings menu (ENTER long) to pick up to three graph channels\n"+
 "(Volt, Signal, Alt, VSpd, Speed, Curr) and the time window\n"+
-"(30 s to 10 min). Each channel auto-scales to its own range.\n\n"+
+"(30 s to 10 min). Each channel auto-scales to its own range.\n"+
+"The transmitter voltage (TX x.xV) is shown on every page.\n\n"+
+"PAGE 3 - CONFIGURABLE VALUE TILES\n\n"+
+"The eight tiles at the bottom of the HUD page can each show a\n"+
+"field of your choice (Battery, Current, Dist, Speed, Sats, Link,\n"+
+"RSSI, TX power, Alt, VSpeed, Heading, TX volt, Fuel, Signal). Pick\n"+
+"them under Tile 1..8 in the settings menu. The defaults match the\n"+
+"previous fixed layout.\n\n"+
+"TRACK-UP INDICATOR\n\n"+
+"\"Track-up ind.\" in the menu adds a small heading-up compass to the\n"+
+"map corner: the aircraft symbol stays pointing up and the N marker\n"+
+"turns with your heading. Note: the radio firmware cannot rotate the\n"+
+"raster map tiles themselves, so the map stays north-up - the badge\n"+
+"gives the track-up reference without the cost of rotating imagery.\n\n"+
 "YOUR SETTINGS ARE SAVED\n\n"+
 "Everything you change in the settings menu - page, map type, zoom,\n"+
-"zoom knob, graph channels and window, HUD, trail, heading line and\n"+
-"attitude DEG/RAD - is written to MAPS/satmap.cfg on the SD card and\n"+
-"restored on the next boot. Set it up once; a reboot no longer wipes\n"+
-"it.\n\n"+
+"zoom knob, graph channels and window, HUD, trail, heading line,\n"+
+"attitude DEG/RAD, track-up indicator and the eight page-3 tiles -\n"+
+"is written to MAPS/satmap.cfg on the SD card and restored on the\n"+
+"next boot. Set it up once; a reboot no longer wipes it.\n\n"+
 "MULTIPLE MAPS\n\n"+
 "Tick several map types before downloading (Satellite, OpenTopoMap,\n"+
 "Airspace, ...) and they all download for the same spot in one run,\n"+
