@@ -530,6 +530,19 @@ local qrLat, qrLon, qrLive
 local qrOpen, qrGenStep
 
 do
+  -- PER-FRAME WORK BUDGETS. EdgeTX kills any widget callback that runs more than ~10000 Lua
+  -- VM instructions in ONE refresh ("CPU limit"): its hook fires every 100 instructions and
+  -- trips at ~100%. So every loop below advances a cursor by at most this many units per
+  -- frame (each tuned to stay well under ~8000 instructions/frame) and resumes next frame.
+  local BUD_GF   = 40       -- GF(256) table entries / frame (bxor is an inner loop)
+  local BUD_RS   = 1        -- Reed-Solomon data-byte steps / frame (a full GF polynomial each)
+  local BUD_INIT = 400      -- cell zero-fill / frame
+  local BUD_DATA = 70       -- data-bit placements / frame (getbit each)
+  local BUD_MASKEFF  = 90   -- mask-bit materialisations / frame (maskbit each)
+  local BUD_MASKSCORE = 170 -- penalty reads / frame (run-length bookkeeping each)
+  local BUD_BAKE = 110      -- bake cells / frame (maskbit each)
+  local BUD_RECT = 3        -- rows merged into run-rectangles / frame
+
   local POW2 = {}
   for i = 0, 20 do POW2[i] = 2 ^ i end
   local function bxor(a, b)
@@ -542,39 +555,19 @@ do
   end
   local function getbit(v, i) return math.floor(v / POW2[i]) % 2 end
 
-  -- GF(256), built lazily on first generation (keeps widget LOAD cheap: nothing runs until
-  -- the QR page is actually opened)
   local EXP, LOG, gfReady = {}, {}, false
-  local function ensureGF()
-    if gfReady then return end
-    local x = 1
-    for i = 0, 255 do EXP[i] = x; LOG[x] = i; x = x * 2; if x >= 256 then x = bxor(x, 0x11D) end end
-    for i = 256, 511 do EXP[i] = EXP[i - 255] end
-    gfReady = true
-  end
   local function gmul(a, b) if a == 0 or b == 0 then return 0 end return EXP[(LOG[a] + LOG[b]) % 255] end
-  local function rs_gen(deg)
-    local g = {1}
-    for i = 0, deg - 1 do
-      local res = {}
-      for j = 1, #g + 1 do res[j] = 0 end
-      for j = 1, #g do res[j] = bxor(res[j], g[j]); res[j+1] = bxor(res[j+1], gmul(g[j], EXP[i])) end
-      g = res
-    end
-    return g
-  end
-  local function rs_encode(data, deg)
-    local gen = rs_gen(deg)
-    local res = {}
-    for i = 1, deg do res[i] = 0 end
-    for i = 1, #data do
-      local factor = bxor(data[i], res[1])
-      for j = 1, deg - 1 do res[j] = res[j+1] end
-      res[deg] = 0
-      if factor ~= 0 then for j = 2, #gen do res[j-1] = bxor(res[j-1], gmul(gen[j], factor)) end end
-    end
-    return res
-  end
+
+  -- Reed-Solomon generator polynomials, precomputed for the EC lengths QVER uses
+  -- (v1=10, v2=16, v3=26, v4=18, v5=24, v6=16). Hardcoding these removes the heavy
+  -- rs_gen() build from the radio entirely (it alone blew the per-frame CPU limit).
+  local QRGEN = {
+    [10]={1,216,194,159,111,199,94,95,113,157,193},
+    [16]={1,59,13,104,189,68,209,30,8,163,65,41,229,98,50,36,59},
+    [18]={1,239,251,183,113,149,175,199,215,240,220,73,82,173,75,32,67,217,146},
+    [24]={1,122,118,169,70,178,237,216,102,115,150,229,73,130,72,61,43,206,1,237,247,127,217,144,117},
+    [26]={1,246,51,183,4,136,98,199,152,77,56,206,24,145,40,209,117,233,42,135,68,70,144,146,77,43,94},
+  }
 
   local QVER = {
     [1]={10,1,16,0,0}, [2]={16,1,28,0,0}, [3]={26,1,44,0,0},
@@ -583,30 +576,21 @@ do
   local QALIGN = { [1]={}, [2]={6,18}, [3]={6,22}, [4]={6,26}, [5]={6,30}, [6]={6,34} }
   local function qcap(v) local t = QVER[v]; return t[2]*t[3] + t[4]*t[5] end
 
+  -- Data codewords, built directly by nibble math (no per-bit array, no getbit): the byte-mode
+  -- stream is [0100][len:8][data...][0000-term], which is nibble-aligned, so each codeword is
+  -- just two nibbles. Byte-count indicator is 8 bits for v1..9. Result is identical to the
+  -- bitstream method but far cheaper per frame.
   local function codewords(bytes, v)
     local cap = qcap(v)
-    local bits = {}
-    local function put(val, n) for i = n-1, 0, -1 do bits[#bits+1] = getbit(val, i) end end
-    put(4, 4); put(#bytes, 8)
-    for i = 1, #bytes do put(bytes[i], 8) end
-    for _ = 1, math.min(4, cap*8 - #bits) do bits[#bits+1] = 0 end
-    while #bits % 8 ~= 0 do bits[#bits+1] = 0 end
+    local n = #bytes
     local dcw = {}
-    for i = 1, #bits, 8 do local b = 0; for j = 0, 7 do b = b*2 + (bits[i+j] or 0) end; dcw[#dcw+1] = b end
+    dcw[1] = 64 + math.floor(n / 16)                                   -- 0100 | hi(len)
+    dcw[2] = (n % 16) * 16 + math.floor(bytes[1] / 16)                 -- lo(len) | hi(b1)
+    for k = 2, n do dcw[k+1] = (bytes[k-1] % 16) * 16 + math.floor(bytes[k] / 16) end
+    dcw[n+2] = (bytes[n] % 16) * 16                                    -- lo(bn) | 0000 terminator
     local pad, pi = {0xEC, 0x11}, 1
     while #dcw < cap do dcw[#dcw+1] = pad[pi]; pi = (pi % 2) + 1 end
     return dcw
-  end
-  local function interleave(dcw, v)
-    local t = QVER[v]; local eclen, g1, s1, g2, s2 = t[1], t[2], t[3], t[4], t[5]
-    local blk, ecs, idx = {}, {}, 1
-    local function take(n) local b = {}; for i = 1, n do b[i] = dcw[idx]; idx = idx + 1 end; return b end
-    for _ = 1, g1 do local b = take(s1); blk[#blk+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
-    for _ = 1, g2 do local b = take(s2); blk[#blk+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
-    local out, maxd = {}, math.max(s1, s2)
-    for i = 1, maxd do for b = 1, #blk do if blk[b][i] then out[#out+1] = blk[b][i] end end end
-    for i = 1, eclen do for b = 1, #ecs do out[#out+1] = ecs[b][i] end end
-    return out
   end
 
   local function maskbit(m, x, y)
@@ -625,23 +609,34 @@ do
     return bxor(mask * POW2[10] + (rem % POW2[10]), 0x5412)
   end
 
-  -- MEMORY: one flat array C per cell instead of two (module + fixed). Each cell holds
-  --   C = module + 2*fixed   (0/1 = data module, 2/3 = fixed pattern with that module bit).
-  -- This halves the dominant data structure (both the transient during build and the
-  -- resident array kept for display). module(C) = C % 2 ; fixed(C) = C >= 2.
+  -- MEMORY: one flat array C per cell (module + fixed). C = module + 2*fixed
+  -- (0/1 = data module, 2/3 = fixed pattern). module(C) = C % 2 ; fixed(C) = C >= 2.
+  -- effective (masked) module bit at (x,y) for a data cell:
+  local function effbit(C, size, m, x, y)
+    local c = C[y*size+x]
+    if c >= 2 then return c - 2 end
+    return (maskbit(m, x, y) and (1-c) or c)
+  end
 
-  -- place every function pattern (finders, timing, alignment, dark module, format reserve)
-  local function placePatterns(C, size, v)
-    local function set(x, y, val) if x>=0 and x<size and y>=0 and y<size then C[y*size+x] = val + 2 end end
-    local function fixat(x, y) local i = y*size+x; C[i] = (C[i] % 2) + 2 end   -- keep module, mark fixed
-    local function finder(ox, oy)
-      for dy = -1, 7 do for dx = -1, 7 do
+  -- One finder pattern (7x7 + separator) at (ox,oy). Placed one-per-frame to stay small.
+  local function placeFinder(C, size, ox, oy)
+    for dy = -1, 7 do for dx = -1, 7 do
+      local x, y = ox+dx, oy+dy
+      if x>=0 and x<size and y>=0 and y<size then
         local on = (dx>=0 and dx<=6 and (dy==0 or dy==6)) or (dy>=0 and dy<=6 and (dx==0 or dx==6)) or (dx>=2 and dx<=4 and dy>=2 and dy<=4)
-        set(ox+dx, oy+dy, on and 1 or 0)
-      end end
-    end
-    finder(0, 0); finder(size-7, 0); finder(0, size-7)
-    for i = 8, size-9 do local b = (i % 2 == 0) and 1 or 0; set(i, 6, b); set(6, i, b) end
+        C[y*size+x] = (on and 1 or 0) + 2
+      end
+    end end
+  end
+  -- Both timing lines.
+  local function placeTiming(C, size)
+    for i = 8, size-9 do local b = ((i % 2 == 0) and 1 or 0) + 2; C[6*size+i] = b; C[i*size+6] = b end
+  end
+  -- Stage 2: alignment patterns, dark module, and the format-info reserve (must run last so
+  -- it only marks cells fixed without disturbing the modules the earlier stages wrote).
+  local function placeAlignReserve(C, size, v)
+    local function set(x, y, val) if x>=0 and x<size and y>=0 and y<size then C[y*size+x] = val + 2 end end
+    local function fixat(x, y) local i = y*size+x; C[i] = (C[i] % 2) + 2 end
     local ac = QALIGN[v]
     for _, cy in ipairs(ac) do for _, cx in ipairs(ac) do
       local nf = (cx<=8 and cy<=8) or (cx>=size-9 and cy<=8) or (cx<=8 and cy>=size-9)
@@ -653,48 +648,6 @@ do
     for i = 0, 8 do if i ~= 6 then fixat(i, 8); fixat(8, i) end end
     fixat(6, 8); fixat(8, 6)
     for i = 0, 7 do fixat(size-1-i, 8); fixat(8, size-1-i) end
-  end
-
-  -- place the data bit-stream directly (no stored position list); data cells are C < 2
-  local function placeData(C, size, seq)
-    local bi, col, up = 1, size-1, true
-    local function nextbit() local s = seq[math.floor((bi-1)/8)+1] or 0; local b = getbit(s, 7-((bi-1)%8)); bi = bi + 1; return b end
-    while col > 0 do
-      if col == 6 then col = col - 1 end
-      for t = 0, size-1 do
-        local y = up and (size-1-t) or t
-        for c = 0, 1 do local x = col-c; local i = y*size+x; if C[i] < 2 then C[i] = nextbit() end end
-      end
-      up = not up; col = col - 2
-    end
-  end
-
-  -- penalty score for one mask, read on the fly (no matrix copy)
-  local function penalty(C, size, m)
-    local function eff(x, y) local c = C[y*size+x]; if c >= 2 then return c - 2 end; return (maskbit(m, x, y) and (1-c) or c) end
-    local sc = 0
-    for y = 0, size-1 do local run, prev = 0, -1
-      for x = 0, size-1 do local b = eff(x, y); if b == prev then run = run+1 else if run>=5 then sc = sc+3+(run-5) end; run = 1; prev = b end end
-      if run >= 5 then sc = sc + 3 + (run-5) end end
-    for x = 0, size-1 do local run, prev = 0, -1
-      for y = 0, size-1 do local b = eff(x, y); if b == prev then run = run+1 else if run>=5 then sc = sc+3+(run-5) end; run = 1; prev = b end end
-      if run >= 5 then sc = sc + 3 + (run-5) end end
-    local dark = 0; for y = 0, size-1 do for x = 0, size-1 do dark = dark + eff(x, y) end end
-    sc = sc + math.floor(math.abs(dark*100/(size*size) - 50) / 5) * 10
-    return sc
-  end
-
-  -- bake the chosen mask into data cells (C < 2), then write the format bits as plain modules
-  local function bake(C, size, best)
-    for y = 0, size-1 do for x = 0, size-1 do local i = y*size+x; if C[i] < 2 and maskbit(best, x, y) then C[i] = 1 - C[i] end end end
-    local fmt = format_int(best)
-    local function fset(x, y, b) C[y*size+x] = b end
-    for i = 0, 5 do fset(8, i, getbit(fmt, i)) end
-    fset(8, 7, getbit(fmt, 6)); fset(8, 8, getbit(fmt, 7)); fset(7, 8, getbit(fmt, 8))
-    for i = 9, 14 do fset(14-i, 8, getbit(fmt, i)) end
-    for i = 0, 7 do fset(size-1-i, 8, getbit(fmt, i)) end
-    for i = 8, 14 do fset(8, size-15+i, getbit(fmt, i)) end
-    fset(8, size-8, 1)
   end
 
   -- coordinates: live GPS first, then the last remembered fix, then the SD file this
@@ -713,54 +666,247 @@ do
   local qrKey                          -- url the finished qrCode was built for (cache key)
 
   local function qrGenBegin(url)
-    qrGen = { url = url, phase = "seq", mask = 0, best = nil, bestSc = nil, prog = 0 }
+    qrGen = { url = url, phase = "gf", gi = 0, gx = 1, prog = 0 }
     qrErr = nil
     flushCache()                       -- free tile bitmaps: give the QR arrays headroom
     collectgarbage()
   end
 
-  -- advance ONE bounded phase; called once per refresh while qrGen is set
+  -- Advance the generation by ONE bounded frame's worth of work. Every branch does at most
+  -- a few hundred cheap ops (or a handful of RS steps), then returns; the next refresh
+  -- continues where this one stopped. This is what keeps us under the CPU-limit watchdog.
   qrGenStep = function()
     local g = qrGen
     if not g then return end
-    if g.phase == "seq" then
-      ensureGF()
+    local ph = g.phase
+
+    if ph == "gf" then
+      -- build GF(256) exp/log tables, BUD_GF entries per frame
+      if gfReady then g.phase = "seq"; return end
+      local n = 0
+      while n < BUD_GF and g.gi <= 510 do
+        local i = g.gi
+        if i <= 255 then EXP[i] = g.gx; LOG[g.gx] = i; g.gx = g.gx * 2; if g.gx >= 256 then g.gx = bxor(g.gx, 0x11D) end
+        else EXP[i] = EXP[i - 255] end
+        g.gi = i + 1; n = n + 1
+      end
+      g.prog = 0.02 + 0.06 * (g.gi / 511)
+      if g.gi > 510 then gfReady = true; g.phase = "seq" end
+
+    elseif ph == "seq" then
+      -- bytes -> version -> data codewords (bounded: ~a few hundred ops, one frame)
       local bytes = {}
       for i = 1, string.len(g.url) do bytes[i] = string.byte(g.url, i) end
       local v
       for ver = 1, 6 do if #bytes*8 <= qcap(ver)*8 - 12 then v = ver; break end end
       if not v then qrErr = "Position zu lang"; qrGen = nil; return end
-      g.v = v; g.size = 17 + 4*v
-      g.seq = interleave(codewords(bytes, v), v)
-      g.prog = 0.15; g.phase = "alloc"
+      g.v, g.size = v, 17 + 4*v
+      local t = QVER[v]
+      g.eclen, g.g1, g.s1, g.g2, g.s2 = t[1], t[2], t[3], t[4], t[5]
+      g.dcw = codewords(bytes, v)
+      g.prog = 0.12; g.phase = "rsinit"
+
+    elseif ph == "rsinit" then
+      -- split data codewords into blocks; prepare Reed-Solomon state (generator once)
+      local blk, idx = {}, 1
+      for _ = 1, g.g1 do local b = {}; for i = 1, g.s1 do b[i] = g.dcw[idx]; idx = idx + 1 end; blk[#blk+1] = b end
+      for _ = 1, g.g2 do local b = {}; for i = 1, g.s2 do b[i] = g.dcw[idx]; idx = idx + 1 end; blk[#blk+1] = b end
+      g.blk, g.dcw = blk, nil
+      g.gen = QRGEN[g.eclen]
+      g.ecs = {}
+      g.blkI, g.byteI = 1, 1
+      g.res = {}; for k = 1, g.eclen do g.res[k] = 0 end
+      g.prog = 0.15; g.phase = "rs"
       collectgarbage()
-    elseif g.phase == "alloc" then
-      local size = g.size
-      local C = {}
-      for i = 0, size*size - 1 do C[i] = 0 end
-      placePatterns(C, size, g.v)
-      g.C = C
-      g.prog = 0.30; g.phase = "data"
+
+    elseif ph == "rs" then
+      -- Reed-Solomon EC: BUD_RS data-byte steps per frame (each is a full GF polynomial step)
+      local eclen, gen, n = g.eclen, g.gen, 0
+      while n < BUD_RS and g.blkI <= #g.blk do
+        local blk = g.blk[g.blkI]
+        if g.byteI <= #blk then
+          local res = g.res
+          local factor = bxor(blk[g.byteI], res[1])
+          for j = 1, eclen - 1 do res[j] = res[j+1] end
+          res[eclen] = 0
+          if factor ~= 0 then for j = 2, #gen do res[j-1] = bxor(res[j-1], gmul(gen[j], factor)) end end
+          g.byteI = g.byteI + 1; n = n + 1
+        else
+          g.ecs[g.blkI] = g.res
+          g.blkI = g.blkI + 1; g.byteI = 1
+          g.res = {}; for k = 1, eclen do g.res[k] = 0 end
+        end
+      end
+      g.prog = 0.15 + 0.08 * (g.blkI / (#g.blk + 1))
+      if g.blkI > #g.blk then g.phase = "asm" end
+
+    elseif ph == "asm" then
+      -- interleave data + EC codewords into the final bit-source (bounded, one frame)
+      local out, maxd = {}, math.max(g.s1, g.s2)
+      for i = 1, maxd do for b = 1, #g.blk do if g.blk[b][i] then out[#out+1] = g.blk[b][i] end end end
+      for i = 1, g.eclen do for b = 1, #g.ecs do out[#out+1] = g.ecs[b][i] end end
+      g.seq, g.blk, g.ecs, g.gen, g.res = out, nil, nil, nil, nil
+      g.prog = 0.24; g.phase = "init"; g.ii = 0
       collectgarbage()
-    elseif g.phase == "data" then
-      placeData(g.C, g.size, g.seq)
-      g.seq = nil
-      g.prog = 0.42; g.phase = "mask"; g.mask = 0
+
+    elseif ph == "init" then
+      -- allocate + zero the cell array, BUD_CELL cells per frame
+      local size, n = g.size, 0
+      if not g.C then g.C = {} end
+      local C, last = g.C, size*size - 1
+      while n < BUD_INIT and g.ii <= last do C[g.ii] = 0; g.ii = g.ii + 1; n = n + 1 end
+      g.prog = 0.24 + 0.06 * (g.ii / (last + 1))
+      if g.ii > last then g.phase = "pat" end
+
+    elseif ph == "pat" then
+      placeFinder(g.C, g.size, 0, 0)              -- top-left finder
+      g.prog = 0.31; g.phase = "patB"
+
+    elseif ph == "patB" then
+      placeFinder(g.C, g.size, g.size-7, 0)       -- top-right finder
+      g.prog = 0.32; g.phase = "patC"
+
+    elseif ph == "patC" then
+      placeFinder(g.C, g.size, 0, g.size-7)       -- bottom-left finder
+      placeTiming(g.C, g.size)                    -- + timing lines
+      g.prog = 0.33; g.phase = "pat2"
+
+    elseif ph == "pat2" then
+      placeAlignReserve(g.C, g.size, g.v)         -- alignment + dark + format reserve
+      g.prog = 0.34; g.phase = "data"
+      g.col, g.up, g.t, g.bi = g.size - 1, true, 0, 1
       collectgarbage()
-    elseif g.phase == "mask" then
-      local m = g.mask
-      local s = penalty(g.C, g.size, m)
-      if not g.best or s < g.bestSc then g.best, g.bestSc = m, s end
-      g.mask = m + 1
-      g.prog = 0.42 + 0.50 * (g.mask / 8)
-      if g.mask >= 8 then g.phase = "bake" end
+
+    elseif ph == "data" then
+      -- zig-zag place the bit-source into data cells, BUD_CELL columns-steps per frame
+      local size, C, seq, n = g.size, g.C, g.seq, 0
+      while n < BUD_DATA and g.col > 0 do
+        local t = g.t
+        local y = g.up and (size-1-t) or t
+        for c = 0, 1 do
+          local x = g.col - c; local i = y*size + x
+          if C[i] < 2 then
+            local s = seq[math.floor((g.bi-1)/8)+1] or 0
+            C[i] = getbit(s, 7 - ((g.bi-1) % 8)); g.bi = g.bi + 1
+          end
+        end
+        g.t = t + 1
+        if g.t >= size then
+          g.t = 0; g.up = not g.up; g.col = g.col - 2
+          if g.col == 6 then g.col = 5 end       -- skip the vertical timing column
+        end
+        n = n + 1
+      end
+      g.prog = 0.34 + 0.10 * (1 - g.col / size)
+      if g.col <= 0 then
+        g.seq = nil
+        g.phase = "mask"
+        g.m, g.sub, g.i, g.sc, g.run, g.prev, g.dark = 0, "eff", 0, 0, 0, -1, 0
+        g.eff = {}
+        g.best, g.bestSc = nil, nil
+        collectgarbage()
+      end
+
+    elseif ph == "mask" then
+      -- best-of-8 masks. For each mask we first materialise its masked bits into g.eff ONCE
+      -- (the maskbit() calls are the expensive part), then score three cheap passes over that
+      -- array: row runs, column runs, dark ratio. This cuts maskbit() calls threefold and
+      -- keeps every frame small. eff is row-major (index y*size+x); the column pass transposes.
+      local size, cells = g.size, g.size * g.size
+      if g.sub == "eff" then
+        local eff, C, m, n = g.eff, g.C, g.m, 0
+        while n < BUD_MASKEFF and g.i < cells do
+          eff[g.i] = effbit(C, size, m, g.i % size, math.floor(g.i / size))
+          g.i = g.i + 1; n = n + 1
+        end
+        if g.i >= cells then g.sub = "score"; g.pass = 1; g.lp = 0; g.ln = 0; g.sc = 0; g.run = 0; g.prev = -1; g.dark = 0 end
+      else
+        -- score passes track position within a line (lp) and line index (ln) incrementally,
+        -- so there is no % / floor per cell. pass 1 row runs, pass 2 column runs, pass 3 dark.
+        local eff, n = g.eff, 0
+        while n < BUD_MASKSCORE and g.sub == "score" do
+          local lp, ln = g.lp, g.ln
+          local b
+          if g.pass == 2 then b = eff[lp*size + ln]   -- column pass: line = column ln, pos = row lp
+          else b = eff[ln*size + lp] end              -- row pass / dark pass
+          if g.pass <= 2 then
+            if lp == 0 then g.run = 0; g.prev = -1 end
+            if b == g.prev then g.run = g.run + 1
+            else if g.run >= 5 then g.sc = g.sc + 3 + (g.run - 5) end; g.run = 1; g.prev = b end
+            if lp == size-1 and g.run >= 5 then g.sc = g.sc + 3 + (g.run - 5) end
+          else
+            g.dark = g.dark + b
+          end
+          lp = lp + 1
+          if lp >= size then lp = 0; ln = ln + 1 end
+          g.lp, g.ln = lp, ln
+          if ln >= size then
+            g.lp, g.ln, g.run, g.prev = 0, 0, 0, -1
+            if g.pass < 3 then g.pass = g.pass + 1
+            else
+              g.sc = g.sc + math.floor(math.abs(g.dark*100/cells - 50) / 5) * 10
+              if not g.best or g.sc < g.bestSc then g.best, g.bestSc = g.m, g.sc end
+              g.m = g.m + 1
+              if g.m < 8 then g.sub = "eff"; g.eff = {}; g.i = 0 end
+            end
+          end
+          n = n + 1
+        end
+      end
+      g.prog = 0.44 + 0.44 * (g.m / 8)
+      if g.m >= 8 then g.phase = "bake"; g.ii = 0; g.eff = nil; collectgarbage() end
+
+    elseif ph == "bake" then
+      -- apply the chosen mask to data cells, BUD_CELL cells per frame
+      local size, C, best, last, n = g.size, g.C, g.best, g.size*g.size - 1, 0
+      while n < BUD_BAKE and g.ii <= last do
+        local i = g.ii; local x = i % size; local y = math.floor(i / size)
+        if C[i] < 2 and maskbit(best, x, y) then C[i] = 1 - C[i] end
+        g.ii = i + 1; n = n + 1
+      end
+      g.prog = 0.88 + 0.06 * (g.ii / (last + 1))
+      if g.ii > last then g.phase = "fmt" end
+
+    elseif ph == "fmt" then
+      -- write the 15 format bits (bounded, one frame)
+      local C, size, best = g.C, g.size, g.best
+      local fmt = format_int(best)
+      local function fset(x, y, b) C[y*size+x] = b end
+      for i = 0, 5 do fset(8, i, getbit(fmt, i)) end
+      fset(8, 7, getbit(fmt, 6)); fset(8, 8, getbit(fmt, 7)); fset(7, 8, getbit(fmt, 8))
+      for i = 9, 14 do fset(14-i, 8, getbit(fmt, i)) end
+      for i = 0, 7 do fset(size-1-i, 8, getbit(fmt, i)) end
+      for i = 8, 14 do fset(8, size-15+i, getbit(fmt, i)) end
+      fset(8, size-8, 1)
+      g.prog = 0.95; g.phase = "rects"; g.ry = 0; g.rects = {}
       collectgarbage()
-    elseif g.phase == "bake" then
-      bake(g.C, g.size, g.best)
-      qrCode = { size = g.size, M = g.C }   -- keep only the finished cell array (module = C % 2)
-      qrKey  = g.url
-      g.prog = 1; qrGen = nil
-      collectgarbage()
+
+    elseif ph == "rects" then
+      -- pre-merge each row's dark modules into horizontal run rectangles, so the finished
+      -- QR redraws with ~a few hundred fills instead of one per module — the redraw itself
+      -- must also stay under the CPU limit. A few rows per frame.
+      local size, C, rects, n = g.size, g.C, g.rects, 0
+      while n < BUD_RECT and g.ry < size do
+        local y = g.ry
+        local x = 0
+        while x < size do
+          if C[y*size+x] % 2 == 1 then
+            local x0 = x
+            while x < size and C[y*size+x] % 2 == 1 do x = x + 1 end
+            rects[#rects+1] = { x0, y, x - x0 }        -- {module x, module y, width}
+          else
+            x = x + 1
+          end
+        end
+        g.ry = y + 1; n = n + 1
+      end
+      g.prog = 0.95 + 0.05 * (g.ry / size)
+      if g.ry >= size then
+        qrCode = { size = g.size, rects = g.rects }    -- finished: only the render list is kept
+        qrKey  = g.url
+        g.prog = 1; qrGen = nil
+        collectgarbage()
+      end
     end
   end
 
@@ -1844,7 +1990,9 @@ local function drawQR()
     return
   end
 
-  -- finished QR (quiet zone = 4 modules), scaled to fit the height below the header
+  -- finished QR (quiet zone = 4 modules), scaled to fit the height below the header.
+  -- Drawn from pre-merged horizontal run rectangles (qrCode.rects) so the redraw is a few
+  -- hundred fills, not one per module — keeps the redraw frame under the CPU limit too.
   local n, quiet = qrCode.size, 4
   local units = n + quiet * 2
   local scale = math.floor((H - 24) / units)
@@ -1852,15 +2000,11 @@ local function drawQR()
   local dim = units * scale
   local ox = 10
   local oy = 20 + math.floor((H - 20 - dim) / 2)
-  local M = qrCode.M
   lcd.drawFilledRectangle(ox, oy, dim, dim, lcd.RGB(255, 255, 255))
-  for y = 0, n - 1 do
-    local rb = y * n
-    for x = 0, n - 1 do
-      if M[rb + x] % 2 == 1 then          -- module bit (cell = module + 2*fixed)
-        lcd.drawFilledRectangle(ox + (x + quiet) * scale, oy + (y + quiet) * scale, scale, scale, C_B)
-      end
-    end
+  local rects = qrCode.rects
+  for i = 1, #rects do
+    local r = rects[i]                    -- { module x, module y, width }
+    lcd.drawFilledRectangle(ox + (r[1] + quiet) * scale, oy + (r[2] + quiet) * scale, r[3] * scale, scale, C_B)
   end
 
   local tx = ox + dim + 20
