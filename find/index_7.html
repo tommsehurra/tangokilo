@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0d1622" id="themeColor">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Modell-Finder</title>
+<style>
+/* Standalone finder tool. Target coordinates come ONLY from the URL hash
+   (#lat,lon) carried by the TX QR / Telegram alert — never from a server,
+   never hard-coded. Original design (not a copy of any vendor UI). */
+:root{ --ink:#ffffff; --shadow:0 2px 14px rgba(0,0,0,.45); }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  font-family:"Bahnschrift","DIN Alternate","Segoe UI",system-ui,sans-serif;
+  color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
+  background:#0d1622;transition:background-color .6s ease;
+  padding:env(safe-area-inset-top,0) 18px env(safe-area-inset-bottom,0);
+  display:flex;flex-direction:column;min-height:100%;overflow:hidden;user-select:none;
+}
+.top{display:flex;align-items:center;justify-content:space-between;padding:16px 2px 0}
+.tag{font-size:12px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;opacity:.85;text-shadow:var(--shadow)}
+.name{font-size:20px;font-weight:700;letter-spacing:.01em;text-shadow:var(--shadow)}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;
+  background:rgba(255,255,255,.16);color:#fff;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.iconbtn svg{width:22px;height:22px;fill:currentColor}
+.iconbtn.off{opacity:.45}
+
+/* Start gate (user gesture for iOS motion + geolocation permission) */
+#gate{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:24px}
+#gate p{font-size:16px;line-height:1.6;max-width:32ch;text-shadow:var(--shadow)}
+.btn{font-family:inherit;font-size:17px;font-weight:700;letter-spacing:.03em;padding:16px 30px;border-radius:16px;border:2px solid #fff;background:#fff;color:#0d1622;cursor:pointer}
+.btn.ghost{background:transparent;color:#fff}
+.btn:active{transform:translateY(1px)}
+.gaterow{display:flex;gap:8px;width:100%;max-width:340px}
+.gaterow input{flex:1;min-width:0;padding:13px;border-radius:12px;border:2px solid rgba(255,255,255,.5);background:rgba(0,0,0,.15);color:#fff;font:inherit;font-size:15px;text-align:center}
+.gaterow input::placeholder{color:rgba(255,255,255,.6)}
+
+#main{flex:1;display:none;flex-direction:column}
+body.live #main{display:flex}
+body.live #gate{display:none}
+
+.dial{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+#arrow{width:min(64vw,300px);height:min(64vw,300px);transition:transform .16s cubic-bezier(.2,.8,.2,1);will-change:transform}
+#arrow svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 20px rgba(0,0,0,.4))}
+#here{position:absolute;display:none;flex-direction:column;align-items:center;gap:6px}
+#here .pulse{width:min(46vw,220px);height:min(46vw,220px);border-radius:50%;background:#fff;animation:pulse 1.1s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.82);opacity:.95}70%{transform:scale(1.06);opacity:.55}100%{transform:scale(.82);opacity:.95}}
+body.here #arrow{display:none}
+body.here #here{display:flex}
+@media(prefers-reduced-motion:reduce){#arrow{transition:none}#here .pulse{animation:none}}
+
+.readout{text-align:center;padding:4px 0 6px}
+.dist{font-weight:700;line-height:.86;letter-spacing:-.02em;text-shadow:var(--shadow)}
+.dist .num{font-size:clamp(64px,22vw,150px)}
+.dist .u{font-size:clamp(22px,6vw,40px);font-weight:600;opacity:.8;margin-left:8px}
+.state{margin-top:10px;font-size:15px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.9;min-height:18px;text-shadow:var(--shadow)}
+.meta{margin-top:6px;font-size:12px;opacity:.72;text-shadow:var(--shadow)}
+
+.foot{display:flex;align-items:center;justify-content:space-between;padding:10px 6px 18px}
+.foot .iconbtn{width:60px;height:60px;background:rgba(255,255,255,.2)}
+.foot .iconbtn svg{width:26px;height:26px}
+#install{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0) + 92px);
+  padding:11px 18px;border-radius:999px;border:0;background:rgba(0,0,0,.35);color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer;backdrop-filter:blur(6px);display:none}
+.editrow{display:flex;gap:8px;padding:0 0 14px}
+.editrow input{flex:1;min-width:0;padding:12px;border-radius:12px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.15);color:#fff;font:inherit;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <div class="tag">Finde</div>
+    <div class="name" id="name">Modell</div>
+  </div>
+  <button class="iconbtn" id="vibBtn" title="Vibration" aria-label="Vibration an/aus">
+    <svg viewBox="0 0 24 24"><path d="M2 8h2v8H2zm3-2h2v12H5zm15 2h2v8h-2zM17 6h2v12h-2zM9 3h6v18H9z"/></svg>
+  </button>
+</div>
+
+<div id="gate">
+  <p id="gateText">Kein Ziel geladen. Scanne den QR-Code der Funke oder öffne den Telegram-Link.</p>
+  <button class="btn" id="startBtn">Start</button>
+  <div class="gaterow"><input id="gateCoords" inputmode="decimal" placeholder="lat, lon (manuell)"><button class="btn ghost" id="gateSet">OK</button></div>
+</div>
+
+<div id="main">
+  <div class="dial">
+    <div id="arrow">
+      <svg viewBox="0 0 100 100" aria-label="Richtung zum Modell">
+        <path d="M50 4 L86 92 L50 72 L14 92 Z" fill="#fff"/>
+      </svg>
+    </div>
+    <div id="here"><div class="pulse"></div></div>
+  </div>
+  <div class="readout">
+    <div class="dist"><span class="num" id="dist">—</span><span class="u" id="distU">m</span></div>
+    <div class="state" id="state">Standort…</div>
+    <div class="meta">Kompass <b id="hdg">—</b>° · Peilung <b id="brg">—</b>° · GPS ±<b id="acc">—</b> m</div>
+  </div>
+  <div class="editrow" id="editRow" hidden>
+    <input id="coordsInput" inputmode="decimal" placeholder="neue lat, lon">
+    <button class="btn" id="setBtn" style="padding:12px 18px;font-size:15px">OK</button>
+  </div>
+  <button id="install">App installieren</button>
+  <div class="foot">
+    <button class="iconbtn" id="closeBtn" aria-label="Schließen">
+      <svg viewBox="0 0 24 24"><path d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/></svg>
+    </button>
+    <button class="iconbtn" id="editBtn2" aria-label="Koordinaten ändern" title="Koords ändern">
+      <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    </button>
+    <a class="iconbtn" id="mapsBtn" href="#" target="_blank" rel="noopener noreferrer" aria-label="In Google Maps">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+    </a>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+let target=null, here=null, heading=null, haveCompass=false, vibOn=true;
+
+/* target only from hash/query — never a server */
+function parseCoords(s){
+  if(!s) return null;
+  const m=String(s).replace(/[#?]/g,"").match(/(-?\d+(?:\.\d+)?)[ ,;]+(-?\d+(?:\.\d+)?)/);
+  if(!m) return null;
+  const la=parseFloat(m[1]), lo=parseFloat(m[2]);
+  if(!isFinite(la)||!isFinite(lo)||Math.abs(la)>90||Math.abs(lo)>180) return null;
+  return {lat:la, lon:lo};
+}
+function setTarget(t){
+  if(!t) return false;
+  target=t;
+  $("mapsBtn").href="https://www.google.com/maps?q="+t.lat.toFixed(7)+","+t.lon.toFixed(7);
+  return true;
+}
+
+/* geo maths */
+const R=6371000, rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+function haversine(a,b){const dLa=rad(b.lat-a.lat),dLo=rad(b.lon-a.lon);
+  const s=Math.sin(dLa/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(s)));}
+function bearing(a,b){const y=Math.sin(rad(b.lon-a.lon))*Math.cos(rad(b.lat));
+  const x=Math.cos(rad(a.lat))*Math.sin(rad(b.lat))-Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));
+  return (deg(Math.atan2(y,x))+360)%360;}
+
+/* traffic-light background: hot (near) = green, cold (far) = red */
+const STOPS=[[150,[183,28,28]],[60,[229,57,53]],[30,[251,140,0]],[15,[253,216,53]],[6,[124,179,66]],[0,[46,125,50]]];
+function colorFor(d){
+  if(d>=STOPS[0][0]) return STOPS[0][1];
+  for(let i=0;i<STOPS.length-1;i++){
+    const [d1,c1]=STOPS[i],[d2,c2]=STOPS[i+1];
+    if(d<=d1 && d>=d2){ const t=(d1-d)/(d1-d2||1);
+      return [Math.round(c1[0]+(c2[0]-c1[0])*t),Math.round(c1[1]+(c2[1]-c1[1])*t),Math.round(c1[2]+(c2[2]-c1[2])*t)];}
+  }
+  return STOPS[STOPS.length-1][1];
+}
+
+/* escalating haptics — faster pulses the closer you get (metal-detector style) */
+let vibTimer=null, lastD=null;
+function haptics(d){
+  if(!vibOn || !navigator.vibrate){ return; }
+  lastD=d;
+  if(vibTimer) return;                       // loop already running
+  const loop=()=>{
+    if(!vibOn || lastD==null){ vibTimer=null; return; }
+    const d=lastD;
+    if(d<=3){ navigator.vibrate(180); vibTimer=setTimeout(loop,260); }
+    else { const period=90+Math.min(d,45)/45*1400; navigator.vibrate(35); vibTimer=setTimeout(loop,period); }
+  };
+  loop();
+}
+function stopHaptics(){ if(vibTimer){clearTimeout(vibTimer);vibTimer=null;} if(navigator.vibrate) navigator.vibrate(0); }
+
+function render(){
+  if(!target||!here){ requestAnimationFrame(render); return; }
+  const d=haversine(here,target), b=bearing(here,target);
+  // distance
+  if(d<1000){ $("dist").textContent=Math.round(d); $("distU").textContent="m"; }
+  else { $("dist").textContent=(d/1000).toFixed(2); $("distU").textContent="km"; }
+  // background + status bar tint
+  const c=colorFor(d), css=`rgb(${c[0]},${c[1]},${c[2]})`;
+  document.body.style.backgroundColor=css;
+  $("themeColor").setAttribute("content", css);
+  // arrow / here
+  const near = d<=3;
+  document.body.classList.toggle("here", near);
+  const rel=(heading==null)?b:(b-heading+360)%360;
+  $("arrow").style.transform="rotate("+rel+"deg)";
+  $("brg").textContent=Math.round(b);
+  $("hdg").textContent=heading==null?"—":Math.round(heading);
+  $("acc").textContent=here.acc==null?"—":Math.round(here.acc);
+  const st=$("state");
+  if(near) st.textContent="hier";
+  else if(heading==null && !haveCompass) st.textContent="kein Kompass · Nord oben";
+  else st.textContent = d>60?"kalt":d>20?"wärmer":"heiß";
+  haptics(d);
+  requestAnimationFrame(render);
+}
+
+function startGeo(){
+  if(!navigator.geolocation){ $("state").textContent="kein GPS"; return; }
+  navigator.geolocation.watchPosition(
+    p=>{ here={lat:p.coords.latitude,lon:p.coords.longitude,acc:p.coords.accuracy};
+         if(heading==null && p.coords.heading!=null && !isNaN(p.coords.heading) && p.coords.speed>0.5) heading=p.coords.heading; },
+    e=>{ $("state").textContent="GPS-Fehler"; },
+    {enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+}
+function onOrient(e){
+  let h=null;
+  if(typeof e.webkitCompassHeading==="number") h=e.webkitCompassHeading;
+  else if(e.absolute && typeof e.alpha==="number") h=(360-e.alpha)%360;
+  if(h!=null){ const scr=(screen.orientation&&screen.orientation.angle)||window.orientation||0;
+    heading=(h+scr+360)%360; haveCompass=true; }
+}
+function startCompass(){
+  const add=()=>{ window.addEventListener("deviceorientationabsolute",onOrient,true);
+                  window.addEventListener("deviceorientation",onOrient,true); };
+  if(typeof DeviceOrientationEvent!=="undefined" && typeof DeviceOrientationEvent.requestPermission==="function")
+    DeviceOrientationEvent.requestPermission().then(r=>{ if(r==="granted") add(); }).catch(()=>{});
+  else add();
+}
+function go(){ document.body.classList.add("live"); startGeo(); startCompass(); requestAnimationFrame(render); }
+
+$("startBtn").onclick=()=>{ if(!target){ $("gateText").textContent="Keine Zielkoordinaten — unten eintragen oder QR neu scannen."; return; } go(); };
+$("gateSet").onclick=()=>{ if(setTarget(parseCoords($("gateCoords").value))) go(); };
+$("closeBtn").onclick=()=>{ stopHaptics(); if(history.length>1) history.back(); else location.href="/"; };
+$("editBtn2").onclick=()=>{ $("editRow").hidden=!$("editRow").hidden; };
+$("setBtn").onclick=()=>{ if(setTarget(parseCoords($("coordsInput").value))) $("editRow").hidden=true; };
+$("vibBtn").onclick=()=>{ vibOn=!vibOn; $("vibBtn").classList.toggle("off",!vibOn); if(!vibOn) stopHaptics(); };
+window.addEventListener("hashchange",()=>{ const t=parseCoords(location.hash); if(t) setTarget(t); });
+
+/* install (Android/Chrome) */
+let deferred=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("install").style.display="block"; });
+$("install").onclick=async()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").style.display="none"; };
+window.addEventListener("appinstalled",()=>{ $("install").style.display="none"; });
+
+/* PWA service worker (offline shell) */
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* boot: target from hash (preferred) or query */
+setTarget(parseCoords(location.hash)||parseCoords(location.search));
+if(target) $("gateText").textContent="Ziel geladen: "+target.lat.toFixed(6)+", "+target.lon.toFixed(6)+". Tippe Start, dann Standort + Kompass erlauben.";
+})();
+</script>
+</body>
+</html>
