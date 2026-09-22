@@ -25,7 +25,7 @@ body{
   color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;
   background:#0d1622;transition:background-color .6s ease;
   padding:env(safe-area-inset-top,0) 18px env(safe-area-inset-bottom,0);
-  display:flex;flex-direction:column;min-height:100%;overflow:hidden;user-select:none;
+  display:flex;flex-direction:column;height:100%;overflow:hidden;user-select:none;
 }
 .top{display:flex;align-items:center;justify-content:space-between;padding:16px 2px 0}
 .tag{font-size:12px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;opacity:.85;text-shadow:var(--shadow)}
@@ -49,28 +49,27 @@ body{
 body.live #main{display:flex}
 body.live #gate{display:none}
 
-.dial{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
-#arrow{width:min(64vw,300px);height:min(64vw,300px);transition:transform .16s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.dial{flex:1 1 auto;display:flex;align-items:center;justify-content:center;position:relative;min-height:0;overflow:hidden}
+#arrow{width:min(60vw,40vh,300px);height:min(60vw,40vh,300px);transition:transform .16s cubic-bezier(.2,.8,.2,1);will-change:transform}
 #arrow svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 20px rgba(0,0,0,.4))}
 #here{position:absolute;display:none;flex-direction:column;align-items:center;gap:6px}
-#here .pulse{width:min(46vw,220px);height:min(46vw,220px);border-radius:50%;background:#fff;animation:pulse 1.1s ease-out infinite}
+#here .pulse{width:min(44vw,30vh,220px);height:min(44vw,30vh,220px);border-radius:50%;background:#fff;animation:pulse 1.1s ease-out infinite}
 @keyframes pulse{0%{transform:scale(.82);opacity:.95}70%{transform:scale(1.06);opacity:.55}100%{transform:scale(.82);opacity:.95}}
 body.here #arrow{display:none}
 body.here #here{display:flex}
 @media(prefers-reduced-motion:reduce){#arrow{transition:none}#here .pulse{animation:none}}
 
-.readout{text-align:center;padding:4px 0 6px}
+.readout{text-align:center;padding:4px 0 6px;flex:0 0 auto}
 .dist{font-weight:700;line-height:.86;letter-spacing:-.02em;text-shadow:var(--shadow)}
-.dist .num{font-size:clamp(64px,22vw,150px)}
-.dist .u{font-size:clamp(22px,6vw,40px);font-weight:600;opacity:.8;margin-left:8px}
+.dist .num{font-size:min(22vw,17vh,150px)}
+.dist .u{font-size:min(6vw,5vh,40px);font-weight:600;opacity:.8;margin-left:8px}
 .state{margin-top:10px;font-size:15px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.9;min-height:18px;text-shadow:var(--shadow)}
 .meta{margin-top:6px;font-size:12px;opacity:.72;text-shadow:var(--shadow)}
 
 .foot{display:flex;align-items:center;justify-content:space-between;padding:10px 6px 18px}
 .foot .iconbtn{width:60px;height:60px;background:rgba(255,255,255,.2)}
 .foot .iconbtn svg{width:26px;height:26px}
-#install{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0) + 92px);
-  padding:11px 18px;border-radius:999px;border:0;background:rgba(0,0,0,.35);color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer;backdrop-filter:blur(6px);display:none}
+#install{align-self:center;margin:2px 0 8px;padding:10px 18px;border-radius:999px;border:0;background:rgba(0,0,0,.32);color:#fff;font:inherit;font-weight:700;font-size:14px;cursor:pointer;display:none}
 .editrow{display:flex;gap:8px;padding:0 0 14px}
 .editrow input{flex:1;min-width:0;padding:12px;border-radius:12px;border:2px solid rgba(255,255,255,.4);background:rgba(0,0,0,.15);color:#fff;font:inherit;font-size:14px}
 </style>
@@ -129,7 +128,7 @@ body.here #here{display:flex}
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-let target=null, here=null, heading=null, haveCompass=false, vibOn=true;
+let target=null, here=null, heading=null, haveCompass=false, vibOn=true, arrowAngle=0;
 
 /* target only from hash/query — never a server */
 function parseCoords(s){
@@ -198,7 +197,10 @@ function render(){
   const near = d<=3;
   document.body.classList.toggle("here", near);
   const rel=(heading==null)?b:(b-heading+360)%360;
-  $("arrow").style.transform="rotate("+rel+"deg)";
+  var cur = arrowAngle % 360;
+  var delta = ((rel - cur + 540) % 360) - 180;   // shortest signed turn (-180..180)
+  arrowAngle += delta;                             // accumulate -> no 359->0 backspin
+  $("arrow").style.transform="rotate("+arrowAngle+"deg)";
   $("brg").textContent=Math.round(b);
   $("hdg").textContent=heading==null?"—":Math.round(heading);
   $("acc").textContent=here.acc==null?"—":Math.round(here.acc);
