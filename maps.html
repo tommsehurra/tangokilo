@@ -357,11 +357,8 @@ local cacheFull = false
 local tickCnt   = 0
 
 local gps       = {lat = nil, lon = nil, ok = false}
-local lastFix   = nil        -- last valid GPS fix {lat,lon} (recovery QR / finder)
-local qrShow    = false      -- fullscreen recovery-QR view active
-local qrFix     = nil        -- snapshot of the fix the QR encodes (frozen at open)
-local qrCode    = nil        -- cached QR matrix
-local qrKey     = nil        -- cache key (the encoded URL)
+local lastFix   = nil        -- last valid GPS fix {lat,lon}
+local lastFixSaveT = 0       -- debounce for persisting lastFix to SD (finder tool reads it)
 local tele      = {sats=0, alt=0, spd=0, hdg=0, volt=0, sig=0, vspd=0, curr=0}
 local center    = nil
 local home      = nil
@@ -513,6 +510,273 @@ local function readAll(path)
   until not chunk or chunk == ""
   io.close(f)
   return s
+end
+
+-- ---------------------------------------------------------------- Recovery QR
+-- Pure-Lua QR (byte mode, ECC level M, versions 1..6), EdgeTX Lua 5.2-safe (no bitops).
+-- Built ONCE and STEPPED across frames — one bounded phase per refresh with a
+-- collectgarbage() between steps — so no single frame spikes memory or trips the script
+-- watchdog. A loading bar shows progress while it builds (can take a few seconds).
+-- The QR encodes  https://tangokilo.de/find/#<lat>,<lon>  which opens the phone finder.
+-- Coordinates come ONLY from on-device sources (live GPS, or /MAPS/lastfix.txt that this
+-- widget itself writes) — nothing is ever hard-coded or shipped in the repo (REGEL NR.1).
+--
+-- Everything the encoder needs is scoped inside the do...end block below, so its ~20
+-- internal locals do NOT count against the 200-local limit of the widget's main chunk;
+-- only the handful of names declared just here are visible to the draw / event code.
+local QR_BASE = "https://tangokilo.de/find/#"
+local qrView, qrCode, qrGen, qrErr, qrNoFix = false, nil, nil, nil, false
+local qrLat, qrLon, qrLive
+local qrOpen, qrGenStep
+
+do
+  local POW2 = {}
+  for i = 0, 20 do POW2[i] = 2 ^ i end
+  local function bxor(a, b)
+    local r, bit = 0, 1
+    while a > 0 or b > 0 do
+      if (a % 2) ~= (b % 2) then r = r + bit end
+      a = (a - a % 2) / 2; b = (b - b % 2) / 2; bit = bit * 2
+    end
+    return r
+  end
+  local function getbit(v, i) return math.floor(v / POW2[i]) % 2 end
+
+  -- GF(256), built lazily on first generation (keeps widget LOAD cheap: nothing runs until
+  -- the QR page is actually opened)
+  local EXP, LOG, gfReady = {}, {}, false
+  local function ensureGF()
+    if gfReady then return end
+    local x = 1
+    for i = 0, 255 do EXP[i] = x; LOG[x] = i; x = x * 2; if x >= 256 then x = bxor(x, 0x11D) end end
+    for i = 256, 511 do EXP[i] = EXP[i - 255] end
+    gfReady = true
+  end
+  local function gmul(a, b) if a == 0 or b == 0 then return 0 end return EXP[(LOG[a] + LOG[b]) % 255] end
+  local function rs_gen(deg)
+    local g = {1}
+    for i = 0, deg - 1 do
+      local res = {}
+      for j = 1, #g + 1 do res[j] = 0 end
+      for j = 1, #g do res[j] = bxor(res[j], g[j]); res[j+1] = bxor(res[j+1], gmul(g[j], EXP[i])) end
+      g = res
+    end
+    return g
+  end
+  local function rs_encode(data, deg)
+    local gen = rs_gen(deg)
+    local res = {}
+    for i = 1, deg do res[i] = 0 end
+    for i = 1, #data do
+      local factor = bxor(data[i], res[1])
+      for j = 1, deg - 1 do res[j] = res[j+1] end
+      res[deg] = 0
+      if factor ~= 0 then for j = 2, #gen do res[j-1] = bxor(res[j-1], gmul(gen[j], factor)) end end
+    end
+    return res
+  end
+
+  local QVER = {
+    [1]={10,1,16,0,0}, [2]={16,1,28,0,0}, [3]={26,1,44,0,0},
+    [4]={18,2,32,0,0}, [5]={24,2,43,0,0}, [6]={16,4,27,0,0},
+  }
+  local QALIGN = { [1]={}, [2]={6,18}, [3]={6,22}, [4]={6,26}, [5]={6,30}, [6]={6,34} }
+  local function qcap(v) local t = QVER[v]; return t[2]*t[3] + t[4]*t[5] end
+
+  local function codewords(bytes, v)
+    local cap = qcap(v)
+    local bits = {}
+    local function put(val, n) for i = n-1, 0, -1 do bits[#bits+1] = getbit(val, i) end end
+    put(4, 4); put(#bytes, 8)
+    for i = 1, #bytes do put(bytes[i], 8) end
+    for _ = 1, math.min(4, cap*8 - #bits) do bits[#bits+1] = 0 end
+    while #bits % 8 ~= 0 do bits[#bits+1] = 0 end
+    local dcw = {}
+    for i = 1, #bits, 8 do local b = 0; for j = 0, 7 do b = b*2 + (bits[i+j] or 0) end; dcw[#dcw+1] = b end
+    local pad, pi = {0xEC, 0x11}, 1
+    while #dcw < cap do dcw[#dcw+1] = pad[pi]; pi = (pi % 2) + 1 end
+    return dcw
+  end
+  local function interleave(dcw, v)
+    local t = QVER[v]; local eclen, g1, s1, g2, s2 = t[1], t[2], t[3], t[4], t[5]
+    local blk, ecs, idx = {}, {}, 1
+    local function take(n) local b = {}; for i = 1, n do b[i] = dcw[idx]; idx = idx + 1 end; return b end
+    for _ = 1, g1 do local b = take(s1); blk[#blk+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
+    for _ = 1, g2 do local b = take(s2); blk[#blk+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
+    local out, maxd = {}, math.max(s1, s2)
+    for i = 1, maxd do for b = 1, #blk do if blk[b][i] then out[#out+1] = blk[b][i] end end end
+    for i = 1, eclen do for b = 1, #ecs do out[#out+1] = ecs[b][i] end end
+    return out
+  end
+
+  local function maskbit(m, x, y)
+    if m == 0 then return (x+y) % 2 == 0
+    elseif m == 1 then return y % 2 == 0
+    elseif m == 2 then return x % 3 == 0
+    elseif m == 3 then return (x+y) % 3 == 0
+    elseif m == 4 then return (math.floor(y/2) + math.floor(x/3)) % 2 == 0
+    elseif m == 5 then return ((x*y) % 2) + ((x*y) % 3) == 0
+    elseif m == 6 then return (((x*y) % 2) + ((x*y) % 3)) % 2 == 0
+    else return (((x+y) % 2) + ((x*y) % 3)) % 2 == 0 end
+  end
+  local function format_int(mask)
+    local rem = mask * POW2[10]
+    for i = 14, 10, -1 do if getbit(rem, i) == 1 then rem = bxor(rem, 0x537 * POW2[i-10]) end end
+    return bxor(mask * POW2[10] + (rem % POW2[10]), 0x5412)
+  end
+
+  -- MEMORY: one flat array C per cell instead of two (module + fixed). Each cell holds
+  --   C = module + 2*fixed   (0/1 = data module, 2/3 = fixed pattern with that module bit).
+  -- This halves the dominant data structure (both the transient during build and the
+  -- resident array kept for display). module(C) = C % 2 ; fixed(C) = C >= 2.
+
+  -- place every function pattern (finders, timing, alignment, dark module, format reserve)
+  local function placePatterns(C, size, v)
+    local function set(x, y, val) if x>=0 and x<size and y>=0 and y<size then C[y*size+x] = val + 2 end end
+    local function fixat(x, y) local i = y*size+x; C[i] = (C[i] % 2) + 2 end   -- keep module, mark fixed
+    local function finder(ox, oy)
+      for dy = -1, 7 do for dx = -1, 7 do
+        local on = (dx>=0 and dx<=6 and (dy==0 or dy==6)) or (dy>=0 and dy<=6 and (dx==0 or dx==6)) or (dx>=2 and dx<=4 and dy>=2 and dy<=4)
+        set(ox+dx, oy+dy, on and 1 or 0)
+      end end
+    end
+    finder(0, 0); finder(size-7, 0); finder(0, size-7)
+    for i = 8, size-9 do local b = (i % 2 == 0) and 1 or 0; set(i, 6, b); set(6, i, b) end
+    local ac = QALIGN[v]
+    for _, cy in ipairs(ac) do for _, cx in ipairs(ac) do
+      local nf = (cx<=8 and cy<=8) or (cx>=size-9 and cy<=8) or (cx<=8 and cy>=size-9)
+      if not nf then for dy = -2, 2 do for dx = -2, 2 do
+        local on = (math.abs(dx)==2 or math.abs(dy)==2 or (dx==0 and dy==0)); set(cx+dx, cy+dy, on and 1 or 0)
+      end end end
+    end end
+    set(8, size-8, 1)
+    for i = 0, 8 do if i ~= 6 then fixat(i, 8); fixat(8, i) end end
+    fixat(6, 8); fixat(8, 6)
+    for i = 0, 7 do fixat(size-1-i, 8); fixat(8, size-1-i) end
+  end
+
+  -- place the data bit-stream directly (no stored position list); data cells are C < 2
+  local function placeData(C, size, seq)
+    local bi, col, up = 1, size-1, true
+    local function nextbit() local s = seq[math.floor((bi-1)/8)+1] or 0; local b = getbit(s, 7-((bi-1)%8)); bi = bi + 1; return b end
+    while col > 0 do
+      if col == 6 then col = col - 1 end
+      for t = 0, size-1 do
+        local y = up and (size-1-t) or t
+        for c = 0, 1 do local x = col-c; local i = y*size+x; if C[i] < 2 then C[i] = nextbit() end end
+      end
+      up = not up; col = col - 2
+    end
+  end
+
+  -- penalty score for one mask, read on the fly (no matrix copy)
+  local function penalty(C, size, m)
+    local function eff(x, y) local c = C[y*size+x]; if c >= 2 then return c - 2 end; return (maskbit(m, x, y) and (1-c) or c) end
+    local sc = 0
+    for y = 0, size-1 do local run, prev = 0, -1
+      for x = 0, size-1 do local b = eff(x, y); if b == prev then run = run+1 else if run>=5 then sc = sc+3+(run-5) end; run = 1; prev = b end end
+      if run >= 5 then sc = sc + 3 + (run-5) end end
+    for x = 0, size-1 do local run, prev = 0, -1
+      for y = 0, size-1 do local b = eff(x, y); if b == prev then run = run+1 else if run>=5 then sc = sc+3+(run-5) end; run = 1; prev = b end end
+      if run >= 5 then sc = sc + 3 + (run-5) end end
+    local dark = 0; for y = 0, size-1 do for x = 0, size-1 do dark = dark + eff(x, y) end end
+    sc = sc + math.floor(math.abs(dark*100/(size*size) - 50) / 5) * 10
+    return sc
+  end
+
+  -- bake the chosen mask into data cells (C < 2), then write the format bits as plain modules
+  local function bake(C, size, best)
+    for y = 0, size-1 do for x = 0, size-1 do local i = y*size+x; if C[i] < 2 and maskbit(best, x, y) then C[i] = 1 - C[i] end end end
+    local fmt = format_int(best)
+    local function fset(x, y, b) C[y*size+x] = b end
+    for i = 0, 5 do fset(8, i, getbit(fmt, i)) end
+    fset(8, 7, getbit(fmt, 6)); fset(8, 8, getbit(fmt, 7)); fset(7, 8, getbit(fmt, 8))
+    for i = 9, 14 do fset(14-i, 8, getbit(fmt, i)) end
+    for i = 0, 7 do fset(size-1-i, 8, getbit(fmt, i)) end
+    for i = 8, 14 do fset(8, size-15+i, getbit(fmt, i)) end
+    fset(8, size-8, 1)
+  end
+
+  -- coordinates: live GPS first, then the last remembered fix, then the SD file this
+  -- widget writes (so the QR still works after telemetry is gone or after a reboot)
+  local function qrCoords()
+    if gps.ok and gps.lat and gps.lon and (gps.lat ~= 0 or gps.lon ~= 0) then return gps.lat, gps.lon, true end
+    if lastFix then return lastFix.lat, lastFix.lon, false end
+    local s = readAll(CFG.root .. "/lastfix.txt")
+    if s then
+      local la, lo = string.match(s, "(-?%d+%.?%d*),%s*(-?%d+%.?%d*)")
+      if la and lo then return tonumber(la), tonumber(lo), false end
+    end
+    return nil
+  end
+
+  local qrKey                          -- url the finished qrCode was built for (cache key)
+
+  local function qrGenBegin(url)
+    qrGen = { url = url, phase = "seq", mask = 0, best = nil, bestSc = nil, prog = 0 }
+    qrErr = nil
+    flushCache()                       -- free tile bitmaps: give the QR arrays headroom
+    collectgarbage()
+  end
+
+  -- advance ONE bounded phase; called once per refresh while qrGen is set
+  qrGenStep = function()
+    local g = qrGen
+    if not g then return end
+    if g.phase == "seq" then
+      ensureGF()
+      local bytes = {}
+      for i = 1, string.len(g.url) do bytes[i] = string.byte(g.url, i) end
+      local v
+      for ver = 1, 6 do if #bytes*8 <= qcap(ver)*8 - 12 then v = ver; break end end
+      if not v then qrErr = "Position zu lang"; qrGen = nil; return end
+      g.v = v; g.size = 17 + 4*v
+      g.seq = interleave(codewords(bytes, v), v)
+      g.prog = 0.15; g.phase = "alloc"
+      collectgarbage()
+    elseif g.phase == "alloc" then
+      local size = g.size
+      local C = {}
+      for i = 0, size*size - 1 do C[i] = 0 end
+      placePatterns(C, size, g.v)
+      g.C = C
+      g.prog = 0.30; g.phase = "data"
+      collectgarbage()
+    elseif g.phase == "data" then
+      placeData(g.C, g.size, g.seq)
+      g.seq = nil
+      g.prog = 0.42; g.phase = "mask"; g.mask = 0
+      collectgarbage()
+    elseif g.phase == "mask" then
+      local m = g.mask
+      local s = penalty(g.C, g.size, m)
+      if not g.best or s < g.bestSc then g.best, g.bestSc = m, s end
+      g.mask = m + 1
+      g.prog = 0.42 + 0.50 * (g.mask / 8)
+      if g.mask >= 8 then g.phase = "bake" end
+      collectgarbage()
+    elseif g.phase == "bake" then
+      bake(g.C, g.size, g.best)
+      qrCode = { size = g.size, M = g.C }   -- keep only the finished cell array (module = C % 2)
+      qrKey  = g.url
+      g.prog = 1; qrGen = nil
+      collectgarbage()
+    end
+  end
+
+  -- open the QR page: resolve coords, reuse a cached code for the same spot, else start
+  qrOpen = function()
+    menuOpen = false
+    qrView   = true
+    qrErr    = nil
+    qrNoFix  = false
+    local lat, lon, live = qrCoords()
+    if not lat then qrNoFix = true; return end
+    qrLat, qrLon, qrLive = lat, lon, live
+    local url = QR_BASE .. string.format("%.6f,%.6f", lat, lon)
+    if qrCode and qrKey == url then return end   -- already built for these coords: instant
+    qrGenBegin(url)
+  end
 end
 
 -- ---------------------------------------------------------------- map types
@@ -854,10 +1118,9 @@ local MENU = {
   { l = function() return "Centre on model" end, a = recenter },
   { l = function() return "Set home here" end,
     a = function() if gps.ok then home = {lat = gps.lat, lon = gps.lon} end end },
-  { l = function() return "Recovery QR" end,
-    a = function() qrShow = true; qrFix = lastFix and {lat = lastFix.lat, lon = lastFix.lon} or nil; menuOpen = false end },
   { l = function() return "Clear trail" end, a = function() trail = {} end },
   { l = function() return "Clear tile cache" end, a = flushCache },
+  { l = function() return "Recovery QR (Finder)" end, a = function() qrOpen() end },
   { l = function() return "Close" end, a = function() menuOpen = false end },
 }
 
@@ -1327,280 +1590,6 @@ local function bigVal(x, y, num, unit, col)
   if unit and unit ~= "" then lcd.drawText(x + string.len(num) * 12 + 2, y + 5, unit, SMLSIZE + (col or C_W)) end
 end
 
--- ===== Recovery QR encoder (byte mode, ECC M, v1..6) — EdgeTX 5.2-safe, no bitops =====
-local qrEncode
-do
-local POW2 = {}
-do local p = 1; for i = 0, 20 do POW2[i] = p; p = p * 2 end end
-
-local function bxor(a, b)                 -- XOR for non-negative integers
-  local r, bit = 0, 1
-  while a > 0 or b > 0 do
-    if (a % 2) ~= (b % 2) then r = r + bit end
-    a = math.floor(a / 2); b = math.floor(b / 2); bit = bit * 2
-  end
-  return r
-end
-local function getbit(v, i) return math.floor(v / POW2[i]) % 2 end
-
--- ---- GF(256) --------------------------------------------------------------
-local EXP, LOG = {}, {}
-do
-  local x = 1
-  for i = 0, 255 do
-    EXP[i] = x; LOG[x] = i
-    x = x * 2
-    if x >= 256 then x = bxor(x, 0x11D) end
-  end
-  for i = 256, 511 do EXP[i] = EXP[i - 255] end
-end
-local function gmul(a, b)
-  if a == 0 or b == 0 then return 0 end
-  return EXP[(LOG[a] + LOG[b]) % 255]
-end
-
-local function rs_gen(deg)
-  local g = {1}
-  for i = 0, deg - 1 do
-    local res = {}
-    for j = 1, #g + 1 do res[j] = 0 end
-    for j = 1, #g do
-      res[j]     = bxor(res[j], g[j])
-      res[j + 1] = bxor(res[j + 1], gmul(g[j], EXP[i]))
-    end
-    g = res
-  end
-  return g
-end
-
-local function rs_encode(data, deg)
-  local gen = rs_gen(deg)
-  local res = {}
-  for i = 1, deg do res[i] = 0 end
-  for i = 1, #data do
-    local factor = bxor(data[i], res[1])
-    for j = 1, deg - 1 do res[j] = res[j + 1] end
-    res[deg] = 0
-    if factor ~= 0 then
-      for j = 2, #gen do res[j - 1] = bxor(res[j - 1], gmul(gen[j], factor)) end
-    end
-  end
-  return res
-end
-
-local VER = {
-  [1]={10,1,16,0,0}, [2]={16,1,28,0,0}, [3]={26,1,44,0,0},
-  [4]={18,2,32,0,0}, [5]={24,2,43,0,0}, [6]={16,4,27,0,0},
-}
-local ALIGN = { [1]={}, [2]={6,18}, [3]={6,22}, [4]={6,26}, [5]={6,30}, [6]={6,34} }
-local function data_cap(v) local t = VER[v]; return t[2]*t[3] + t[4]*t[5] end
-
-local function make_codewords(bytes, v)
-  local cap = data_cap(v)
-  local bits = {}
-  local function put(val, n) for i = n-1, 0, -1 do bits[#bits+1] = getbit(val, i) end end
-  put(4, 4)
-  put(#bytes, 8)                                   -- v1..9 byte mode = 8-bit count
-  for i = 1, #bytes do put(bytes[i], 8) end
-  local total = cap * 8
-  for _ = 1, math.min(4, total - #bits) do bits[#bits+1] = 0 end
-  while #bits % 8 ~= 0 do bits[#bits+1] = 0 end
-  local dcw = {}
-  for i = 1, #bits, 8 do
-    local b = 0
-    for j = 0, 7 do b = b * 2 + (bits[i+j] or 0) end
-    dcw[#dcw+1] = b
-  end
-  local pad, pi = {0xEC, 0x11}, 1
-  while #dcw < cap do dcw[#dcw+1] = pad[pi]; pi = (pi % 2) + 1 end
-  return dcw
-end
-
-local function interleave(dcw, v)
-  local t = VER[v]
-  local eclen, g1, s1, g2, s2 = t[1], t[2], t[3], t[4], t[5]
-  local blocks, ecs, idx = {}, {}, 1
-  local function take(n) local b = {}; for i = 1, n do b[i] = dcw[idx]; idx = idx + 1 end; return b end
-  for _ = 1, g1 do local b = take(s1); blocks[#blocks+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
-  for _ = 1, g2 do local b = take(s2); blocks[#blocks+1] = b; ecs[#ecs+1] = rs_encode(b, eclen) end
-  local out, maxd = {}, math.max(s1, s2)
-  for i = 1, maxd do for b = 1, #blocks do if blocks[b][i] then out[#out+1] = blocks[b][i] end end end
-  for i = 1, eclen do for b = 1, #ecs do out[#out+1] = ecs[b][i] end end
-  return out
-end
-
-local MASKS = {
-  function(x,y) return (x+y) % 2 == 0 end,
-  function(x,y) return y % 2 == 0 end,
-  function(x,y) return x % 3 == 0 end,
-  function(x,y) return (x+y) % 3 == 0 end,
-  function(x,y) return (math.floor(y/2) + math.floor(x/3)) % 2 == 0 end,
-  function(x,y) return ((x*y) % 2) + ((x*y) % 3) == 0 end,
-  function(x,y) return (((x*y) % 2) + ((x*y) % 3)) % 2 == 0 end,
-  function(x,y) return (((x+y) % 2) + ((x*y) % 3)) % 2 == 0 end,
-}
-
-local function format_int(mask)                    -- EC level M = 00
-  local data = mask
-  local rem = data * POW2[10]
-  for i = 14, 10, -1 do
-    if getbit(rem, i) == 1 then rem = bxor(rem, 0x537 * POW2[i-10]) end
-  end
-  return bxor(data * POW2[10] + (rem % POW2[10]), 0x5412)
-end
-
-local function penalty(m, size)
-  local score = 0
-  for y = 0, size-1 do
-    local run, prev = 0, -1
-    for x = 0, size-1 do
-      if m[y][x] == prev then run = run+1 else if run >= 5 then score = score + 3 + (run-5) end; run = 1; prev = m[y][x] end
-    end
-    if run >= 5 then score = score + 3 + (run-5) end
-  end
-  for x = 0, size-1 do
-    local run, prev = 0, -1
-    for y = 0, size-1 do
-      if m[y][x] == prev then run = run+1 else if run >= 5 then score = score + 3 + (run-5) end; run = 1; prev = m[y][x] end
-    end
-    if run >= 5 then score = score + 3 + (run-5) end
-  end
-  for y = 0, size-2 do for x = 0, size-2 do
-    local a = m[y][x]
-    if a == m[y][x+1] and a == m[y+1][x] and a == m[y+1][x+1] then score = score + 3 end
-  end end
-  local dark = 0
-  for y = 0, size-1 do for x = 0, size-1 do dark = dark + m[y][x] end end
-  score = score + math.floor(math.abs(dark*100/(size*size) - 50)/5) * 10
-  return score
-end
-
-function qrEncode(text)
-  local bytes = {}
-  for i = 1, string.len(text) do bytes[i] = string.byte(text, i) end
-  local v
-  for ver = 1, 6 do
-    if #bytes * 8 <= data_cap(ver)*8 - 4 - 8 then v = ver; break end
-  end
-  if not v then error("QR: data too long for v1..6 (ECC M)") end
-
-  local size = 17 + 4*v
-  local seq = interleave(make_codewords(bytes, v), v)
-
-  local m, fixed = {}, {}
-  for y = 0, size-1 do m[y] = {}; fixed[y] = {}; for x = 0, size-1 do m[y][x] = 0; fixed[y][x] = false end end
-  local function setfx(x, y, val) if x>=0 and x<size and y>=0 and y<size then m[y][x]=val; fixed[y][x]=true end end
-
-  local function finder(ox, oy)
-    for dy = -1, 7 do for dx = -1, 7 do
-      local on = (dx>=0 and dx<=6 and (dy==0 or dy==6)) or (dy>=0 and dy<=6 and (dx==0 or dx==6)) or (dx>=2 and dx<=4 and dy>=2 and dy<=4)
-      setfx(ox+dx, oy+dy, on and 1 or 0)
-    end end
-  end
-  finder(0,0); finder(size-7,0); finder(0,size-7)
-
-  for i = 8, size-9 do
-    local b = (i % 2 == 0) and 1 or 0
-    setfx(i, 6, b); setfx(6, i, b)
-  end
-
-  local ac = ALIGN[v]
-  for _, cy in ipairs(ac) do for _, cx in ipairs(ac) do
-    local nf = (cx<=8 and cy<=8) or (cx>=size-9 and cy<=8) or (cx<=8 and cy>=size-9)
-    if not nf then
-      for dy = -2, 2 do for dx = -2, 2 do
-        local on = (math.abs(dx)==2 or math.abs(dy)==2 or (dx==0 and dy==0))
-        setfx(cx+dx, cy+dy, on and 1 or 0)
-      end end
-    end
-  end end
-
-  setfx(8, size-8, 1)
-  for i = 0, 8 do if i ~= 6 then fixed[i][8] = true; fixed[8][i] = true end end
-  fixed[6][8] = true; fixed[8][6] = true
-  for i = 0, 7 do fixed[8][size-1-i] = true; fixed[size-1-i][8] = true end
-
-  local bitstr = {}
-  for i = 1, #seq do for b = 7, 0, -1 do bitstr[#bitstr+1] = getbit(seq[i], b) end end
-  local dpos, bi, col, up = {}, 1, size-1, true
-  while col > 0 do
-    if col == 6 then col = col - 1 end
-    for t = 0, size-1 do
-      local y = up and (size-1-t) or t
-      for c = 0, 1 do
-        local x = col - c
-        if not fixed[y][x] then m[y][x] = bitstr[bi] or 0; dpos[#dpos+1] = {x, y}; bi = bi + 1 end
-      end
-    end
-    up = not up; col = col - 2
-  end
-
-  local function put_format(mm, fmt)
-    for i = 0, 5 do mm[i][8] = getbit(fmt, i) end
-    mm[7][8] = getbit(fmt, 6)
-    mm[8][8] = getbit(fmt, 7)
-    mm[8][7] = getbit(fmt, 8)
-    for i = 9, 14 do mm[8][14 - i] = getbit(fmt, i) end
-    for i = 0, 7 do mm[8][size-1-i] = getbit(fmt, i) end
-    for i = 8, 14 do mm[size-15+i][8] = getbit(fmt, i) end
-    mm[size-8][8] = 1
-  end
-
-  local best, bestScore
-  for mask = 0, 7 do
-    local test = {}
-    for y = 0, size-1 do test[y] = {}; for x = 0, size-1 do test[y][x] = m[y][x] end end
-    local fn = MASKS[mask+1]
-    for _, p in ipairs(dpos) do local x,y = p[1],p[2]; if fn(x,y) then test[y][x] = 1 - test[y][x] end end
-    put_format(test, format_int(mask))
-    local s = penalty(test, size)
-    if not best or s < bestScore then best, bestScore = test, s end
-  end
-
-  return { size = size, version = v, get = function(x, y) return best[y][x] == 1 end }
-end
-end
-
-local QR_BASE = "https://tangokilo.de/find/#"
-local function drawQR()
-  lcd.drawFilledRectangle(0, 0, LCD_W, LCD_H, C_B)
-  if not qrFix then
-    lcd.drawText(LCD_W / 2, LCD_H / 2 - 8, "No GPS fix yet", F_M + C_W + CENTER)
-    lcd.drawText(LCD_W / 2, LCD_H / 2 + 16, "Get a fix in flight, then reopen", SMLSIZE + C_LBL + CENTER)
-    return
-  end
-  local url = QR_BASE .. string.format("%.6f,%.6f", qrFix.lat, qrFix.lon)
-  if qrKey ~= url then
-    local ok, res = pcall(qrEncode, url)
-    qrCode = ok and res or nil
-    qrKey = url
-  end
-  if not qrCode then lcd.drawText(LCD_W / 2, LCD_H / 2, "QR error", F_M + C_W + CENTER); return end
-  local n, quiet = qrCode.size, 4
-  local units = n + quiet * 2
-  local scale = math.floor((LCD_H - 6) / units)
-  if scale < 2 then scale = 2 end
-  local dim = units * scale
-  local ox, oy = 6, math.floor((LCD_H - dim) / 2)
-  local WQ, BQ = lcd.RGB(255,255,255), lcd.RGB(0,0,0)
-  lcd.drawFilledRectangle(ox, oy, dim, dim, WQ)
-  for yy = 0, n - 1 do
-    for xx = 0, n - 1 do
-      if qrCode.get(xx, yy) then
-        lcd.drawFilledRectangle(ox + (xx + quiet) * scale, oy + (yy + quiet) * scale, scale, scale, BQ)
-      end
-    end
-  end
-  local tx = ox + dim + 16
-  lcd.drawText(tx, oy + 4, "FIND MODEL", F_M + C_Y)
-  lcd.drawText(tx, oy + 32, "Scan with your phone", SMLSIZE + C_W)
-  lcd.drawText(tx, oy + 50, "-> arrow + distance", SMLSIZE + C_LBL)
-  lcd.drawText(tx, oy + 74, "Last fix", SMLSIZE + C_LBL)
-  lcd.drawText(tx, oy + 88, string.format("%.6f", qrFix.lat), SMLSIZE + C_W)
-  lcd.drawText(tx, oy + 102, string.format("%.6f", qrFix.lon), SMLSIZE + C_W)
-  lcd.drawText(tx, oy + dim - 14, "RTN / tap = close", SMLSIZE + C_GRID)
-end
-
 local function drawADIPage()
   local W, H = LCD_W, LCD_H
   local pitch, roll = attitude()
@@ -1810,6 +1799,81 @@ local function drawADIPage()
   end
 end
 
+-- ---------------------------------------------------------------- drawing: Recovery QR
+
+local function drawQR()
+  local W, H = LCD_W, LCD_H
+  lcd.drawFilledRectangle(0, 0, W, H, C_HUD)
+
+  -- header bar + a close button (rebuilt every frame; handled in handleEvent)
+  lcd.drawFilledRectangle(0, 0, W, 20, C_B)
+  lcd.drawText(6, 3, "MODELL FINDEN", SMLSIZE + C_Y)
+  addBtn("qrclose", W - 60, 2, 56, 16, "ZURUECK", false)
+  lcd.drawLine(0, 20, W, 20, SOLID, C_ORNG)
+
+  if qrErr then
+    lcd.drawText(W / 2, H / 2, qrErr, MIDSIZE + C_R + CENTER)
+    return
+  end
+
+  if qrNoFix then
+    lcd.drawText(W / 2, H / 2 - 16, "Kein GPS-Fix vorhanden", MIDSIZE + C_W + CENTER)
+    lcd.drawText(W / 2, H / 2 + 12, "Erst mit Fix fliegen - die letzte Position", SMLSIZE + C_LBL + CENTER)
+    lcd.drawText(W / 2, H / 2 + 26, "wird automatisch gespeichert.", SMLSIZE + C_LBL + CENTER)
+    return
+  end
+
+  -- still building: loading graphic (bar + percent + a small spinner)
+  if qrGen then
+    local bw, bh = math.floor(W * 0.58), 16
+    local bx, by = math.floor((W - bw) / 2), math.floor(H / 2) - 4
+    lcd.drawText(W / 2, by - 42, "QR-Code wird erzeugt ...", MIDSIZE + C_W + CENTER)
+    lcd.drawRectangle(bx, by, bw, bh, C_W)
+    local fw = math.floor((bw - 4) * (qrGen.prog or 0))
+    if fw > 0 then lcd.drawFilledRectangle(bx + 2, by + 2, fw, bh - 4, C_BTN2) end
+    lcd.drawText(W / 2, by + bh + 8, string.format("%d%%", math.floor((qrGen.prog or 0) * 100)), SMLSIZE + C_LBL + CENTER)
+    local sc, sr = W / 2, by + bh + 34
+    local a = (tickCnt % 16) / 16 * 2 * math.pi
+    lcd.drawFilledRectangle(math.floor(sc + math.cos(a) * 11) - 1, math.floor(sr + math.sin(a) * 11) - 1, 3, 3, C_CY)
+    lcd.drawText(W / 2, sr + 22, "einmalig - danach sofort verfuegbar", SMLSIZE + C_GRID + CENTER)
+    return
+  end
+
+  if not qrCode then
+    lcd.drawText(W / 2, H / 2, "...", MIDSIZE + C_W + CENTER)
+    return
+  end
+
+  -- finished QR (quiet zone = 4 modules), scaled to fit the height below the header
+  local n, quiet = qrCode.size, 4
+  local units = n + quiet * 2
+  local scale = math.floor((H - 24) / units)
+  if scale < 2 then scale = 2 end
+  local dim = units * scale
+  local ox = 10
+  local oy = 20 + math.floor((H - 20 - dim) / 2)
+  local M = qrCode.M
+  lcd.drawFilledRectangle(ox, oy, dim, dim, lcd.RGB(255, 255, 255))
+  for y = 0, n - 1 do
+    local rb = y * n
+    for x = 0, n - 1 do
+      if M[rb + x] % 2 == 1 then          -- module bit (cell = module + 2*fixed)
+        lcd.drawFilledRectangle(ox + (x + quiet) * scale, oy + (y + quiet) * scale, scale, scale, C_B)
+      end
+    end
+  end
+
+  local tx = ox + dim + 20
+  lcd.drawText(tx, oy + 6,  "Handy-Kamera", MIDSIZE + C_W)
+  lcd.drawText(tx, oy + 30, "auf den QR halten -", SMLSIZE + C_W)
+  lcd.drawText(tx, oy + 44, "oeffnet die Finder-App.", SMLSIZE + C_W)
+  lcd.drawText(tx, oy + 70, qrLive and "Aktuelle Position" or "Letzte Position",
+               SMLSIZE + (qrLive and C_G or C_CY))
+  lcd.drawText(tx, oy + 90, string.format("%.6f", qrLat or 0), MIDSIZE + C_W)
+  lcd.drawText(tx, oy + 112, string.format("%.6f", qrLon or 0), MIDSIZE + C_W)
+  lcd.drawText(tx, oy + dim - 14, "ENTER/RTN = zurueck", SMLSIZE + C_GRID)
+end
+
 -- ---------------------------------------------------------------- input
 
 local function hitBtn(tx, ty)
@@ -1821,7 +1885,8 @@ end
 
 local function doBtn(id)
   if id == "page" then page = page % 3 + 1; graphDirty = true
-  elseif id == "map" then switchSet(1) end
+  elseif id == "map" then switchSet(1)
+  elseif id == "qrclose" then qrView = false end
 end
 
 local function handleMenu(event, touchState)
@@ -1862,11 +1927,15 @@ end
 local function handleEvent(event, touchState)
   if event == nil or event == 0 then return end
 
-  if qrShow then
-    if event == EVT_VIRTUAL_EXIT or event == EVT_VIRTUAL_ENTER or event == EVT_VIRTUAL_ENTER_LONG
-       or (touchState and EVT_TOUCH_TAP and event == EVT_TOUCH_TAP) then
-      qrShow = false
+  -- Recovery-QR page: swallow all input here. EXIT / ENTER (short or long) closes it and
+  -- returns to the map instead of leaving fullscreen; a tap on ZURUECK also closes it.
+  if qrView then
+    if event == EVT_VIRTUAL_EXIT or event == EVT_VIRTUAL_ENTER
+       or event == EVT_VIRTUAL_ENTER_LONG then
+      qrView = false
       if killEvents then killEvents(event) end
+    elseif touchState and EVT_TOUCH_TAP and event == EVT_TOUCH_TAP then
+      if hitBtn(touchState.x, touchState.y) == "qrclose" then qrView = false end
     end
     return
   end
@@ -2045,6 +2114,18 @@ local function persistTick()
   end
 end
 
+-- Persist the last valid GPS fix to the SD card (~every 5 s) so the standalone
+-- finder tool (SCRIPTS/TOOLS) can build a QR even after telemetry is gone.
+-- ON-DEVICE only (SD card) — never in the repo. Keeps REGEL NR.1 intact.
+local function persistLastFix()
+  if not (lastFix and io and io.open) then return end
+  local t = getTime()
+  if lastFixSaveT ~= 0 and (t - lastFixSaveT) < 500 then return end
+  lastFixSaveT = t
+  local f = io.open(CFG.root .. "/lastfix.txt", "w")
+  if f then io.write(f, string.format("%.6f,%.6f", lastFix.lat, lastFix.lon)); io.close(f) end
+end
+
 local function create(zone, opt)
   if math.randomseed then math.randomseed(getTime()) end
   readModelName()
@@ -2072,6 +2153,7 @@ local function refresh(widget, event, touchState)
   cacheFull = false
   readModelName()
   persistTick()
+  persistLastFix()
 
   local fullscreen = (event ~= nil)
   local zone = widget.zone
@@ -2084,6 +2166,7 @@ local function refresh(widget, event, touchState)
   if not fullscreen then
     VX, VY, VW, VH = zone.x, zone.y, zone.w, zone.h
     menuOpen = false
+    qrView   = false
     if VW < CFG.minMapW or VH < CFG.minMapH then
       if cacheN > 0 then flushCache() end
       drawSmall(zone)
@@ -2098,7 +2181,10 @@ local function refresh(widget, event, touchState)
 
   btns = {}                           -- rebuilt by the draw calls below
 
-  if qrShow then
+  -- Recovery-QR page takes over the whole screen. One bounded generation phase per frame
+  -- (a loading bar shows the progress); the map is not drawn and holds no tile memory.
+  if fullscreen and qrView then
+    if qrGen then qrGenStep() end
     drawQR()
     return
   end
