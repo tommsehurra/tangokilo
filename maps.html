@@ -263,7 +263,10 @@ h3.sec{font-size:13px;font-weight:700;font-stretch:75%;letter-spacing:.14em;text
 --   Rotary            zoom in / out
 --   ENTER short       toggle FOLLOW / FIX
 --   ENTER long        open the settings menu (page, map, zoom knob, graph, ...)
---   Tap [PG] / [MAP]  switch page / cycle map type ([PG] is always in the far-right slot)
+--   PAGE keys         switch page (1 -> 2 -> 3 -> 1 and back), using the radio's own keys:
+--                     two keys (TX16S): PAGE> = next, PAGE< = previous
+--                     one PAGE key:     short = next, long = previous
+--   Tap [MAP]         cycle map type ([MAP] is in the far-right slot of pages 1 and 2)
 --   Zoom knob         optional: pick a pot / slider / channel in the menu to set zoom
 --
 -- SETTINGS
@@ -1459,10 +1462,8 @@ local function drawHud()
   lcd.drawText(VX + 158, VY + 3, string.format("SPD %.0fkm/h", tele.spd), SMLSIZE + C_W)
   lcd.drawText(VX + 250, VY + 3, string.format("HDG %03d", math.floor(tele.hdg)), SMLSIZE + C_W)
 
-  -- top-right buttons: PG stays in the far-right slot on every page (same place as page 3),
-  -- MAP sits to its left.
-  addBtn("page", x2 - 56,  VY + 2, 52, 16, "PG2",  false)
-  addBtn("map",  x2 - 112, VY + 2, 52, 16, "MAP",  true)
+  -- top-right button: MAP in the far-right slot (pages are switched with the PAGE keys)
+  addBtn("map",  x2 - 56,  VY + 2, 52, 16, "MAP",  true)
 
   local mode = follow and "FOLLOW" or (panned and "FIX*" or "FIX")
   lcd.drawText(VX + 4,  y2 - 16, "Z" .. zoom, SMLSIZE + C_W)
@@ -1541,10 +1542,9 @@ local function drawTelem(tx, ty, tw, th)
   lcd.drawText(tx + 4, ty + 4, "TELEMETRY", SMLSIZE + C_Y)
   local txv = gv("tx-voltage")
   if txv and tw >= 200 then
-    lcd.drawText(tx + tw - 112, ty + 4, string.format("TX %.1fV", txv), SMLSIZE + C_W + RIGHT)
+    lcd.drawText(tx + tw - 58, ty + 4, string.format("TX %.1fV", txv), SMLSIZE + C_W + RIGHT)
   end
-  addBtn("page", tx + tw - 54, ty + 2, 50, 16, "PG3", false)
-  addBtn("map",  tx + tw - 108, ty + 2, 50, 16, "MAP", true)
+  addBtn("map",  tx + tw - 54, ty + 2, 50, 16, "MAP", true)
 
   local colL, colR = tx + 6, tx + tw / 2 + 4
   local r0, dr = ty + 22, 15
@@ -1749,7 +1749,6 @@ local function drawADIPage()
   local txv = gv("tx-voltage")
   local mid = "TX " .. (txv and string.format("%.1fV", txv) or "--")
   lcd.drawText(W / 2 - 6, 3, mid, SMLSIZE + C_W + CENTER)
-  addBtn("page", W - 46, 1, 44, 16, "PG1", false)
   lcd.drawLine(0, hyH, W, hyH, SOLID, C_ORNG)
 
   -- ================= artificial horizon =================
@@ -2028,9 +2027,80 @@ local function hitBtn(tx, ty)
 end
 
 local function doBtn(id)
-  if id == "page" then page = page % 3 + 1; graphDirty = true
-  elseif id == "map" then switchSet(1)
+  if id == "map" then switchSet(1)
   elseif id == "qrclose" then qrView = false end
+end
+
+-- Page switching with the radio's own PAGE keys. Fullscreen only: EdgeTX passes key events
+-- to a widget only in fullscreen; in the normal view PAGE switches the EdgeTX main views.
+-- Uses the virtual events, which EdgeTX maps per radio:
+--   two keys (TX16S: PAGE> / PAGE<)  -> NEXT_PAGE / PREV_PAGE      (nothing else needed)
+--   one PAGE key                     -> short = NEXT_PAGE (BREAK), long = PREV_PAGE (LONG)
+-- One-key radios: the press that fired LONG -> PREV_PAGE can still send its BREAK on release,
+-- and that BREAK IS the NEXT_PAGE event -> it would undo the step. killEvents() is not
+-- reliable here, so each press is tracked:
+--   * FIRST of the PAGE key (= a new press starts) clears the "held after LONG" state;
+--     once a FIRST has been seen, a BREAK while held is always the release -> dropped.
+--   * if FIRST never reaches the widget but the key's repeat events do: the release BREAK
+--     follows the last repeat closely (< PG_GAP); a longer silence means the key went up
+--     without a BREAK (killEvents worked) -> the next BREAK is a new press.
+--   * if neither reaches the widget: fallback window PG_EAT after the LONG.
+-- Event classes without bitops: key index = event % 32, flag part = event - event % 32
+-- (the flag part of FIRST is taken from EVT_ENTER_FIRST). Called for EVERY event so FIRST
+-- is tracked even while the menu / QR page is open; it only switches pages when active.
+-- Scoped in do...end so only one name counts against the main chunk's 200-local limit.
+local pageKey
+
+do
+  local PG_EAT    = 100      -- fallback window in ticks (10 ms) = 1 s
+  local PG_GAP    = 25       -- max. silence between last repeat and release BREAK = 250 ms
+                             -- (EdgeTX repeats a held key every 160 ms at the slowest)
+  local pgHold    = false    -- one-key: the current press already fired LONG -> PREV_PAGE
+  local pgT       = 0        -- getTime() of that LONG / of the latest repeat while held
+  local pgRept    = false    -- repeats of the held key reach the widget
+  local seenFirst = false    -- FIRST of the PAGE key reaches the widget -> exact tracking
+
+  pageKey = function(event, active)
+    local nxt, prv = EVT_VIRTUAL_NEXT_PAGE, EVT_VIRTUAL_PREV_PAGE
+    if not (nxt and prv) then return false end
+    local oneKey = (nxt % 32 == prv % 32)
+
+    -- other events of the PAGE key (one-key radios): FIRST = new press, else a repeat
+    if oneKey and event ~= nxt and event ~= prv and event % 32 == nxt % 32 then
+      local ef = EVT_ENTER_FIRST
+      if ef and (event - event % 32) == (ef - ef % 32) then
+        seenFirst = true
+        pgHold    = false
+      elseif pgHold then
+        pgT    = getTime()
+        pgRept = true
+      end
+      return false
+    end
+
+    if event == prv then
+      if not active then return false end
+      page = (page + 1) % 3 + 1          -- one back: 1 -> 3, 2 -> 1, 3 -> 2
+      graphDirty = true
+      if killEvents then killEvents(event) end
+      if oneKey then pgHold = true; pgT = getTime(); pgRept = false end
+      return true
+    elseif event == nxt then
+      local held = pgHold
+      pgHold = false                     -- a BREAK always ends the press
+      if not active then return false end
+      if held then
+        local dt = getTime() - pgT
+        if seenFirst or (pgRept and dt < PG_GAP) or (not pgRept and dt < PG_EAT) then
+          return true                    -- release of the long press: drop it
+        end
+      end
+      page = page % 3 + 1                -- one forward: 1 -> 2, 2 -> 3, 3 -> 1
+      graphDirty = true
+      return true
+    end
+    return false
+  end
 end
 
 local function handleMenu(event, touchState)
@@ -2070,6 +2140,9 @@ end
 
 local function handleEvent(event, touchState)
   if event == nil or event == 0 then return end
+
+  -- PAGE keys: always tracked, but only switch pages when neither QR page nor menu is open
+  if pageKey(event, not (qrView or menuOpen)) then return end
 
   -- Recovery-QR page: swallow all input here. EXIT / ENTER (short or long) closes it and
   -- returns to the map instead of leaving fullscreen; a tap on ZURUECK also closes it.
@@ -2122,7 +2195,7 @@ local function handleEvent(event, touchState)
     -- only react to map-area taps for HUD / zoom / mode
     if tx >= VX and tx <= VX + VW and ty >= VY and ty <= VY + VH then
       if page ~= 1 then
-        return                              -- pages 2/3: only the buttons are interactive
+        return                              -- pages 2/3: map taps do nothing (page 2: [MAP] only)
       elseif not hudOn then
         hudOn = true
       elseif ty > VY + VH - 55 then
@@ -2443,7 +2516,9 @@ var GUIDE =
 "   Zoom knob         optional pot / slider / channel (pick it in the menu)\n"+
 "   ENTER short       toggle FOLLOW and FIX\n"+
 "   ENTER long        open the settings menu\n"+
-"   Tap [PG]          cycle pages: 1 map / 2 graph / 3 HUD (always top-right)\n"+
+"   PAGE keys         cycle pages: 1 map / 2 graph / 3 HUD\n"+
+"                     two keys (TX16S): PAGE> next, PAGE< back\n"+
+"                     one PAGE key: short = next, long = back\n"+
 "   Tap [MAP]         cycle to the next downloaded map type\n"+
 "   Tap on the map    hide the HUD, tap again to bring it back\n"+
 "   Bottom third      left zoom out, centre mode, right zoom in\n"+
