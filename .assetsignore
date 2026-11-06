@@ -1,0 +1,8 @@
+# Nicht als oeffentliche Dateien ausliefern (wrangler liest diese Datei beim Deploy)
+.git
+.github
+wrangler.toml
+README.md
+wx_worker.js
+wx_core.test.js
+node_modules
