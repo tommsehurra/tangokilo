@@ -182,6 +182,7 @@ input[type=number]{-moz-appearance:textfield}
 .cr .ib.eye[aria-pressed="false"]{color:var(--dimmer)}
 .cr.off .nm,.cr.off .du{opacity:.45}
 .cr .ib.x:hover{color:#fff;background:#FF4D57;border-color:#FF4D57}
+.cr .ib.tag{border:1px solid transparent;width:auto;min-width:calc(22px * var(--ui));padding:0 2px}
 .cbtns{display:flex;gap:6px;margin-top:6px}
 .cbtns button{flex:1;padding:4px 6px}
 .ctbl{display:grid;grid-template-columns:auto repeat(4,1fr);gap:1px 8px;font-size:calc(11px * var(--ui));
@@ -650,6 +651,10 @@ details.sect[open] summary{margin-bottom:10px}
       </div>
       <div class="grp">
         <button class="tgl" id="btnFollow" aria-pressed="false">Camera follows model</button>
+        <div class="line" id="followLine" style="display:none;padding:2px 10px 4px">
+          <span class="lbl">Follow</span>
+          <select id="followTgt" style="flex:1;min-width:0;max-width:calc(180px * var(--ui));text-overflow:ellipsis"></select>
+        </div>
         <button class="tgl" id="btnWall" aria-pressed="false">Altitude wall to ground</button>
       </div>
       <div class="grp">
@@ -717,7 +722,8 @@ details.sect[open] summary{margin-bottom:10px}
         <div class="hsec">
           <h3>Compare</h3>
           <p>Loads <b>any number of further logs</b> onto the same map, each in its own colour (several files can be picked at once). Their markers follow the timeline by flight progress, so you can play several flights side by side.</p>
-          <p>Each flight can be hidden or removed; a small table compares flight time, maximum altitude, speed and distance — the best value per column is highlighted. The buttons <b>left of the attitude display</b> fly the camera to one whole flight. If many flights could slow the view down, a warning appears.</p>
+          <p>Every flight can be hidden – the first one too (its timeline and data panel stay). With several flights loaded, <b>View → Follow</b> picks which flight the camera follows.</p>
+          <p>Each added flight can be removed; a small table compares flight time, maximum altitude, speed and distance — the best value per column is highlighted. The buttons <b>left of the attitude display</b> fly the camera to one whole flight. If many flights could slow the view down, a warning appears.</p>
         </div>
         <div class="hsec">
           <h3>Attitude display</h3>
@@ -1497,7 +1503,12 @@ function fail(head,msg){
   el("err").style.display = "grid";
 }
 
-let viewer, marker, pathPrim, wallEnt, groundEnt, dropEnt, maxEnt, landEnt, ready = false;
+let viewer, marker, pathPrim, wallEnt, groundEnt, dropEnt, maxEnt, landEnt, homeEnt, followEnt, ready = false;
+/* Flug 1 (der Hauptflug) laesst sich im Vergleich ausblenden. Die Zeitleiste, Lageanzeige und
+   Werte bleiben bei Flug 1 – nur seine Objekte auf der Karte verschwinden. */
+let mainShow = true;
+/* Wem die Kamera im Folgemodus folgt: 0 = Flug 1, sonst die id eines Vergleichsflugs. */
+let followId = 0;
 let LINE_IDX = [], LINE_POS = [], curPos = null, curGround = null;
 const wpEnts = [], hitEnts = [];
 
@@ -1572,6 +1583,20 @@ function releaseFollow(){
   follow = false;
   const b = el("btnFollow"); if (b) b.setAttribute("aria-pressed","false");
   tuneGlobe();
+}
+
+function mainApply(){
+  const v = mainShow;
+  if (pathPrim) pathPrim.show = v;
+  for (let k=0;k<bandPrims.length;k++) bandPrims[k].show = v;
+  if (wallEnt) wallEnt.show = v;
+  if (groundEnt) groundEnt.show = v;
+  if (dropEnt) dropEnt.show = v;
+  if (marker) marker.show = v;
+  if (homeEnt) homeEnt.show = v;
+  if (maxEnt) maxEnt.show = v && ST.dist_max_i != null && inRange(ST.dist_max_i);
+  if (landEnt) landEnt.show = v && inRange(LAND_I);
+  rr();
 }
 
 function initMap(){
@@ -1701,6 +1726,7 @@ function colorPath(){
     }
   }
   updateLegend();
+  if (!mainShow) mainApply();
 }
 function buildWall(){
   const C = Cesium;
@@ -1727,6 +1753,7 @@ function buildWall(){
       outlineColor: C.Color.fromCssColorString("#7FC8FF").withAlpha(0.55),
       outlineWidth: 1 } });
   } catch(e){ console.warn("Wall:", e); }
+  if (!mainShow) mainApply();
 }
 function buildGround(){
   const C = Cesium;
@@ -1741,6 +1768,7 @@ function buildGround(){
   }
   groundEnt = viewer.entities.add({ polyline:{ positions:pos, width:1.6, clampToGround:cg,
     material: new C.ColorMaterialProperty(C.Color.fromCssColorString("#E6EDF2").withAlpha(0.30)) } });
+  if (!mainShow) mainApply();
 }
 
 const LBL = function(C){ return {
@@ -1757,7 +1785,7 @@ function drawStatics(){
   const C = Cesium;
   const white = C.Color.fromCssColorString("#E6EDF2");
   const amber = C.Color.fromCssColorString("#3FA9FF");
-  viewer.entities.add({
+  homeEnt = viewer.entities.add({
     position: C.Cartesian3.fromDegrees(FL.home[1], FL.home[0], HOME_KNOWN ? gndOff(winFrom) : hAt(winFrom)),
     point:{ pixelSize:11, color:amber, outlineColor:C.Color.BLACK, outlineWidth:2,
             disableDepthTestDistance:Number.POSITIVE_INFINITY },
@@ -1792,10 +1820,17 @@ function drawStatics(){
             disableDepthTestDistance:Number.POSITIVE_INFINITY },
     viewFrom: new C.Cartesian3(-260,-260,190) });
 
+  /* Unsichtbarer Kamera-Anker fuer den Folgemodus: steht immer auf dem gewaehlten Flug
+     (Flug 1 oder ein Vergleichsflug) – so kann die Kamera jedem Flug folgen, auch wenn
+     Flug 1 ausgeblendet ist. Ein 1-px-Punkt ohne Farbe, damit Cesium eine Position hat. */
+  followEnt = viewer.entities.add({
+    position: new C.CallbackProperty(function(){ return followPos(); }, false),
+    point:{ pixelSize:1, color:C.Color.TRANSPARENT },
+    viewFrom: new C.Cartesian3(-260,-260,190) });
 }
 function updateStatics(){
-  if (maxEnt && ST.dist_max_i != null) maxEnt.show = inRange(ST.dist_max_i);
-  if (landEnt) landEnt.show = inRange(LAND_I);
+  if (maxEnt && ST.dist_max_i != null) maxEnt.show = mainShow && inRange(ST.dist_max_i);
+  if (landEnt) landEnt.show = mainShow && inRange(LAND_I);
 }
 function resetView(ms){
   if (!viewer || !LINE_POS.length) return;
@@ -1913,6 +1948,11 @@ function thinMarkers(force){
      Property und laesst Cesium die Beschriftungen neu aufbauen. */
   const setShow = function(e, v){ if (e.show !== v){ e.show = v; changed = true; } };
   const setLbl = function(e, v){ if (e.label && e._lblShow !== v){ e._lblShow = v; e.label.show = v; changed = true; } };
+  if (!mainShow){
+    all.forEach(function(e){ setShow(e, false); });
+    if (changed) rr();
+    return;
+  }
   if (!fn){
     all.forEach(function(e){ setLbl(e, e._wp ? wpMode === "always" : true); });
     if (changed) rr();
@@ -2573,6 +2613,53 @@ let cmpSeq = 0, cmpPts = null, cmpLbls = null, cmpQueue = [], cmpBusy = false;
 let cmpWarnShown = "", cmpToastTimer = 0;
 
 function cmpH(c, i){ const a = c.alt[i]; return (a == null ? 0 : a) - c.base; }
+function cmpById(id){ for (let k=0;k<CMP.length;k++) if (CMP[k].id === id) return CMP[k]; return null; }
+/* Position des Folge-Ziels; faellt auf Flug 1 zurueck, solange das Ziel keine Position hat. */
+function followPos(){
+  if (followId){
+    const c = cmpById(followId);
+    if (c && c.show && c._la != null) return c.pos;
+  }
+  return curPos;
+}
+function followVisible(id){
+  if (!id) return mainShow;
+  const c = cmpById(id); return !!(c && c.show);
+}
+/* Ziel gueltig halten: entfernt/ausgeblendet -> erster sichtbarer Flug; keiner sichtbar ->
+   Folgen aus. */
+function followFix(){
+  if (followVisible(followId)) return true;
+  const cand = [0].concat(CMP.map(function(c){ return c.id; }));
+  for (let k=0;k<cand.length;k++){
+    if (followVisible(cand[k])){ setFollowTarget(cand[k], false); return true; }
+  }
+  if (follow) releaseFollow();
+  return false;
+}
+function setFollowTarget(id, engage){
+  const changed = id !== followId;
+  followId = id;
+  const sel = el("followTgt"); if (sel && sel.value !== String(id)) sel.value = String(id);
+  if (!ready) return;
+  if (engage && !follow){
+    follow = true; el("btnFollow").setAttribute("aria-pressed","true");
+  }
+  if (follow && (changed || engage)){
+    /* neu ansetzen, damit die Kamera mit dem Standard-Blickwinkel beim neuen Ziel startet */
+    viewer.trackedEntity = undefined;
+    viewer.trackedEntity = followEnt;
+    tuneGlobe();
+  }
+  rr();
+}
+function mainSetShow(on){
+  mainShow = on;
+  mainApply();
+  thinMarkers(true);
+  if (follow) followFix();
+  cmpRender();
+}
 function cmpColor(){
   for (let k=0;k<CMP_COLORS.length;k++){
     if (!CMP.some(function(c){ return c.color === CMP_COLORS[k]; })) return CMP_COLORS[k];
@@ -2658,6 +2745,8 @@ function cmpRemove(c){
   if (c.pt) cmpPts.remove(c.pt);
   if (c.lbl) cmpLbls.remove(c.lbl);
   CMP.splice(k, 1);
+  if (followId === c.id){ followId = 0; if (follow) followFix(); }
+  if (!CMP.length && !mainShow){ mainShow = true; mainApply(); thinMarkers(true); }  // nie leere Karte
   cmpWarnShown = ""; fpsReset();
   cmpRender(); rr();
 }
@@ -2680,7 +2769,7 @@ function cmpFly(sph, ms){
 }
 function cmpFocus(k){ cmpFly(cmpSphere(k)); }
 function cmpFitAll(){
-  const list = [cmpSphere(0)];
+  const list = mainShow ? [cmpSphere(0)] : [];
   CMP.forEach(function(c){ if (c.show && c.sphere) list.push(c.sphere); });
   const ok = list.filter(Boolean);
   if (!ok.length) return;
@@ -2698,9 +2787,9 @@ function cmpShort(name, n){
   return name.slice(0, head) + "…" + name.slice(name.length - tail);
 }
 function cmpFlights(){
-  return [{ no:1, name:FL.meta.source || "This flight", color:CMP_PRIMARY, show:true, primary:true,
+  return [{ no:1, name:FL.meta.source || "This flight", color:CMP_PRIMARY, show:mainShow, primary:true, id:0,
             stats:ST, dur:(ST && ST.flight_duration) || (F.t[winTo]-F.t[winFrom]) }]
-    .concat(CMP.map(function(c, k){ return { no:k+2, name:c.name, color:c.color, show:c.show,
+    .concat(CMP.map(function(c, k){ return { no:k+2, id:c.id, name:c.name, color:c.color, show:c.show,
             c:c, stats:c.stats, dur:(c.stats && c.stats.flight_duration) || 0 }; }));
 }
 function cmpRender(){
@@ -2715,9 +2804,9 @@ function cmpRender(){
       + '<span class="no">' + f.no + '</span>'
       + '<span class="nm">' + cmpEsc(cmpShort(f.name, 22)) + '</span>'
       + '<span class="du">' + dur(f.dur || 0) + '</span>'
-      + (f.primary ? '<span class="tag">main</span>'
-         : '<button class="ib eye" data-a="eye" aria-pressed="' + (f.show ? "true" : "false") + '" title="Show / hide">◉</button>'
-         + '<button class="ib x" data-a="del" title="Remove">×</button>')
+      + '<button class="ib eye" data-a="eye" aria-pressed="' + (f.show ? "true" : "false") + '" title="Show / hide on the map">◉</button>'
+      + (f.primary ? '<span class="ib tag" title="Main flight – timeline and data panel">1st</span>'
+         : '<button class="ib x" data-a="del" title="Remove">×</button>')
       + '</div>';
   }).join("");
   Array.prototype.forEach.call(el("cmpRows").querySelectorAll(".cr"), function(row){
@@ -2725,7 +2814,8 @@ function cmpRender(){
     row.onclick = function(ev){
       const act = ev.target && ev.target.getAttribute && ev.target.getAttribute("data-a");
       const c = k > 0 ? CMP[k-1] : null;
-      if (act === "eye" && c){ cmpSetShow(c, !c.show); cmpRender(); return; }
+      if (act === "eye" && k === 0){ mainSetShow(!mainShow); return; }
+      if (act === "eye" && c){ cmpSetShow(c, !c.show); if (follow) followFix(); cmpRender(); return; }
       if (act === "del" && c){ cmpRemove(c); return; }
       cmpFocus(k);
     };
@@ -2773,6 +2863,17 @@ function cmpRender(){
     });
     jb.classList.add("on");
   } else { jb.classList.remove("on"); jb.innerHTML = ""; }
+
+  /* Folge-Ziel: Auswahl nur, wenn es mehr als einen Flug gibt */
+  const fl = el("followLine"), fs = el("followTgt");
+  if (CMP.length){
+    fs.innerHTML = all.map(function(f){
+      return '<option value="' + f.id + '"' + (f.show ? "" : " disabled") + '>' + f.no + ' · '
+        + cmpEsc(cmpShort(f.name, 18)) + (f.show ? "" : " (hidden)") + '</option>'; }).join("");
+    if (!followVisible(followId)) followFix();
+    fs.value = String(followId);
+    fl.style.display = "";
+  } else { fl.style.display = "none"; fs.innerHTML = ""; }
 
   cmpCheckLoad();
   shiftAtt();
@@ -3632,10 +3733,12 @@ el("uiScaleReset").onclick = function(ev){
 
 el("btnFollow").onclick = function(){
   follow = !follow;
+  if (follow) followFix();
   this.setAttribute("aria-pressed", follow ? "true" : "false");
-  if (ready) viewer.trackedEntity = follow ? marker : undefined;
+  if (ready) viewer.trackedEntity = follow ? followEnt : undefined;
   tuneGlobe();
 };
+el("followTgt").onchange = function(){ setFollowTarget(parseInt(this.value, 10), true); };
 el("btnWall").onclick = function(){
   wallOn = !wallOn;
   this.setAttribute("aria-pressed", wallOn ? "true" : "false");
