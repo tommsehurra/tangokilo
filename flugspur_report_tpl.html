@@ -55,7 +55,9 @@ input[type=number]{-moz-appearance:textfield}
 
 /* ---------- Grundraster ---------- */
 #app{display:grid;height:100%;
-  grid-template-columns:calc(276px * var(--ui)) 1fr;
+  /* minmax(0,…): die Kopfzeile darf die Spalte nicht ueber das Fenster hinaus aufweiten
+     (sonst ragten Karte, Legende und Menues bei schmalen Fenstern rechts heraus). */
+  grid-template-columns:calc(276px * var(--ui)) minmax(0,1fr);
   grid-template-rows:auto 1fr auto;
   grid-template-areas:"head head" "side map" "tape tape"}
 
@@ -77,8 +79,13 @@ input[type=number]{-moz-appearance:textfield}
   border-left:1px solid var(--hair);white-space:nowrap}
 .kpi .v{font-size:calc(15px * var(--ui));font-weight:500;font-variant-numeric:tabular-nums}
 .kpi .v small{font-size:calc(10px * var(--ui));color:var(--dim);margin-left:3px;letter-spacing:.06em}
-#tools{display:flex;align-items:center;gap:6px;padding:0 12px;margin-left:auto;flex:none;
-  border-left:1px solid var(--hair)}
+/* Schrumpffaktor fast 0: die Leiste gibt erst Platz ab, wenn Marke, Dateiname und Kennzahlen
+   schon am Minimum sind (wie bisher) – und laeuft dann nicht mehr aus dem Fenster, sondern
+   wird seitlich scrollbar. */
+#tools{display:flex;align-items:center;gap:6px;padding:0 12px;margin-left:auto;flex:0 0.001 auto;min-width:0;
+  border-left:1px solid var(--hair);overflow-x:auto;scrollbar-width:none}
+#tools::-webkit-scrollbar{display:none}
+#tools>*{flex:none}
 #tools button{position:relative}
 #tools button .dot{position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;
   background:var(--amber);display:none}
@@ -155,6 +162,62 @@ input[type=number]{-moz-appearance:textfield}
 #measMenu{right:12px;width:calc(288px * var(--ui))}
 #battMenu{right:12px;width:calc(300px * var(--ui))}
 #findMenu{right:12px;width:calc(322px * var(--ui))}
+#cmpMenu{right:12px;width:calc(318px * var(--ui))}
+
+/* ---------- Vergleich ---------- */
+.cmph{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cmph .gh{margin:0}
+#btnCmpLoad{padding:3px 10px}
+.cr{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:3px;min-width:0}
+.cr:hover{background:rgba(255,255,255,.04)}
+.cr .sw{width:9px;height:9px;border-radius:2px;flex:none}
+.cr .no{font-family:var(--label);font-size:calc(11px * var(--ui));color:var(--dim);width:1.6em;flex:none}
+.cr .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:calc(12px * var(--ui))}
+.cr .du{font-size:calc(11px * var(--ui));color:var(--dim);font-variant-numeric:tabular-nums;flex:none}
+.cr .tag{font-family:var(--label);font-size:calc(10px * var(--ui));letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dimmer);flex:none}
+.cr .ib{width:calc(22px * var(--ui));height:calc(22px * var(--ui));padding:0;display:grid;place-items:center;
+  flex:none;font-family:var(--mono);font-size:calc(12px * var(--ui));line-height:1;text-transform:none;letter-spacing:0}
+.cr .ib.eye[aria-pressed="false"]{color:var(--dimmer)}
+.cr.off .nm,.cr.off .du{opacity:.45}
+.cr .ib.x:hover{color:#fff;background:#FF4D57;border-color:#FF4D57}
+.cbtns{display:flex;gap:6px;margin-top:6px}
+.cbtns button{flex:1;padding:4px 6px}
+.ctbl{display:grid;grid-template-columns:auto repeat(4,1fr);gap:1px 8px;font-size:calc(11px * var(--ui));
+  font-variant-numeric:tabular-nums;align-items:center}
+.ctbl .h{font-family:var(--label);font-size:calc(10px * var(--ui));letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dimmer);text-align:right}
+.ctbl .h:first-child{text-align:left}
+.ctbl .c{text-align:right;white-space:nowrap}
+.ctbl .c.best{color:var(--text);font-weight:600}
+.ctbl .c:not(.best){color:var(--dim)}
+.ctbl .k{display:flex;align-items:center;gap:5px;color:var(--dim);font-family:var(--label)}
+.ctbl .k i{width:7px;height:7px;border-radius:2px;display:block}
+.cwarn{margin-top:6px;padding:6px 9px;border-radius:3px;font-size:calc(11px * var(--ui));line-height:1.5;
+  color:#FFD27A;background:rgba(255,176,32,.10);border:1px solid rgba(255,176,32,.45)}
+#cmpNote{padding:4px 2px 0}
+#btnCmp b{font-weight:600;color:var(--amber);margin-left:4px}
+#btnCmp b:empty{display:none}
+#btnCmp.warn{border-color:rgba(255,176,32,.6)}
+/* Sprungknoepfe links neben der Lageanzeige: sitzen IN #attpanel, verschieben sich also
+   mit demselben weichen transform wie die Lageanzeige selbst. */
+#cmpJump{position:absolute;right:calc(100% + 8px);top:0;display:none;flex-direction:column;gap:4px;
+  width:max-content;max-width:calc(170px * var(--ui))}
+#cmpJump.on{display:flex}
+#cmpJump button{display:flex;align-items:center;gap:7px;min-width:0;padding:4px 9px;text-align:left;
+  background:rgba(10,14,18,.82);border-color:rgba(255,255,255,.14);text-transform:none;letter-spacing:.02em;
+  font-family:var(--mono);font-size:calc(11px * var(--ui));box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#cmpJump button:hover{border-color:var(--hair-strong);background:rgba(20,28,36,.92)}
+#cmpJump button i{width:8px;height:8px;border-radius:2px;flex:none;display:block}
+#cmpJump button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cmpJump button.off{opacity:.45}
+/* Unten mittig: verdeckt weder Lageanzeige noch Sprungknoepfe; seitlich frei fuer die Legende. */
+#cmpToast{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:14;display:none;
+  width:max-content;max-width:min(460px,calc(100% - 460px));padding:8px 12px;border-radius:4px;font-size:calc(12px * var(--ui));line-height:1.5;
+  color:#FFD27A;background:rgba(18,14,6,.92);border:1px solid rgba(255,176,32,.55);
+  box-shadow:0 10px 26px rgba(0,0,0,.45);cursor:pointer}
+#cmpToast.on{display:block}
 
 /* ---------- Hilfe-Overlay ---------- */
 #helpWrap{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
@@ -294,7 +357,7 @@ details.sect[open] summary{margin-bottom:10px}
 #map{grid-area:map;position:relative;background:#000}
 #globe{position:absolute;inset:0}
 #legend{position:absolute;right:12px;bottom:12px;background:var(--panel);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--hair);
+  border:1px solid var(--hair);
   border-radius:3px;padding:9px 11px 8px;width:190px}
 #legend .lbl{display:block;margin-bottom:6px}
 #lgbar{height:6px;border-radius:2px}
@@ -354,7 +417,9 @@ details.sect[open] summary{margin-bottom:10px}
 @media (max-width:1250px){ .kpi:nth-child(n+4){display:none} }
 @media (max-width:1080px){ #file{max-width:16ch} .kpi:nth-child(n+3){display:none} }
 @media (max-width:940px){
-  #app{grid-template-columns:1fr;grid-template-areas:"head" "map" "tape"}
+  #app{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "map" "tape"}
+  #file{max-width:12ch} #brand{padding:0 10px} #tools{gap:4px;padding:0 8px}
+  #tools button{padding:5px 8px}
   #side{position:absolute;z-index:24;top:calc(52px * var(--ui));bottom:0;width:266px;transform:translateX(-100%);
     transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.6)}
   #side.open{transform:none}
@@ -364,9 +429,10 @@ details.sect[open] summary{margin-bottom:10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
 /* ---------- Lageanzeige über der Karte ---------- */
+/* Kein backdrop-filter: ueber der staendig neu gezeichneten 3D-Karte muesste der Blur in
+   jedem Frame neu berechnet werden (GPU-Last, v. a. im Folgemodus). Fast deckend wirkt gleich. */
 #attpanel{position:absolute;right:12px;top:12px;z-index:12;width:calc(224px * var(--ui));
-  background:rgba(10,14,18,.55);backdrop-filter:blur(14px) saturate(1.2);
-  -webkit-backdrop-filter:blur(14px) saturate(1.2);
+  background:rgba(10,14,18,.82);
   border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:6px 6px 5px;
   box-shadow:0 10px 30px rgba(0,0,0,.4);
   transform:translateX(0);transition:transform .18s ease}
@@ -417,30 +483,29 @@ details.sect[open] summary{margin-bottom:10px}
       <button id="btnMeas" aria-expanded="false">Measure</button>
       <button id="btnBatt" aria-expanded="false">Battery<span class="dot"></span></button>
       <button id="btnView" aria-expanded="false">View</button>
-      <button id="btnCmp" aria-expanded="false">Compare</button>
+      <button id="btnCmp" aria-expanded="false">Compare<b id="cmpN"></b></button>
       <a id="btnHome" class="helpbtn" href="/" aria-label="Back to Tango Kilo" title="Back to the main page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:calc(18px * var(--ui));height:calc(18px * var(--ui))"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h5v-6h4v6h5v-9"/></svg></a>
       <button id="btnHelp" class="helpbtn" aria-label="Help">?</button>
     </div>
 
-    <!-- Zwei Fluege vergleichen -->
-    <div class="pop" id="cmpMenu" role="dialog" aria-label="Compare two flights">
+    <!-- Fluege vergleichen (beliebig viele) -->
+    <div class="pop" id="cmpMenu" role="dialog" aria-label="Compare flights">
       <div class="grp">
-        <div class="gh">Second flight</div>
-        <div class="line">
-          <button id="btnCmpLoad" class="wide">Load second flight …</button>
+        <div class="cmph"><span class="gh" id="cmpHead">Flights</span>
+          <button id="btnCmpLoad">+ Add flight …</button></div>
+        <div id="cmpRows"></div>
+        <div class="cbtns" id="cmpActs" style="display:none">
+          <button id="btnCmpFit">Show all</button>
+          <button id="btnCmpClear">Remove all</button>
         </div>
-        <div class="line" id="cmpToggleLine" style="display:none">
-          <button class="tgl" id="btnCmpShow" aria-pressed="true">Show second path</button>
-          <button id="btnCmpClear">Remove</button>
-        </div>
-        <div id="cmpNote" style="opacity:.75;font-size:calc(11px * var(--ui));margin-top:4px">
-          Loads a second log and draws it in magenta on the same scene. The timeline scrubs both; stats are compared below. Runs in your browser — nothing is uploaded.</div>
+        <div class="cwarn" id="cmpWarn" style="display:none"></div>
+        <div class="hint" id="cmpNote">Add one or more logs (multi-select works). Each gets its own colour; the markers follow the timeline by flight progress. Nothing is uploaded.</div>
       </div>
       <div class="grp" id="cmpStatsGrp" style="display:none">
-        <div class="gh">This flight <span style="color:var(--amber)">■</span> vs second <span style="color:#FF5CC8">■</span></div>
+        <div class="gh">Comparison</div>
         <div id="cmpStats"></div>
       </div>
-      <input type="file" id="cmpFile" accept=".csv,.txt,.bbl,.bfl,.log,text/csv,text/plain" hidden>
+      <input type="file" id="cmpFile" accept=".csv,.txt,.bbl,.bfl,.log,text/csv,text/plain" multiple hidden>
     </div>
 
     <!-- Suche -->
@@ -588,7 +653,7 @@ details.sect[open] summary{margin-bottom:10px}
         <button class="tgl" id="btnWall" aria-pressed="false">Altitude wall to ground</button>
       </div>
       <div class="grp">
-        <button class="act" id="btnHome">Reset view</button>
+        <button class="act" id="btnReset">Reset view</button>
         <button class="act" id="btnShot">Save map image</button>
       </div>
     </div>
@@ -650,6 +715,11 @@ details.sect[open] summary{margin-bottom:10px}
           <p><b>Camera follows model</b> locks the view to the aircraft; <b>Altitude wall to ground</b> draws height as a vertical wall. Below you can reset the view or save a map image.</p>
         </div>
         <div class="hsec">
+          <h3>Compare</h3>
+          <p>Loads <b>any number of further logs</b> onto the same map, each in its own colour (several files can be picked at once). Their markers follow the timeline by flight progress, so you can play several flights side by side.</p>
+          <p>Each flight can be hidden or removed; a small table compares flight time, maximum altitude, speed and distance — the best value per column is highlighted. The buttons <b>left of the attitude display</b> fly the camera to one whole flight. If many flights could slow the view down, a warning appears.</p>
+        </div>
+        <div class="hsec">
           <h3>Attitude display</h3>
           <p>Top right, the aircraft model turns with the real attitude from <b>pitch</b> and <b>roll</b>.</p>
           <div class="hrow"><span class="hkbd">Drag model</span><span>rotates the viewing angle – horizontal around the vertical axis, vertical tilts between side and top view.</span></div>
@@ -690,6 +760,7 @@ details.sect[open] summary{margin-bottom:10px}
   <div id="map">
     <div id="globe"></div>
     <div id="attpanel">
+      <div id="cmpJump" aria-label="Jump to flight"></div>
       <canvas id="attc" width="264" height="264"></canvas>
       <div id="attviews">
         <button data-az="0" data-el="0">Front</button>
@@ -707,6 +778,7 @@ details.sect[open] summary{margin-bottom:10px}
       <div id="lgbar"></div>
       <div id="lgscale"><span id="lgmin">–</span><span id="lgmid">–</span><span id="lgmax">–</span></div>
     </div>
+    <div id="cmpToast" role="status"></div>
     <div id="err"><div><h3 id="errh">Map not loaded</h3><p id="errp"></p></div></div>
   </div>
 
@@ -1398,6 +1470,7 @@ function buildLive(){
     return '<div><span>'+r[0]+'</span><span id="'+r[1]+'">–</span></div>'; }).join("");
   el("attvals").innerHTML = attHtml;
   el("attrow").innerHTML = "";
+  liveNodes = null; attKey = "";
 }
 
 /* ====================================================== Cesium */
@@ -1465,6 +1538,42 @@ function applySens(){
   } catch(e){ console.warn("Steuerung:", e); }
 }
 
+/* Rendern anstossen. Kamera, Kachel-Ladevorgaenge und Entity-Sammlungen loesen selbst aus;
+   alles andere (Primitives, Bedienung, Fenstergroesse) haengt hier zentral dran. */
+function rr(){ if (viewer) viewer.scene.requestRender(); }
+function hookRender(){
+  const prims = viewer.scene.primitives;
+  const add = prims.add.bind(prims), rem = prims.remove.bind(prims);
+  prims.add = function(p, i){ const r = add(p, i); rr(); return r; };
+  prims.remove = function(p){ const r = rem(p); rr(); return r; };
+  try { viewer.entities.collectionChanged.addEventListener(rr); } catch(e){}
+  ["pointerdown","pointerup","click","keydown","input","change"].forEach(function(ev){
+    document.addEventListener(ev, rr, { capture:true, passive:true }); });
+  const g = el("globe");
+  ["pointermove","wheel"].forEach(function(ev){ g.addEventListener(ev, rr, { passive:true }); });
+  window.addEventListener("resize", rr);
+  if (window.ResizeObserver){ try { new ResizeObserver(rr).observe(g); } catch(e){} }
+}
+/* Kachel-Detailstufe: Im Folgemodus waehrend der Wiedergabe fliegt die Kamera dicht ueber den
+   Boden und Cesium wuerde fortlaufend Kacheln in hoechster Aufloesung nachladen (zwei Ebenen bei
+   Satellit + Beschriftung). Gemessen: rund 5x weniger Kachelanfragen mit Fehlergrenze 4 statt 2.
+   Beim Anhalten zurueck auf volle Schaerfe. */
+function tuneGlobe(){
+  if (!viewer) return;
+  const g = viewer.scene.globe, fast = playing && follow;
+  g.maximumScreenSpaceError = fast ? 4 : 2;
+  g.loadingDescendantLimit = fast ? 8 : 20;
+  rr();
+}
+/* Kamera vom Modell loesen. Wer die Kamera woanders hinfliegt, muss das tun – sonst bleibt sie
+   an das Modell gekoppelt und laesst sich nur noch um es herum drehen (Fehler beim Vergleich). */
+function releaseFollow(){
+  if (viewer) viewer.trackedEntity = undefined;
+  follow = false;
+  const b = el("btnFollow"); if (b) b.setAttribute("aria-pressed","false");
+  tuneGlobe();
+}
+
 function initMap(){
   const C = Cesium;
   viewer = new C.Viewer("globe", {
@@ -1475,10 +1584,17 @@ function initMap(){
     terrainProvider: new C.EllipsoidTerrainProvider(),
     baseLayerPicker:false, geocoder:false, homeButton:false, sceneModePicker:false,
     navigationHelpButton:false, animation:false, timeline:false, fullscreenButton:false,
-    infoBox:false, selectionIndicator:false, shouldAnimate:false, requestRenderMode:false,
-    contextOptions:{ webgl:{ preserveDrawingBuffer:true } }
+    infoBox:false, selectionIndicator:false, shouldAnimate:false,
+    /* Explizites Rendern: nur zeichnen, wenn sich etwas aendert (Kamera, Kacheln, Wiedergabe,
+       Bedienung). Vorher lief die Karte dauerhaft mit voller Bildrate, auch im Stillstand. */
+    requestRenderMode:true, maximumRenderTimeChange:Infinity,
+    /* Kein preserveDrawingBuffer: spart pro Frame eine Puffer-Kopie. Das Kartenbild-Speichern
+       rendert unmittelbar vor toDataURL selbst. */
+    contextOptions:{ webgl:{ preserveDrawingBuffer:false } }
   });
   const scene = viewer.scene;
+  scene.globe.tileCacheSize = 300;      // Kacheln beim Hin- und Herfliegen nicht neu laden
+  hookRender();
   scene.globe.depthTestAgainstTerrain = false;
   scene.globe.baseColor = C.Color.fromCssColorString("#0A0E12");
   scene.screenSpaceCameraController.minimumZoomDistance = 8;
@@ -1684,8 +1800,7 @@ function updateStatics(){
 function resetView(ms){
   if (!viewer || !LINE_POS.length) return;
   const C = Cesium;
-  viewer.trackedEntity = undefined; follow = false;
-  const b = el("btnFollow"); if (b) b.setAttribute("aria-pressed","false");
+  releaseFollow();
   const sph = C.BoundingSphere.fromPoints(LINE_POS);
   viewer.camera.flyToBoundingSphere(sph, { duration: ms/1000,
     offset: new C.HeadingPitchRange(C.Math.toRadians(-25), C.Math.toRadians(-42), sph.radius*2.4) });
@@ -1793,8 +1908,14 @@ function thinMarkers(force){
   _lastThin = now;
   const fn = screenFn();
   const all = wpEnts.concat(hitEnts);
+  let changed = false;
+  /* Nur schreiben, wenn sich etwas aendert: jede Zuweisung an label.show erzeugt eine neue
+     Property und laesst Cesium die Beschriftungen neu aufbauen. */
+  const setShow = function(e, v){ if (e.show !== v){ e.show = v; changed = true; } };
+  const setLbl = function(e, v){ if (e.label && e._lblShow !== v){ e._lblShow = v; e.label.show = v; changed = true; } };
   if (!fn){
-    all.forEach(function(e){ if (e.label) e.label.show = (e._wp ? wpMode === "always" : true); });
+    all.forEach(function(e){ setLbl(e, e._wp ? wpMode === "always" : true); });
+    if (changed) rr();
     return;
   }
   const kept = [];
@@ -1802,7 +1923,7 @@ function thinMarkers(force){
     const e = all[k];
     let w = null;
     try { w = fn(viewer.scene, e._pos); } catch(err){ w = null; }
-    if (!w){ e.show = false; continue; }
+    if (!w){ setShow(e, false); continue; }
     let dotOk = true, labelOk = true;
     for (let j=0;j<kept.length;j++){
       const dx = w.x - kept[j].x, dy = w.y - kept[j].y;
@@ -1810,14 +1931,15 @@ function thinMarkers(force){
       if (d2 < 30*30){ dotOk = false; break; }
       if (d2 < (kept[j].lbl ? 96*96 : 52*52)) labelOk = false;
     }
-    e.show = dotOk;
+    setShow(e, dotOk);
     if (!dotOk) continue;
     /* Die gerade überfahrene Marke bleibt beschriftet, sonst flackert sie weg */
     const hovered = (e === hoverEnt);
     const wantLabel = hovered || (e._wp ? (wpMode === "always") : true);
-    if (e.label) e.label.show = hovered || (wantLabel && labelOk);
+    setLbl(e, hovered || (wantLabel && labelOk));
     kept.push({ x:w.x, y:w.y, lbl: wantLabel && labelOk });
   }
+  if (changed) rr();
 }
 
 function hookPick(){
@@ -1833,9 +1955,9 @@ function hookPick(){
       }
       const ent = picked && picked.id && picked.id._wp ? picked.id : null;
       if (ent === hoverEnt) return;
-      if (hoverEnt && hoverEnt.label && wpMode !== "always") hoverEnt.label.show = false;
+      if (hoverEnt && hoverEnt.label && wpMode !== "always"){ hoverEnt.label.show = false; hoverEnt._lblShow = false; }
       hoverEnt = ent;
-      if (ent && ent.label) ent.label.show = true;
+      if (ent && ent.label){ ent.label.show = true; ent._lblShow = true; }
       viewer.scene.requestRender();
     }, C.ScreenSpaceEventType.MOUSE_MOVE);
   } catch(e){ console.warn("Pick:", e); }
@@ -1947,8 +2069,7 @@ function jumpToIdx(i, fly){
 function flyTo(i){
   if (!ready) return;
   const C = Cesium;
-  viewer.trackedEntity = undefined; follow = false;
-  el("btnFollow").setAttribute("aria-pressed","false");
+  releaseFollow();
   viewer.camera.flyToBoundingSphere(new C.BoundingSphere(posOf(i), 420), { duration:1.1,
     offset: new C.HeadingPitchRange(C.Math.toRadians(-25), C.Math.toRadians(-38), 900) });
 }
@@ -2253,6 +2374,40 @@ function drawHorizon(){
   actx.beginPath(); actx.arc(cx,cy,R,0,6.2832); actx.stroke();
 }
 
+/* Modell einmal in flache Arrays umsetzen. Pro Bild wird dann eine einzige 3x3-Matrix
+   gebildet (statt vier Einzelrotationen mit neuen Arrays je Ecke) und nur noch gerechnet.
+   Bildgleich zum frueheren Zeichner: gleiche Drehreihenfolge, Schattierung, Farbformel, Kanten. */
+const ATT_N = FACES.length;
+const ATT_V = new Float64Array(ATT_N*9), ATT_NM = new Float64Array(ATT_N*3), ATT_RGB = new Float64Array(ATT_N*3);
+(function(){
+  for (let f=0; f<ATT_N; f++){
+    const F0 = FACES[f];
+    for (let k=0;k<3;k++) for (let d=0;d<3;d++) ATT_V[f*9+k*3+d] = F0.v[k][d];
+    for (let d=0;d<3;d++) ATT_NM[f*3+d] = F0.n[d];
+    ATT_RGB[f*3]   = parseInt(F0.c.slice(1,3),16);
+    ATT_RGB[f*3+1] = parseInt(F0.c.slice(3,5),16);
+    ATT_RGB[f*3+2] = parseInt(F0.c.slice(5,7),16);
+  }
+})();
+const ATT_TV = new Float64Array(ATT_N*9), ATT_TZ = new Float64Array(ATT_N), ATT_TD = new Float64Array(ATT_N);
+const ATT_ORD = [];
+function attMatrix(pit, rol, az, elv){
+  /* q = X(elv) * Y(az) * Z(rol) * X(pit) * p  – dieselbe Reihenfolge wie rotX/rotZ/rotY/rotX */
+  const cp=Math.cos(pit), sp=Math.sin(pit), cr=Math.cos(rol), sr=Math.sin(rol);
+  const ca=Math.cos(az),  sa=Math.sin(az),  ce=Math.cos(elv), se=Math.sin(elv);
+  // A = Z(rol) * X(pit)
+  const a00=cr, a01=-sr*cp, a02= sr*sp;
+  const a10=sr, a11= cr*cp, a12=-cr*sp;
+  const a20=0,  a21= sp,    a22= cp;
+  // B = Y(az) * A
+  const b00= ca*a00+sa*a20, b01= ca*a01+sa*a21, b02= ca*a02+sa*a22;
+  const b10= a10,           b11= a11,           b12= a12;
+  const b20=-sa*a00+ca*a20, b21=-sa*a01+ca*a21, b22=-sa*a02+ca*a22;
+  // M = X(elv) * B
+  return [b00, b01, b02,
+          ce*b10-se*b20, ce*b11-se*b21, ce*b12-se*b22,
+          se*b10+ce*b20, se*b11+ce*b21, se*b12+ce*b22];
+}
 function drawAtt(yawDeg,pitchDeg,rollDeg){
   const w = attc.width, h = attc.height;
   const R = w*0.46, cx = w/2, cy = h/2;
@@ -2265,24 +2420,28 @@ function drawAtt(yawDeg,pitchDeg,rollDeg){
   const pit = pitDeg * Math.PI/180;
   const rol = (rollDeg||0) * Math.PI/180;
   const lift = -Math.max(-1, Math.min(1, pitDeg/45)) * R * 0.22;
+  const M = attMatrix(pit, rol, attAz, attEl);
+  const m0=M[0],m1=M[1],m2=M[2],m3=M[3],m4=M[4],m5=M[5],m6=M[6],m7=M[7],m8=M[8];
 
-  const polys = [];
-  for (let f=0; f<FACES.length; f++){
-    const src = FACES[f];
-    const tf = function(p){
-      let q = rotX(p, pit);        // Pitch um die Querachse
-      q = rotZ(q, rol);            // Rolllage um die Laengsachse
-      q = rotY(q, attAz);          // Blickrichtung: Drehung um die Hochachse
-      q = rotX(q, attEl);          // Blickrichtung: Kippen der Ansicht
-      return q;
-    };
-    const v = src.v.map(tf);
-    const n = tf(src.n);
-    if (n[2] <= 0.0) continue;
-    let zs = 0; for (let i=0;i<v.length;i++) zs += v[i][2];
-    polys.push({ z: zs/v.length, v: v, n: n, c: src.c });
+  ATT_ORD.length = 0;
+  for (let f=0; f<ATT_N; f++){
+    const nb = f*3, nx0 = ATT_NM[nb], ny0 = ATT_NM[nb+1], nz0 = ATT_NM[nb+2];
+    const nz = m6*nx0 + m7*ny0 + m8*nz0;
+    if (nz <= 0.0) continue;
+    const nx = m0*nx0 + m1*ny0 + m2*nz0, ny = m3*nx0 + m4*ny0 + m5*nz0;
+    const vb = f*9; let zs = 0;
+    for (let k=0;k<3;k++){
+      const o = vb+k*3, x = ATT_V[o], y = ATT_V[o+1], z = ATT_V[o+2];
+      ATT_TV[o]   = m0*x + m1*y + m2*z;
+      ATT_TV[o+1] = m3*x + m4*y + m5*z;
+      const tz    = m6*x + m7*y + m8*z;
+      ATT_TV[o+2] = tz; zs += tz;
+    }
+    ATT_TZ[f] = zs/3;
+    ATT_TD[f] = nx*LIGHT[0] + ny*LIGHT[1] + nz*LIGHT[2];
+    ATT_ORD.push(f);
   }
-  polys.sort(function(a,b){ return a.z - b.z; });
+  ATT_ORD.sort(function(a,b){ return ATT_TZ[a] - ATT_TZ[b]; });
 
   actx.save();
   actx.beginPath(); actx.arc(cx,cy,R*0.995,0,6.2832); actx.clip();
@@ -2292,25 +2451,24 @@ function drawAtt(yawDeg,pitchDeg,rollDeg){
   actx.shadowColor = "rgba(0,0,0,.55)";
   actx.shadowBlur = Math.max(4, w*0.045);
   actx.shadowOffsetX = 0; actx.shadowOffsetY = Math.max(1, w*0.012);
-  for (let i=0;i<polys.length;i++){
-    const p = polys[i];
-    const d = p.n[0]*LIGHT[0] + p.n[1]*LIGHT[1] + p.n[2]*LIGHT[2];
+  const lw = Math.max(0.5, w*0.0035);
+  for (let q=0;q<ATT_ORD.length;q++){
+    const f = ATT_ORD[q], cb = f*3, vb = f*9;
     // Etwas mehr Kontrast im Shading, damit Form besser lesbar ist.
-    const sh = 0.30 + 0.78*Math.max(0,d);
-    const r = Math.min(255, parseInt(p.c.slice(1,3),16)*sh)|0;
-    const g = Math.min(255, parseInt(p.c.slice(3,5),16)*sh)|0;
-    const b = Math.min(255, parseInt(p.c.slice(5,7),16)*sh)|0;
+    const sh = 0.30 + 0.78*Math.max(0, ATT_TD[f]);
+    const r = Math.min(255, ATT_RGB[cb]*sh)|0;
+    const g = Math.min(255, ATT_RGB[cb+1]*sh)|0;
+    const b = Math.min(255, ATT_RGB[cb+2]*sh)|0;
     actx.fillStyle = "rgb("+r+","+g+","+b+")";
     actx.beginPath();
-    for (let k=0;k<p.v.length;k++){
-      const x = cx + p.v[k][0]*sc, y = cy - p.v[k][1]*sc + lift;
-      if (k===0) actx.moveTo(x,y); else actx.lineTo(x,y);
-    }
+    actx.moveTo(cx + ATT_TV[vb]*sc,   cy - ATT_TV[vb+1]*sc + lift);
+    actx.lineTo(cx + ATT_TV[vb+3]*sc, cy - ATT_TV[vb+4]*sc + lift);
+    actx.lineTo(cx + ATT_TV[vb+6]*sc, cy - ATT_TV[vb+7]*sc + lift);
     actx.closePath(); actx.fill();
     actx.shadowColor = "transparent";          // Schatten nur einmal, global
     // Feine dunkle Kante je Fläche für klarere Silhouette.
     actx.strokeStyle = "rgba(0,0,0,.28)";
-    actx.lineWidth = Math.max(0.5, w*0.0035);
+    actx.lineWidth = lw;
     actx.stroke();
   }
   actx.restore();
@@ -2329,6 +2487,7 @@ function wrapPi(a){
 }
 function attRedraw(){
   if (lastAtt) drawAtt(lastAtt[0], lastAtt[1], lastAtt[2]);
+  attKey = "";
   syncViews();
 }
 function setView(az, elv){
@@ -2392,169 +2551,368 @@ if (attc){
   }
 })();
 
-/* ====================================================== Zwei Fluege vergleichen (B)
-   Rein additiv: ein optionaler zweiter Flug wird als eigene magenta Bahn auf DIESELBE
-   Cesium-Szene gelegt, mit eigenem Marker, der ueber die GEMEINSAME Timeline (Fortschritt
-   0..1) mitgezogen wird, plus einer A-vs-B-Stats-Tabelle. Ohne geladenen 2. Flug laeuft
-   KEIN B-Code -> der Ein-Flug-Fall bleibt unveraendert. Dekodierung im Web-Worker
-   (importScripts des gleich-origin Parsers), koordinatenfrei im Repo (Daten erst zur Laufzeit). */
-let FB = null, FLB = null, pathPrimB = null, markerB = null, curPosB = null, cmpShow = true;
-const COLOR_B = "#FF5CC8";
+/* ====================================================== Fluege vergleichen (beliebig viele)
+   Rein additiv: jeder weitere Flug bekommt eine eigene farbige Bahn (ein statisches Primitive)
+   und einen Punkt + Nummer in je EINER gemeinsamen PointPrimitiveCollection/LabelCollection –
+   keine Entity mit Callback pro Flug. Die Marker laufen ueber den gemeinsamen Fortschritt 0..1
+   der Timeline mit. Vom Payload bleiben nur Lage, Hoehe, Kennzahlen und die Bahn-Indizes, der
+   Rest wird verworfen (Speicher). Ohne Vergleichsflug laeuft kein Vergleichs-Code mit.
+   Dekodierung im Web-Worker (gleich-origin Parser). Koordinatenfrei im Repo. */
+const CMP_COLORS = ["#FF5CC8","#FFB020","#4ED6A0","#B18CFF","#FF7A45","#5CE1E6",
+                    "#F2E94E","#FF6B8B","#9BE15D","#7AA2FF","#E9A2FF","#C8D0D6"];
+const CMP_PRIMARY = "#3FA9FF";
+/* Warnschwellen. Gemessen (Chromium, 12-MB-Logs): jeder weitere Flug kostet nach dem Laden
+   ~1 MB Speicher und ~0,002 ms pro Bild – die Zahl der Fluege selbst bremst kaum. Die feste
+   Schwelle warnt deshalb erst bei viel Ballast (Ladezeit, Uebersicht, schwache Rechner); echte
+   Einbrueche faengt der Bildraten-Waechter weiter unten waehrend der Wiedergabe ab. */
+const CMP_WARN_FLIGHTS = 15;
+const CMP_WARN_POINTS  = 500000;
+const CMP_FPS_MIN = 20;                 // Wiedergabe darunter laenger als ~4 s -> Hinweis
+const CMP = [];
+let cmpSeq = 0, cmpPts = null, cmpLbls = null, cmpQueue = [], cmpBusy = false;
+let cmpWarnShown = "", cmpToastTimer = 0;
 
-function bIdxAtFrac(frac){
-  const a = (FLB.from|0), b = (FLB.to|0), n = FB.t.length;
-  let idx = Math.round(a + clamp(frac,0,1) * (b - a));
-  if (idx < 0) idx = 0; if (idx > n-1) idx = n-1;
-  return idx;
+function cmpH(c, i){ const a = c.alt[i]; return (a == null ? 0 : a) - c.base; }
+function cmpColor(){
+  for (let k=0;k<CMP_COLORS.length;k++){
+    if (!CMP.some(function(c){ return c.color === CMP_COLORS[k]; })) return CMP_COLORS[k];
+  }
+  return CMP_COLORS[CMP.length % CMP_COLORS.length];
 }
-function bHeight(i){
-  const base = (FLB.meta && FLB.meta.altBase) || 0;
-  const a = FB.alt[i];
-  return (a == null ? 0 : a) - base;
+function cmpPointsTotal(){
+  let n = N; for (let k=0;k<CMP.length;k++) n += CMP[k].n; return n;
 }
-function buildPathB(){
+function cmpCollections(){
+  if (cmpPts || !viewer) return;
+  cmpPts  = viewer.scene.primitives.add(new Cesium.PointPrimitiveCollection());
+  cmpLbls = viewer.scene.primitives.add(new Cesium.LabelCollection());
+}
+function cmpBuild(c){
   const C = Cesium;
-  if (pathPrimB){ viewer.scene.primitives.remove(pathPrimB); pathPrimB = null; }
-  const idxs = (FLB.lineIdx || []).filter(function(i){ return i >= FLB.from && i <= FLB.to; });
-  const use = idxs.length >= 2 ? idxs : (FLB.lineIdx || []).slice();
-  if (use.length < 2) return;
-  const pos = use.map(function(i){ return C.Cartesian3.fromDegrees(FB.lon[i], FB.lat[i], bHeight(i)); });
-  const col = C.Color.fromCssColorString(COLOR_B);
-  const cols = pos.map(function(){ return col; });
-  pathPrimB = viewer.scene.primitives.add(new C.Primitive({
+  const li = (c.lineIdx || []).filter(function(i){ return i >= c.from && i <= c.to; });
+  const use = li.length >= 2 ? li : (c.lineIdx || []);
+  const pos = [];
+  for (let k=0;k<use.length;k++){
+    const i = use[k];
+    if (c.lat[i] == null || c.lon[i] == null) continue;
+    pos.push(C.Cartesian3.fromDegrees(c.lon[i], c.lat[i], cmpH(c,i)));
+  }
+  if (pos.length < 2) throw new Error("no usable GPS track in this log");
+  c.sphere = C.BoundingSphere.fromPoints(pos);
+  const col = C.Color.fromCssColorString(c.color);
+  c.prim = viewer.scene.primitives.add(new C.Primitive({
     geometryInstances: new C.GeometryInstance({
       geometry: new C.PolylineGeometry({
-        positions: pos, width: 3.5, colors: cols, colorsPerVertex: true,
+        positions: pos, width: 3.5, colors: pos.map(function(){ return col; }), colorsPerVertex: true,
         arcType: C.ArcType.NONE, vertexFormat: C.PolylineColorAppearance.VERTEX_FORMAT })
     }),
     appearance: new C.PolylineColorAppearance({ translucent: false }),
     asynchronous: false }));
-  pathPrimB.show = cmpShow;
-  buildPathB._pos = pos;
+  cmpCollections();
+  c.pos = new C.Cartesian3();
+  c.pt = cmpPts.add({ position: c.sphere.center, pixelSize: 12, color: col,
+    outlineColor: C.Color.BLACK, outlineWidth: 2,
+    disableDepthTestDistance: Number.POSITIVE_INFINITY, show: false });
+  c.lbl = cmpLbls.add({ position: c.sphere.center, text: "", font: "bold 12px sans-serif",
+    fillColor: C.Color.WHITE, outlineColor: C.Color.BLACK, outlineWidth: 3,
+    style: C.LabelStyle.FILL_AND_OUTLINE, pixelOffset: new C.Cartesian2(0,-15),
+    verticalOrigin: C.VerticalOrigin.BOTTOM,
+    disableDepthTestDistance: Number.POSITIVE_INFINITY, show: false });
 }
-function ensureMarkerB(){
-  if (markerB) return;
+function cmpRefresh(){
+  if (!CMP.length || !viewer) return;
+  const frac = clamp((t - tMin) / ((tMax - tMin) || 1), 0, 1);
+  for (let k=0;k<CMP.length;k++){
+    const c = CMP[k];
+    if (!c.show) continue;
+    const fi = c.from + frac * (c.to - c.from);
+    let i = Math.floor(fi); if (i < 0) i = 0; if (i > c.n-1) i = c.n-1;
+    const j = Math.min(c.n-1, i+1), w = fi - i;
+    let la = c.lat[i], lo = c.lon[i];
+    if (la == null || lo == null){
+      if (c.pt.show){ c.pt.show = false; c.lbl.show = false; }
+      continue;
+    }
+    let h = cmpH(c,i);
+    if (w > 0 && j !== i && c.lat[j] != null && c.lon[j] != null){
+      la += (c.lat[j]-la)*w; lo += (c.lon[j]-lo)*w; h += (cmpH(c,j)-h)*w;
+    }
+    if (la === c._la && lo === c._lo && h === c._h && c.pt.show) continue;
+    c._la = la; c._lo = lo; c._h = h;
+    Cesium.Cartesian3.fromDegrees(lo, la, h, undefined, c.pos);
+    c.pt.position = c.pos; c.lbl.position = c.pos;
+    if (!c.pt.show){ c.pt.show = true; c.lbl.show = true; }
+  }
+  rr();
+}
+function cmpSetShow(c, on){
+  c.show = on;
+  if (c.prim) c.prim.show = on;
+  if (c.pt){ c.pt.show = on; c.lbl.show = on; }
+  c._la = null;
+  if (on) cmpRefresh(); else rr();
+}
+function cmpRemove(c){
+  const k = CMP.indexOf(c); if (k < 0) return;
+  if (c.prim) viewer.scene.primitives.remove(c.prim);
+  if (c.pt) cmpPts.remove(c.pt);
+  if (c.lbl) cmpLbls.remove(c.lbl);
+  CMP.splice(k, 1);
+  cmpWarnShown = ""; fpsReset();
+  cmpRender(); rr();
+}
+function cmpClearAll(){
+  while (CMP.length) cmpRemove(CMP[CMP.length-1]);
+}
+/* Kamera auf einen Flug (k = 0: dieser Flug) bzw. auf alle. Loest immer das Folgen, sonst
+   bliebe die Kamera ans Modell gekoppelt und liesse sich nur noch drehen. */
+function cmpSphere(k){
+  if (k === 0) return LINE_POS.length >= 2 ? Cesium.BoundingSphere.fromPoints(LINE_POS) : null;
+  const c = CMP[k-1]; return c ? c.sphere : null;
+}
+function cmpFly(sph, ms){
+  if (!sph || !viewer) return;
   const C = Cesium;
-  markerB = viewer.entities.add({
-    position: new C.CallbackProperty(function(){ return curPosB; }, false),
-    point:{ pixelSize:12, color:C.Color.fromCssColorString(COLOR_B),
-            outlineColor:C.Color.BLACK, outlineWidth:2,
-            disableDepthTestDistance:Number.POSITIVE_INFINITY },
-    label:{ text:"2", font:"bold 12px sans-serif", fillColor:C.Color.WHITE,
-            showBackgroundColor:false, pixelOffset:new C.Cartesian2(0,-16),
-            disableDepthTestDistance:Number.POSITIVE_INFINITY, show:false }
+  releaseFollow();
+  viewer.camera.flyToBoundingSphere(sph, { duration: (ms == null ? 900 : ms)/1000,
+    offset: new C.HeadingPitchRange(C.Math.toRadians(-25), C.Math.toRadians(-42),
+                                    Math.max(250, sph.radius*2.4)) });
+}
+function cmpFocus(k){ cmpFly(cmpSphere(k)); }
+function cmpFitAll(){
+  const list = [cmpSphere(0)];
+  CMP.forEach(function(c){ if (c.show && c.sphere) list.push(c.sphere); });
+  const ok = list.filter(Boolean);
+  if (!ok.length) return;
+  cmpFly(ok.length === 1 ? ok[0] : Cesium.BoundingSphere.fromBoundingSpheres(ok));
+}
+
+/* ---------- Oberflaeche ---------- */
+function cmpEsc(x){ return esc(x == null ? "" : x); }
+/* Kurzname mit Auslassung in der Mitte – Logdateien unterscheiden sich meist erst am Ende
+   (Datum/Uhrzeit), ein abgeschnittenes Ende machte sie ununterscheidbar. */
+function cmpShort(name, n){
+  name = String(name || "").replace(/\.(csv|txt|bbl|bfl|log)$/i, "");
+  if (name.length <= n) return name;
+  const tail = Math.ceil((n-1)*0.55), head = n - 1 - tail;
+  return name.slice(0, head) + "…" + name.slice(name.length - tail);
+}
+function cmpFlights(){
+  return [{ no:1, name:FL.meta.source || "This flight", color:CMP_PRIMARY, show:true, primary:true,
+            stats:ST, dur:(ST && ST.flight_duration) || (F.t[winTo]-F.t[winFrom]) }]
+    .concat(CMP.map(function(c, k){ return { no:k+2, name:c.name, color:c.color, show:c.show,
+            c:c, stats:c.stats, dur:(c.stats && c.stats.flight_duration) || 0 }; }));
+}
+function cmpRender(){
+  const all = cmpFlights();
+  CMP.forEach(function(c, k){ const no = String(k+2); if (c.lbl && c.lbl.text !== no) c.lbl.text = no; });
+
+  el("cmpN").textContent = CMP.length ? String(all.length) : "";
+  el("cmpHead").textContent = CMP.length ? ("Flights · " + all.length) : "Flights";
+  el("cmpRows").innerHTML = all.map(function(f, k){
+    return '<div class="cr' + (f.show ? "" : " off") + '" data-k="' + k + '" title="' + cmpEsc(f.name) + '">'
+      + '<i class="sw" style="background:' + f.color + '"></i>'
+      + '<span class="no">' + f.no + '</span>'
+      + '<span class="nm">' + cmpEsc(cmpShort(f.name, 22)) + '</span>'
+      + '<span class="du">' + dur(f.dur || 0) + '</span>'
+      + (f.primary ? '<span class="tag">main</span>'
+         : '<button class="ib eye" data-a="eye" aria-pressed="' + (f.show ? "true" : "false") + '" title="Show / hide">◉</button>'
+         + '<button class="ib x" data-a="del" title="Remove">×</button>')
+      + '</div>';
+  }).join("");
+  Array.prototype.forEach.call(el("cmpRows").querySelectorAll(".cr"), function(row){
+    const k = parseInt(row.getAttribute("data-k"), 10);
+    row.onclick = function(ev){
+      const act = ev.target && ev.target.getAttribute && ev.target.getAttribute("data-a");
+      const c = k > 0 ? CMP[k-1] : null;
+      if (act === "eye" && c){ cmpSetShow(c, !c.show); cmpRender(); return; }
+      if (act === "del" && c){ cmpRemove(c); return; }
+      cmpFocus(k);
+    };
+  });
+  el("cmpActs").style.display = CMP.length ? "" : "none";
+
+  /* Kennzahlen: Fluege als Zeilen, damit die Tabelle bei vielen Fluegen nach unten waechst
+     statt aus dem Menue zu laufen. Bester Wert je Spalte hervorgehoben. */
+  if (CMP.length){
+    const cols = [
+      { h:"Time",  v:function(s){ return s.flight_duration; }, f:function(x){ return dur(x||0); } },
+      { h:"Alt",   v:function(s){ return s.alt_max; },  f:function(x){ return x==null ? "—" : Math.round(x)+" m"; } },
+      { h:"Speed", v:function(s){ return s.spd_max; },  f:function(x){ return x==null ? "—" : Math.round(x)+" km/h"; } },
+      { h:"Dist",  v:function(s){ return s.dist_max; }, f:function(x){ return x==null ? "—" : (x < 1000 ? Math.round(x)+" m" : (x/1000).toFixed(2)+" km"); } }
+    ];
+    const best = cols.map(function(col){
+      let m = -Infinity; all.forEach(function(f){ const x = col.v(f.stats || {}); if (x != null && x > m) m = x; });
+      return m;
+    });
+    let h = '<div class="ctbl"><span class="h">#</span>' + cols.map(function(c){ return '<span class="h">'+c.h+'</span>'; }).join("");
+    all.forEach(function(f){
+      const s0 = f.stats || {};
+      const tip = "Best climb " + (s0.climb_max == null ? "—" : s0.climb_max.toFixed(1)+" m/s")
+                + " · Path " + (s0.path_len == null ? "—" : (s0.path_len < 1000 ? Math.round(s0.path_len)+" m" : (s0.path_len/1000).toFixed(2)+" km"));
+      h += '<span class="k" title="' + cmpEsc(f.name + " — " + tip) + '"><i style="background:' + f.color + '"></i>' + f.no + '</span>';
+      cols.forEach(function(col, ci){
+        const x = col.v(s0);
+        const isBest = x != null && all.length > 1 && x === best[ci];
+        h += '<span class="c' + (isBest ? " best" : "") + '">' + col.f(x) + '</span>';
+      });
+    });
+    el("cmpStats").innerHTML = h + "</div>";
+    el("cmpStatsGrp").style.display = "";
+  } else el("cmpStatsGrp").style.display = "none";
+
+  /* Sprungknoepfe neben der Lageanzeige */
+  const jb = el("cmpJump");
+  if (CMP.length){
+    jb.innerHTML = all.map(function(f, k){
+      return '<button type="button" data-k="' + k + '" class="' + (f.show ? "" : "off") + '" title="Fly to flight ' + f.no + ': ' + cmpEsc(f.name) + '">'
+        + '<i style="background:' + f.color + '"></i><span>' + f.no + ' · ' + cmpEsc(cmpShort(f.name, 13)) + '</span></button>';
+    }).join("");
+    Array.prototype.forEach.call(jb.querySelectorAll("button"), function(btn){
+      btn.onclick = function(ev){ if (ev.stopPropagation) ev.stopPropagation(); cmpFocus(parseInt(btn.getAttribute("data-k"), 10)); };
+    });
+    jb.classList.add("on");
+  } else { jb.classList.remove("on"); jb.innerHTML = ""; }
+
+  cmpCheckLoad();
+  shiftAtt();
+}
+
+/* ---------- Leistungswarnung ---------- */
+function cmpToast(msg){
+  const tst = el("cmpToast");
+  tst.textContent = msg; tst.classList.add("on");
+  clearTimeout(cmpToastTimer);
+  cmpToastTimer = setTimeout(function(){ tst.classList.remove("on"); }, 9000);
+}
+el("cmpToast").onclick = function(){ this.classList.remove("on"); };
+function cmpWarn(msg, key){
+  const w = el("cmpWarn");
+  if (!msg){ w.style.display = "none"; w.textContent = ""; el("btnCmp").classList.remove("warn"); return; }
+  w.textContent = msg; w.style.display = "";
+  el("btnCmp").classList.add("warn");
+  if (key && key !== cmpWarnShown){ cmpWarnShown = key; cmpToast(msg); }
+}
+function cmpCheckLoad(){
+  const vis = CMP.filter(function(c){ return c.show; }).length;
+  const pts = cmpPointsTotal();
+  if (CMP.length >= CMP_WARN_FLIGHTS || pts >= CMP_WARN_POINTS){
+    cmpWarn("Heavy load: " + (CMP.length+1) + " flights, " + Math.round(pts/1000) + "k data points"
+      + (vis < CMP.length ? " (" + (CMP.length - vis) + " hidden)" : "")
+      + ". Playback and the map can get slow on weaker computers — hide or remove flights you do not need.",
+      "load:" + (CMP.length >= CMP_WARN_FLIGHTS ? "f" : "p"));
+  } else if (!fpsLow) cmpWarn(null);
+}
+/* Laufzeit-Waechter: misst die echte Bildrate waehrend der Wiedergabe mit Vergleichsfluegen. */
+let fpsT0 = 0, fpsN = 0, fpsLow = false;
+function fpsReset(){ fpsT0 = 0; fpsN = 0; }
+function fpsTick(now){
+  if (!playing || !CMP.length || document.visibilityState !== "visible"){ fpsT0 = 0; return; }
+  if (!fpsT0){ fpsT0 = now; fpsN = 0; return; }
+  fpsN++;
+  const span = now - fpsT0;
+  if (span < 4000) return;
+  const fps = fpsN * 1000 / span;
+  fpsT0 = now; fpsN = 0;
+  if (fps < CMP_FPS_MIN && !fpsLow){
+    fpsLow = true;
+    cmpWarn("Playback is down to about " + Math.round(fps) + " fps with " + (CMP.length+1)
+      + " flights. Hide or remove flights, or turn off “Camera follows model”, to speed it up.", "fps");
+  } else if (fps >= CMP_FPS_MIN + 8 && fpsLow){
+    fpsLow = false; cmpCheckLoad();
+  }
+}
+
+/* ---------- Laden ---------- */
+function cmpNote(msg){ el("cmpNote").textContent = msg; el("cmpNote").style.display = msg ? "" : "none"; }
+const CMP_NOTE_IDLE = "Add one or more logs (multi-select works). Each gets its own colour; the markers follow the timeline by flight progress. Nothing is uploaded.";
+function cmpAdd(payload, fname){
+  if (!payload || !payload.f || !payload.f.lat || !payload.f.lat.length) throw new Error("no GPS data in this log");
+  const f = payload.f;
+  const c = {
+    id: ++cmpSeq, name: (payload.meta && payload.meta.source) || fname || ("Flight " + (CMP.length+2)),
+    color: cmpColor(), show: true,
+    lat: f.lat, lon: f.lon, alt: f.alt || [], n: f.lat.length,
+    from: Math.max(0, payload.from|0), to: Math.min(f.lat.length-1, (payload.to == null ? f.lat.length-1 : payload.to|0)),
+    base: (payload.meta && payload.meta.altBase) || 0,
+    stats: payload.stats || {}, lineIdx: payload.lineIdx || []
+  };
+  if (c.to <= c.from){ c.from = 0; c.to = c.n - 1; }
+  cmpBuild(c);
+  CMP.push(c);
+  c._la = null;
+  return c;
+}
+function cmpDecode(buf, name){
+  return new Promise(function(resolve, reject){
+    function sync(){
+      try {
+        if (!self.FlugspurParse) throw new Error("Parser not available.");
+        resolve(self.FlugspurParse.load(new Uint8Array(buf), name || "flight"));
+      } catch(e){ reject(e); }
+    }
+    if (typeof Worker === "undefined"){ sync(); return; }
+    let w;
+    try {
+      const url = new URL("flugspur_parse.js", location.href).href;
+      const src = "importScripts(" + JSON.stringify(url) + ");"
+        + "self.onmessage=function(e){var d=e.data;"
+        + "try{var p=self.FlugspurParse.load(new Uint8Array(d.buf), d.name, d.maxPoints);"
+        + "self.postMessage({ok:true,payload:p});}"
+        + "catch(err){self.postMessage({ok:false,error:(err&&err.message)?err.message:String(err)});}};";
+      const bu = URL.createObjectURL(new Blob([src], {type:"application/javascript"}));
+      w = new Worker(bu); URL.revokeObjectURL(bu);
+    } catch(e){ sync(); return; }
+    let done = false;
+    w.onmessage = function(e){ done = true; const m = e.data; try{ w.terminate(); }catch(_){}
+      if (m && m.ok) resolve(m.payload); else reject(new Error(m && m.error ? m.error : "Could not decode this flight.")); };
+    w.onerror = function(){ if (done) return; try{ w.terminate(); }catch(_){}; sync(); };
+    try { w.postMessage({ buf: buf, name: name || "flight", maxPoints: 25000 }); }
+    catch(e){ try{ w.terminate(); }catch(_){}; sync(); }
   });
 }
-function refreshB(){
-  if (!FB || !viewer) return;
-  const span = (tMax - tMin) || 1;
-  const frac = (t - tMin) / span;
-  const i = bIdxAtFrac(frac);
-  const la = FB.lat[i], lo = FB.lon[i];
-  if (la == null || lo == null){ curPosB = null; return; }
-  curPosB = Cesium.Cartesian3.fromDegrees(lo, la, bHeight(i));
-  if (markerB && markerB.label) markerB.label.show = cmpShow;
-  viewer.scene.requestRender();
+function cmpReadFile(f){
+  return new Promise(function(resolve, reject){
+    if (f.size > 120*1024*1024){ reject(new Error("file is very large (>120 MB)")); return; }
+    const fr = new FileReader();
+    fr.onload = function(){ resolve(fr.result); };
+    fr.onerror = function(){ reject(new Error("file could not be read")); };
+    fr.readAsArrayBuffer(f);
+  });
 }
-function cmpFmtDist(m){ if (m == null) return "—"; return m < 1000 ? Math.round(m)+" m" : (m/1000).toFixed(2)+" km"; }
-function cmpRow(label, av, bv){
-  return '<div class="line" style="justify-content:space-between;gap:10px">'
-       + '<span style="opacity:.7">'+label+'</span>'
-       + '<span style="color:var(--amber);min-width:5em;text-align:right">'+av+'</span>'
-       + '<span style="color:'+COLOR_B+';min-width:5em;text-align:right">'+bv+'</span></div>';
-}
-function fillCompareStats(){
-  const A = FL.stats || {}, B = (FLB && FLB.stats) || {};
-  function n0(x,u){ return x==null?"—":(Math.round(x)+(u||"")); }
-  function n1(x,u){ return x==null?"—":(x.toFixed(1)+(u||"")); }
-  let h = "";
-  h += cmpRow("Flight time", dur(A.flight_duration||0), dur(B.flight_duration||0));
-  h += cmpRow("Max altitude", n0(A.alt_max," m"), n0(B.alt_max," m"));
-  h += cmpRow("Max speed", n0(A.spd_max," km/h"), n0(B.spd_max," km/h"));
-  h += cmpRow("Max distance", cmpFmtDist(A.dist_max), cmpFmtDist(B.dist_max));
-  h += cmpRow("Best climb", n1(A.climb_max," m/s"), n1(B.climb_max," m/s"));
-  h += cmpRow("Path length", cmpFmtDist(A.path_len), cmpFmtDist(B.path_len));
-  el("cmpStats").innerHTML = h;
-  el("cmpStatsGrp").style.display = "";
-}
-function fitBoth(){
-  const C = Cesium;
-  const pts = (LINE_POS || []).concat(buildPathB._pos || []);
-  if (pts.length < 2 || !viewer) return;
-  try { viewer.camera.flyToBoundingSphere(C.BoundingSphere.fromPoints(pts), { duration: 0.8 }); } catch(e){}
-}
-function applySecondFlight(payload){
-  FLB = payload; FB = payload.f;
-  buildPathB(); ensureMarkerB();
-  cmpShow = true;
-  const sb = el("btnCmpShow"); if (sb) sb.setAttribute("aria-pressed","true");
-  el("cmpToggleLine").style.display = "";
-  fillCompareStats();
-  refreshB(); fitBoth();
-  el("cmpNote").textContent = "Loaded: " + ((payload.meta && payload.meta.source) || "second flight")
-    + " — magenta on the scene, compared below.";
-}
-function clearSecondFlight(){
-  if (pathPrimB){ viewer.scene.primitives.remove(pathPrimB); pathPrimB = null; }
-  if (markerB){ viewer.entities.remove(markerB); markerB = null; }
-  FB = null; FLB = null; curPosB = null; buildPathB._pos = null;
-  el("cmpToggleLine").style.display = "none";
-  el("cmpStatsGrp").style.display = "none";
-  el("cmpNote").textContent = "Loads a second log and draws it in magenta on the same scene. The timeline scrubs both; stats are compared below. Runs in your browser — nothing is uploaded.";
-  if (viewer) viewer.scene.requestRender();
-}
-/* Zweiten Flug im Web-Worker dekodieren (gleich-origin Parser), Fallback sync. */
-function decodeSecond(buf, name){
-  el("cmpNote").textContent = "Decoding second flight …";
-  function ok(pl){ try { applySecondFlight(pl); } catch(e){ el("cmpNote").textContent = "Could not use that log: " + (e && e.message || e); } }
-  function fail(msg){ el("cmpNote").textContent = msg || "That file could not be read as a flight log."; }
-  function sync(){
+/* Dateien nacheinander abarbeiten: nie mehrere grosse Logs gleichzeitig im Speicher dekodieren. */
+async function cmpRunQueue(){
+  if (cmpBusy) return;
+  cmpBusy = true;
+  const errs = []; let added = 0, total = cmpQueue.length, k = 0;
+  while (cmpQueue.length){
+    const f = cmpQueue.shift(); k++;
+    total = Math.max(total, k + cmpQueue.length);
+    cmpNote("Decoding " + (total > 1 ? k + " of " + total + ": " : "") + f.name + " …");
     try {
-      if (!self.FlugspurParse){ fail("Parser not available for the second flight."); return; }
-      ok(self.FlugspurParse.load(new Uint8Array(buf), name || "flight-2"));
-    } catch(e){ fail(e && e.message ? e.message : "That file could not be read."); }
+      if (!ready) throw new Error("the map is not ready yet");
+      const buf = await cmpReadFile(f);
+      const pl = await cmpDecode(buf, f.name);
+      cmpAdd(pl, f.name); added++;
+      cmpRender();
+    } catch(e){ errs.push(f.name + ": " + (e && e.message ? e.message : e)); }
   }
-  if (typeof Worker === "undefined"){ sync(); return; }
-  let w;
-  try {
-    const url = new URL("flugspur_parse.js", location.href).href;
-    const src = "importScripts(" + JSON.stringify(url) + ");"
-      + "self.onmessage=function(e){var d=e.data;"
-      + "try{var p=self.FlugspurParse.load(new Uint8Array(d.buf), d.name, d.maxPoints);"
-      + "self.postMessage({ok:true,payload:p});}"
-      + "catch(err){self.postMessage({ok:false,error:(err&&err.message)?err.message:String(err)});}};";
-    w = new Worker(URL.createObjectURL(new Blob([src], {type:"application/javascript"})));
-  } catch(e){ sync(); return; }
-  w.onmessage = function(e){ const m = e.data; try{ w.terminate(); }catch(_){}
-    if (m && m.ok) ok(m.payload); else fail(m && m.error ? m.error : "Could not decode the second flight."); };
-  w.onerror = function(){ try{ w.terminate(); }catch(_){}; sync(); };
-  try { w.postMessage({ buf: buf, name: name || "flight-2", maxPoints: 25000 }); }
-  catch(e){ try{ w.terminate(); }catch(_){}; sync(); }
+  cmpBusy = false;
+  cmpNote(errs.length ? ("Could not use " + errs.join(" · ")) : (CMP.length ? "" : CMP_NOTE_IDLE));
+  if (added){ cmpRefresh(); cmpFitAll(); }
+  cmpRender();
 }
 (function wireCompare(){
   const btn = el("btnCmpLoad"), fi = el("cmpFile");
-  if (btn && fi){
-    btn.onclick = function(){ fi.click(); };
-    fi.onchange = function(){
-      const f = fi.files && fi.files[0]; fi.value = "";
-      if (!f) return;
-      if (f.size > 120*1024*1024){ el("cmpNote").textContent = "That file is very large (>120 MB)."; return; }
-      const fr = new FileReader();
-      fr.onload = function(){ decodeSecond(fr.result, f.name); };
-      fr.onerror = function(){ el("cmpNote").textContent = "The file could not be read."; };
-      fr.readAsArrayBuffer(f);
-    };
-  }
-  const sh = el("btnCmpShow");
-  if (sh) sh.onclick = function(){
-    cmpShow = !cmpShow;
-    sh.setAttribute("aria-pressed", cmpShow ? "true" : "false");
-    if (pathPrimB) pathPrimB.show = cmpShow;
-    if (markerB && markerB.label) markerB.label.show = cmpShow;
-    if (viewer) viewer.scene.requestRender();
+  btn.onclick = function(){ fi.click(); };
+  fi.onchange = function(){
+    const list = Array.prototype.slice.call(fi.files || []); fi.value = "";
+    if (!list.length) return;
+    cmpQueue = cmpQueue.concat(list);
+    cmpRunQueue();
   };
-  const cl = el("btnCmpClear");
-  if (cl) cl.onclick = clearSecondFlight;
+  el("btnCmpFit").onclick = function(){ cmpFitAll(); };
+  el("btnCmpClear").onclick = function(){ cmpClearAll(); cmpNote(CMP_NOTE_IDLE); };
 })();
 
 /* ====================================================== Flugband */
@@ -2602,6 +2960,7 @@ function altRange(){
   return _alr;
 }
 function drawTape(){
+  _alr = null;                          // Daten/Fenster koennen sich geaendert haben
   tctx.clearRect(0,0,TW,TH);
   const top = PAD.t, bot = TH - PAD.b, h = bot - top;
   if (h < 10) return;
@@ -2710,7 +3069,7 @@ function drawHead(){
   hctx.beginPath(); hctx.moveTo(x-4,0); hctx.lineTo(x+4,0); hctx.lineTo(x,6); hctx.closePath(); hctx.fill();
   const k0 = metric.k;
   if (F[k0]){
-    const r = sRange(k0);
+    const r = altRange();               // gecacht – vorher jedes Bild ein Lauf ueber alle Punkte
     const i = idxAt(t);
     const v = F[k0][i];
     if (v != null){
@@ -2801,9 +3160,13 @@ el("tapewrap").addEventListener("pointerleave", function(){ el("tip").style.disp
 /* ====================================================== Zustand */
 function setT(v){ t = clamp(v, tMin, tMax); refresh(); }
 function setPlaying(p){
+  const was = playing;
   playing = p;
   el("play").textContent = p ? "❚❚" : "▶";
   el("play").title = p ? "Pause (space)" : "Play (space)";
+  tuneGlobe();
+  fpsReset();
+  if (was && !p) refresh(true);      // beim Anhalten sofort die exakten Messwerte zeigen
 }
 function setZoom(a,b){
   const t0 = F.t[winFrom], t1 = F.t[winTo];
@@ -2841,45 +3204,61 @@ function nearestIdx(tt){
   const i = idxAt(tt), j = Math.min(N-1, i+1);
   return (Math.abs(F.t[j]-tt) < Math.abs(tt-F.t[i])) ? j : i;
 }
-function refresh(){
+/* Texte nur schreiben, wenn sie sich aendern, und waehrend der Wiedergabe hoechstens ~15x pro
+   Sekunde (Ziffern lassen sich schneller ohnehin nicht lesen). Marker, Kamera und Zeitzeiger
+   laufen weiter mit voller Bildrate. Die Lageanzeige zeichnet hoechstens ~30x pro Sekunde und
+   nur bei veraenderter Lage. */
+let liveNodes = null, liveT = -1e9, attT = -1e9, attKey = "";
+function setTxt(node, v){ if (node && node.__v !== v){ node.__v = v; node.textContent = v; } }
+function setHtm(node, v){ if (node && node.__v !== v){ node.__v = v; node.innerHTML = v; } }
+function refresh(force){
   const i = playing ? idxAt(t) : nearestIdx(t);
-  el("now").textContent = F.clock[i];
-  el("nowt").textContent = "T+" + dur(F.t[i]-F.t[winFrom]);
-  el("clock").innerHTML = "<b>"+dur(t-F.t[winFrom])+"</b> / "+dur(F.t[winTo]-F.t[winFrom]);
+  const now = performance.now();
+  if (force === true || !playing || now - liveT >= 66){
+    liveT = now;
+    setTxt(el("now"), F.clock[i]);
+    setTxt(el("nowt"), "T+" + dur(F.t[i]-F.t[winFrom]));
+    setHtm(el("clock"), "<b>"+dur(t-F.t[winFrom])+"</b> / "+dur(F.t[winTo]-F.t[winFrom]));
 
-  for (let k=0;k<LIVE_KEYS.length;k++){
-    const key = LIVE_KEYS[k], node = el("lv_"+key);
-    if (!node) continue;
-    const f = FMAP[key];
-    const v = (key === "hdg") ? snapAngle("hdg",t)
-            : (key === "sats" || key === "gnd") ? fval(key,i) : snap(key,t);
-    node.innerHTML = nf(v, f.d) + (f.u ? "<u>"+f.u+"</u>" : "");
+    if (!liveNodes) liveNodes = LIVE_KEYS.map(function(k){ return el("lv_"+k); });
+    for (let k=0;k<LIVE_KEYS.length;k++){
+      const key = LIVE_KEYS[k], node = liveNodes[k];
+      if (!node) continue;
+      const f = FMAP[key];
+      const v = (key === "hdg") ? snapAngle("hdg",t)
+              : (key === "sats" || key === "gnd") ? fval(key,i) : snap(key,t);
+      setHtm(node, nf(v, f.d) + (f.u ? "<u>"+f.u+"</u>" : ""));
+    }
+    const fmEl = el("fmnow");
+    if (FL.fmNames.length && F.fm[i] >= 0){
+      if (fmEl.style.display) fmEl.style.display = "";
+      setTxt(fmEl, FL.fmNames[F.fm[i]]);
+    } else if (fmEl.style.display !== "none") fmEl.style.display = "none";
+
+    if (BP.valid && F.batt){
+      const p = snap("batt",t);
+      el("battbar").style.display = "block";
+      el("bbFill").style.width = clamp(p||0,0,100) + "%";
+      el("bbFill").style.background = battColor(p);
+      const vc = snap("vcell",t);
+      let line = "<b>" + nf(p,0) + " %</b>";
+      if (vc != null) line += "<i>·</i>" + nf(vc,2) + " V/Zelle";
+      setHtm(el("bbPct"), line);
+    } else if (el("battbar").style.display !== "none") el("battbar").style.display = "none";
   }
-  const fmEl = el("fmnow");
-  if (FL.fmNames.length && F.fm[i] >= 0){
-    fmEl.style.display = ""; fmEl.textContent = FL.fmNames[F.fm[i]];
-  } else fmEl.style.display = "none";
 
   const pit = HAVE.ptch ? snap("ptch",t) : 0;
   const rol = HAVE.roll ? snap("roll",t) : 0;
   const yaw = HAVE.yaw ? snapAngle("yaw",t) : (HAVE.hdg ? snapAngle("hdg",t) : 0);
   lastAtt = [yaw, pit||0, rol||0];
-  drawAtt(yaw, pit||0, rol||0);
-  const setA = function(id,v){ const n = el(id); if (n) n.textContent = v; };
-  setA("lv_a_ptch", nf(-(pit||0),0)+" °");
-  setA("lv_a_roll", nf(rol||0,0)+" °");
-  setA("lv_a_hdg", nf(((yaw||0)%360+360)%360,0)+" °");
-
-  if (BP.valid && F.batt){
-    const p = snap("batt",t);
-    el("battbar").style.display = "block";
-    el("bbFill").style.width = clamp(p||0,0,100) + "%";
-    el("bbFill").style.background = battColor(p);
-    const vc = snap("vcell",t);
-    let line = "<b>" + nf(p,0) + " %</b>";
-    if (vc != null) line += "<i>·</i>" + nf(vc,2) + " V/Zelle";
-    el("bbPct").innerHTML = line;
-  } else el("battbar").style.display = "none";
+  const ak = (yaw||0).toFixed(1)+"|"+(pit||0).toFixed(1)+"|"+(rol||0).toFixed(1);
+  if (force === true || (ak !== attKey && (!playing || now - attT >= 33))){
+    attKey = ak; attT = now;
+    drawAtt(yaw, pit||0, rol||0);
+    setTxt(el("lv_a_ptch"), nf(-(pit||0),0)+" °");
+    setTxt(el("lv_a_roll"), nf(rol||0,0)+" °");
+    setTxt(el("lv_a_hdg"), nf(((yaw||0)%360+360)%360,0)+" °");
+  }
 
   if (ready){
     const la = snap("lat",t), lo = snap("lon",t);
@@ -2893,13 +3272,14 @@ function refresh(){
     viewer.scene.requestRender();
   }
   drawHead();
-  if (typeof refreshB === "function") refreshB();   // zweiter Flug (falls geladen) mitziehen
+  cmpRefresh();                                     // Vergleichsfluege (falls geladen) mitziehen
 }
 
 let LIVE_KEYS = [];
 function refreshMenus(){
   const av = fields();
   LIVE_KEYS = TILE_KEYS.concat(MINI_KEYS);
+  liveNodes = null;
 
   /* Farbmetrik */
   if (!avail(metric.k)) metric = av[0];
@@ -3125,16 +3505,23 @@ function shiftAtt(){
   const att = el("attpanel"); if (!att) return;
   let openMenu = null;
   for (const id of HEAD_POPS){ const e = el(id); if (e && e.classList.contains("open")){ openMenu = e; break; } }
-  if (!openMenu){ att.style.transform = "translateX(0)"; return; }
-  // Basisposition ohne aktive Verschiebung messen.
-  att.style.transform = "translateX(0)";
-  const base = att.getBoundingClientRect();
-  // Modell so weit nach links, dass es links neben dem Menü frei steht.
-  let dx = openMenu.getBoundingClientRect().width + 12;
-  // Nicht über den linken Rand hinausschieben (schmale Fenster).
-  const maxLeft = base.left - 12;            // Platz bis zum linken Kartenrand
-  if (dx > maxLeft) dx = Math.max(0, maxLeft);
-  att.style.transform = "translateX(" + (-dx) + "px)";
+  let dx = 0;
+  if (openMenu){
+    /* Grundposition aus dem Layout (offsetLeft ignoriert transform). Frueher wurde die
+       Verschiebung kurz auf 0 gesetzt und neu gemessen – das brach die laufende Animation
+       ab und liess die Anzeige springen. */
+    const map = el("map").getBoundingClientRect();
+    const baseLeft = map.left + att.offsetLeft;
+    const jb = el("cmpJump");
+    const jw = (jb && jb.classList.contains("on")) ? jb.offsetWidth + 8 : 0;
+    // Modell so weit nach links, dass es links neben dem Menü frei steht.
+    dx = openMenu.getBoundingClientRect().width + 12;
+    // Nicht über den linken Kartenrand hinausschieben – inklusive Sprungknöpfe.
+    const room = baseLeft - jw - map.left - 12;
+    if (dx > room) dx = Math.max(0, room);
+  }
+  const tr = "translateX(" + (-Math.round(dx)) + "px)";
+  if (att.style.transform !== tr) att.style.transform = tr;
 }
 function closePops(except){
   POPS.forEach(function(p){
@@ -3247,16 +3634,18 @@ el("btnFollow").onclick = function(){
   follow = !follow;
   this.setAttribute("aria-pressed", follow ? "true" : "false");
   if (ready) viewer.trackedEntity = follow ? marker : undefined;
+  tuneGlobe();
 };
 el("btnWall").onclick = function(){
   wallOn = !wallOn;
   this.setAttribute("aria-pressed", wallOn ? "true" : "false");
   if (ready){ buildWall(); viewer.scene.requestRender(); }
 };
-el("btnHome").onclick = function(){ resetView(900); closePops(null); };
+el("btnReset").onclick = function(){ resetView(900); closePops(null); };
 el("btnShot").onclick = function(){
   closePops(null);
   if (!ready) return;
+  viewer.scene.requestRender();      // explizites Rendern: sonst wird kein neues Bild erzeugt
   viewer.render();
   const a = document.createElement("a");
   a.href = viewer.canvas.toDataURL("image/png");
@@ -3341,6 +3730,7 @@ document.addEventListener("keydown", function(e){
 let last = performance.now();
 function loop(now){
   const dt = (now-last)/1000; last = now;
+  fpsTick(now);
   if (playing){
     let nt = t + dt*speed;
     if (nt >= tMax){ nt = tMax; setPlaying(false); }
@@ -3349,7 +3739,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-window.addEventListener("resize", tapeResize);
+window.addEventListener("resize", function(){ tapeResize(); shiftAtt(); });
 if (window.matchMedia && window.matchMedia("(max-width:940px)").matches)
   el("btnSide").style.display = "";
 
